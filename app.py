@@ -12,7 +12,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# دالة الترتيب الذكي (يجب أن تكون في بداية الكود لتكون متاحة للجميع)
+# دالة الترتيب الذكي
 def smart_sort(x):
     try:
         return int(x)
@@ -108,27 +108,48 @@ elif page == "📊 لوحة الإدارة":
         
         st.divider()
         report_date = st.date_input("📅 تاريخ المتابعة", datetime.now())
-        att_res = supabase.table('attendance').select("*").eq('date', str(report_date)).execute()
         
-        if att_res.data:
-            df = pd.DataFrame(att_res.data)
-            # تعريب الأعمدة
-            df = df.rename(columns={'student_name':'الاسم','committee':'اللجنة','status':'الحالة','teacher_name':'المعلم'})
-            
-            tab1, tab2 = st.tabs(["⚠️ كشف الغياب/التأخر", "🚩 حالة اللجان"])
-            with tab1:
-                st.subheader("قائمة الطلاب (غائب / متأخر)")
+        # جلب البيانات
+        att_res = supabase.table('attendance').select("*").eq('date', str(report_date)).execute()
+        all_std_res = supabase.table('students').select("committee").execute()
+        
+        # قائمة بكل اللجان المسجلة في المدرسة
+        all_committees = set([item['committee'] for item in all_std_res.data if item['committee']])
+        
+        tab1, tab2 = st.tabs(["⚠️ كشف الغياب/التأخر", "🚩 حالة اللجان"])
+        
+        with tab1:
+            if att_res.data:
+                df = pd.DataFrame(att_res.data).rename(columns={'student_name':'الاسم','committee':'اللجنة','status':'الحالة','teacher_name':'المعلم'})
                 absent_df = df[df['الحالة'].isin(['غائب','متأخر'])]
                 if not absent_df.empty:
                     st.table(absent_df[['الاسم','اللجنة','الحالة','المعلم']])
                 else:
                     st.success("الكل حاضر لهذا اليوم!")
-            with tab2:
-                # حل مشكلة NameError في الترتيب
-                submitted_comm = sorted(list(df['اللجنة'].unique()), key=smart_sort)
-                st.write(f"✅ **اللجان التي رصدت ({len(submitted_comm)} لجان):**")
-                st.write(", ".join([str(c) for c in submitted_comm]))
-        else:
-            st.warning("لا توجد بيانات مرفوعة لهذا التاريخ.")
+            else:
+                st.warning("لا توجد سجلات غياب لهذا التاريخ.")
+
+        with tab2:
+            # تحديد اللجان التي رصدت
+            submitted_set = set(row['committee'] for row in att_res.data) if att_res.data else set()
+            not_submitted_set = all_committees - submitted_set
+            
+            col_a, col_b = st.columns(2)
+            
+            with col_a:
+                st.success(f"✅ اللجان التي رصدت ({len(submitted_set)})")
+                if submitted_set:
+                    sorted_submitted = sorted(list(submitted_set), key=smart_sort)
+                    st.write(", ".join([str(c) for c in sorted_submitted]))
+                else:
+                    st.write("لا توجد لجان رصدت بعد.")
+            
+            with col_b:
+                st.error(f"❌ لجان لم ترصد بعد ({len(not_submitted_set)})")
+                if not_submitted_set:
+                    sorted_not_submitted = sorted(list(not_submitted_set), key=smart_sort)
+                    st.write(", ".join([str(c) for c in sorted_not_submitted]))
+                else:
+                    st.success("اكتمل رصد جميع اللجان! 🌟")
     else:
         st.info("أدخل كلمة المرور في القائمة الجانبية.")
