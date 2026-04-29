@@ -12,7 +12,6 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# دالة الترتيب الذكي لمنع خطأ NameError
 def smart_sort(x):
     try: return int(x)
     except: return str(x)
@@ -24,17 +23,14 @@ if 'teacher_name' not in st.session_state:
 
 st.set_page_config(page_title="نظام غياب الطلاب - أ. عارف الحداد", layout="wide")
 
-# دالة محسنة للتحقق من الحالة وضمان عمل الزر
 def get_system_status():
     try:
         res = supabase.table("settings").select("is_open").eq("setting_name", "attendance_status").execute()
         if not res.data:
-            # إذا كان السجل مفقوداً، ننشئه ليعمل الزر
             supabase.table("settings").insert({"setting_name": "attendance_status", "is_open": True}).execute()
             return True
         return res.data[0]['is_open']
-    except:
-        return True
+    except: return True
 
 st.sidebar.title("🏫 القائمة الرئيسية")
 page = st.sidebar.radio("انتقل إلى:", ["🔑 دخول المعلم", "📊 لوحة الإدارة"])
@@ -82,40 +78,58 @@ if page == "🔑 دخول المعلم":
                         supabase.table('attendance').delete().eq('committee', selected_committee).eq('date', str(target_date)).execute()
                         supabase.table('attendance').insert(attendance_results).execute()
                         st.balloons(); st.success("✅ تم الحفظ بنجاح!"); time.sleep(1); st.session_state.logged_in = False; st.rerun()
-                    except Exception as e: st.error(f"خطأ في قاعدة البيانات: {e}")
+                    except Exception as e: st.error(f"خطأ: {e}")
 
 # --- 2. لوحة الإدارة ---
 elif page == "📊 لوحة الإدارة":
     st.header("📊 لوحة الإدارة والتقارير")
     if st.sidebar.text_input("كلمة المرور", type="password") == "1234":
-        st.subheader("⚙️ إعدادات التحكم بالنظام")
         current_status = get_system_status()
         
-        # تنسيق الألوان كما طلبت
-        if current_status:
-            st.success("🟢 النظام الآن: مفتوح لاستقبال الرصد")
-            if st.button("🔴 إيقاف رصد الغياب الآن (تحويل للأحمر)", use_container_width=True):
-                supabase.table("settings").update({"is_open": False}).eq("setting_name", "attendance_status").execute()
-                st.rerun()
-        else:
-            st.error("🔴 النظام الآن: مغلق")
-            if st.button("🟢 تفعيل رصد الغياب الآن (تحويل للأخضر)", use_container_width=True):
-                supabase.table("settings").update({"is_open": True}).eq("setting_name", "attendance_status").execute()
-                st.rerun()
-        
+        # أزرار التحكم بالألوان
+        col_btn1, col_btn2 = st.columns([2, 1])
+        with col_btn1:
+            if current_status:
+                st.success("🟢 النظام الآن: مفتوح لاستقبال الرصد")
+                if st.button("🔴 إيقاف رصد الغياب الآن"):
+                    supabase.table("settings").update({"is_open": False}).eq("setting_name", "attendance_status").execute()
+                    st.rerun()
+            else:
+                st.error("🔴 النظام الآن: مغلق")
+                if st.button("🟢 تفعيل رصد الغياب الآن"):
+                    supabase.table("settings").update({"is_open": True}).eq("setting_name", "attendance_status").execute()
+                    st.rerun()
+
         st.divider()
         report_date = st.date_input("📅 تاريخ المتابعة", datetime.now())
         att_res = supabase.table('attendance').select("*").eq('date', str(report_date)).execute()
-        all_std = supabase.table('students').select("committee").execute()
-        all_comm = set([i['committee'] for i in all_std.data if i['committee']])
         
-        tab1, tab2 = st.tabs(["⚠️ كشف الغياب", "🚩 حالة اللجان"])
+        tab1, tab2 = st.tabs(["⚠️ كشف الغياب/التأخر", "🚩 حالة اللجان"])
+        
         with tab1:
             if att_res.data:
                 df = pd.DataFrame(att_res.data).rename(columns={'student_name':'الاسم','committee':'اللجنة','status':'الحالة','teacher_name':'المعلم'})
-                st.table(df[df['الحالة'].isin(['غائب','متأخر'])])
+                report_df = df[df['الحالة'].isin(['غائب','متأخر'])][['الاسم','اللجنة','الحالة','المعلم']]
+                
+                if not report_df.empty:
+                    st.table(report_df)
+                    
+                    # ميزة تصدير PDF (عن طريق تحويل البيانات لملف CSV سهل التحميل أو HTML للطباعة)
+                    csv = report_df.to_csv(index=False).encode('utf-8-sig')
+                    st.download_button(
+                        label="📥 تحميل الكشف (ملف Excel/CSV)",
+                        data=csv,
+                        file_name=f"غياب_{report_date}.csv",
+                        mime="text/csv",
+                    )
+                    st.info("💡 نصيحة: يمكنك حفظ الكشف كـ PDF عن طريق فتح ملف الـ CSV المحمل واختيار 'حفظ باسم PDF' من جهازك.")
+                else:
+                    st.success("الكل حاضر لهذا اليوم!")
             else: st.info("لا توجد بيانات لهذا التاريخ.")
+            
         with tab2:
+            all_std = supabase.table('students').select("committee").execute()
+            all_comm = set([i['committee'] for i in all_std.data if i['committee']])
             submitted = set(row['committee'] for row in att_res.data) if att_res.data else set()
             not_submitted = all_comm - submitted
             col1, col2 = st.columns(2)
