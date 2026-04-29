@@ -90,34 +90,34 @@ elif page == "📊 لوحة الإدارة":
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if current_status:
-                st.success("🟢 النظام الآن: مفتوح لاستقبال الرصد")
-                if st.button("🔴 إيقاف رصد الغياب الآن", use_container_width=True):
+                st.success("🟢 النظام الآن: مفتوح")
+                if st.button("🔴 إيقاف الرصد"):
                     supabase.table("settings").update({"is_open": False}).eq("setting_name", "attendance_status").execute()
                     st.rerun()
             else:
                 st.error("🔴 النظام الآن: مغلق")
-                if st.button("🟢 تفعيل رصد الغياب الآن", use_container_width=True):
+                if st.button("🟢 تفعيل الرصد"):
                     supabase.table("settings").update({"is_open": True}).eq("setting_name", "attendance_status").execute()
                     st.rerun()
 
         st.divider()
         col_date, col_reset = st.columns([2, 1])
         with col_date:
-            report_date = st.date_input("📅 اختر تاريخ المتابعة / المسح", datetime.now())
+            report_date = st.date_input("📅 تاريخ المتابعة / المسح", datetime.now())
         
         with col_reset:
-            st.write("🗑️ منطقة الحذف")
+            # زر مسح البيانات مع تحسين التحديث الفوري
             if st.button("⚠️ مسح غياب هذا التاريخ", use_container_width=True):
-                # تأكيد الحذف لتجنب المسح بالخطأ
-                st.warning(f"هل أنت متأكد من مسح جميع بيانات يوم {report_date}؟")
-                if st.button("نعم، احذف البيانات الآن"):
-                    try:
-                        supabase.table('attendance').delete().eq('date', str(report_date)).execute()
-                        st.success(f"🗑️ تم مسح جميع سجلات تاريخ {report_date} بنجاح!")
-                        time.sleep(2)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"حدث خطأ أثناء المسح: {e}")
+                try:
+                    # المسح الفعلي من قاعدة البيانات
+                    result = supabase.table('attendance').delete().eq('date', str(report_date)).execute()
+                    if result:
+                        st.success(f"🗑️ تم المسح بنجاح. جاري التحديث...")
+                        time.sleep(1)
+                        # هذه التعليمة تجبر الواجهة على التحديث واختفاء الأسماء
+                        st.rerun() 
+                except Exception as e:
+                    st.error(f"حدث خطأ أثناء المسح: {e}")
 
         st.divider()
         att_res = supabase.table('attendance').select("*").eq('date', str(report_date)).execute()
@@ -132,10 +132,11 @@ elif page == "📊 لوحة الإدارة":
                 if not report_df.empty:
                     st.table(report_df)
                     csv = report_df.to_csv(index=False).encode('utf-8-sig')
-                    st.download_button(label="📥 تحميل الكشف (CSV/Excel)", data=csv, file_name=f"غياب_{report_date}.csv", mime="text/csv")
+                    st.download_button(label="📥 تحميل الكشف (Excel)", data=csv, file_name=f"غياب_{report_date}.csv", mime="text/csv")
                 else:
                     st.success("الكل حاضر لهذا اليوم!")
-            else: st.info("لا توجد بيانات غياب مرفوعة لهذا التاريخ.")
+            else: 
+                st.info("لا توجد سجلات غياب لهذا التاريخ في قاعدة البيانات.")
             
         with tab2:
             all_std = supabase.table('students').select("committee").execute()
@@ -145,4 +146,4 @@ elif page == "📊 لوحة الإدارة":
             col1, col2 = st.columns(2)
             with col1: st.success(f"✅ رصدت: {', '.join(map(str, sorted(list(submitted), key=smart_sort)))}")
             with col2: st.error(f"❌ لم ترصد: {', '.join(map(str, sorted(list(not_submitted), key=smart_sort)))}")
-    else: st.sidebar.info("أدخل كلمة المرور (1234).")
+    else: st.sidebar.info("أدخل كلمة المرور.")
