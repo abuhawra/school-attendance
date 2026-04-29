@@ -3,7 +3,7 @@ from supabase import create_client
 import pandas as pd
 from datetime import datetime
 
-# بيانات الاتصال
+# بيانات الاتصال بمشروعك
 url = "https://lsmevvsogsqqqjyuqzbx.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzbWV2dnNvZ3NxcXFqeXVxemJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDMyOTgsImV4cCI6MjA5Mjk3OTI5OH0.ecqJS75fPbKqwSAiBzP6Qonn4cuymgwjB96tIGek8j0"
 
@@ -11,7 +11,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# حفظ حالة الدخول
+# حفظ حالة تسجيل الدخول لمنع الخروج المفاجئ
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'teacher_name' not in st.session_state:
@@ -19,7 +19,6 @@ if 'teacher_name' not in st.session_state:
 
 st.set_page_config(page_title="نظام غياب الطلاب - أ. عارف الحداد", layout="wide")
 
-# القائمة الجانبية
 st.sidebar.title("🏫 القائمة الرئيسية")
 page = st.sidebar.radio("انتقل إلى:", ["🔑 دخول المعلم", "📊 لوحة الإدارة"])
 
@@ -35,7 +34,6 @@ if page == "🔑 دخول المعلم":
         nid_input = st.text_input("أدخل رقم السجل المدني:", type="default")
         if st.button("دخول"):
             if nid_input:
-                # التأكد من البحث في national_id
                 res = supabase.table("teachers").select("*").eq("national_id", nid_input.strip()).execute()
                 if res.data:
                     st.session_state.logged_in = True
@@ -72,7 +70,6 @@ if page == "🔑 دخول المعلم":
                     })
                 
                 st.divider()
-                # وضع الكود الجديد هنا
                 if st.button("💾 إرسال كشف الغياب"):
                     if attendance_results:
                         try:
@@ -81,9 +78,8 @@ if page == "🔑 دخول المعلم":
                                 st.balloons()
                                 st.success(f"✅ تم حفظ غياب {len(attendance_results)} طالب بنجاح!")
                         except Exception as e:
-                            st.error("❌ فشل الحفظ. تأكد من تطابق أعمدة جدول (attendance) في Supabase.")
-                            st.info("الأعمدة المطلوبة: student_name, committee, status, date, teacher_name")
-                            st.write(f"تفاصيل الخطأ التقني: {e}")
+                            st.error("❌ فشل الحفظ. تأكد من مطابقة أسماء الأعمدة في Supabase.")
+                            st.write(f"تفاصيل الخطأ: {e}")
                     else:
                         st.warning("لا توجد بيانات لإرسالها.")
 
@@ -92,9 +88,11 @@ elif page == "📊 لوحة الإدارة":
     password = st.sidebar.text_input("كلمة مرور الإدارة", type="password")
     if password == "1234":
         st.info("مرحباً بك في لوحة الإدارة.")
-        report_date = st.date_input("اختر التاريخ", datetime.now())
+        report_date = st.date_input("اختر التاريخ لعرض الغياب", datetime.now())
         att_data = supabase.table('attendance').select("*").eq('date', str(report_date)).execute()
         if att_data.data:
-            st.dataframe(pd.DataFrame(att_data.data))
+            st.dataframe(pd.DataFrame(att_data.data), use_container_width=True)
+        else:
+            st.warning("لا توجد بيانات لهذا التاريخ.")
     else:
-        st.info("أدخل كلمة المرور في الجانب.")
+        st.info("أدخل كلمة المرور في القائمة الجانبية.")
