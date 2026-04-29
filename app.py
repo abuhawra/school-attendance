@@ -13,7 +13,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. تعريف الدوال الأساسية
+# 2. تعريف الدوال الأساسية لضمان عدم ظهور أخطاء NameError
 def smart_sort(x):
     try: return int(x)
     except: return str(x)
@@ -41,7 +41,6 @@ if page == "🔑 دخول المعلم":
     else:
         if not st.session_state.logged_in:
             st.header("🔑 تسجيل دخول المعلم")
-            # إضافة عبارة البرمجة المطلوبة
             st.caption("💠 برمجة (أ.عارف أحمد الحداد)") 
             
             nid = st.text_input("أدخل رقم السجل المدني:", key="nid_input")
@@ -72,21 +71,22 @@ if page == "🔑 دخول المعلم":
                     stat = c2.radio("الحالة", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['id'], horizontal=True)
                     results.append({"student_name": s['student_name'], "committee": sel_c, "status": stat, "date": str(t_date), "teacher_name": st.session_state.teacher_name})
                 
-                # تعديل الزر ليصبح (حفظ وخروج)
+                # زر (حفظ وخروج)
                 if st.button("💾 حفظ الكشف وخروج"):
                     supabase.table('attendance').delete().eq('committee', sel_c).eq('date', str(t_date)).execute()
                     supabase.table('attendance').insert(results).execute()
                     st.success("✅ تم الحفظ بنجاح!")
                     time.sleep(1)
-                    st.session_state.logged_in = False # تسجيل الخروج تلقائياً بعد الحفظ
+                    st.session_state.logged_in = False
                     st.rerun()
 
 # --- واجهة الإدارة ---
 elif page == "📊 لوحة الإدارة":
     st.header("📊 لوحة الإدارة والتقارير")
     pw = st.sidebar.text_input("كلمة المرور", type="password")
+    
+    # التحقق من كلمة المرور
     if pw == "1234":
-        # إعدادات النظام والحذف
         c_status, c_del = st.columns(2)
         with c_status:
             is_open = get_system_status()
@@ -130,7 +130,7 @@ elif page == "📊 لوحة الإدارة":
                 final = m[m['status'].isin(['غائب', 'متأخر'])][['student_name', 'section', 'committee_x', 'status']]
                 final.columns = ['الاسم', 'الشعبة', 'اللجنة', 'الحالة']
                 
-                # الواتساب التفصيلي
+                # إرسال الكشف التفصيلي عبر واتساب
                 msg = f"*تقرير الغياب - {rep_date}*\n\n"
                 for _, r in final.iterrows():
                     msg += f"👤 {r['الاسم']}\n🏢 الشعبة: {r['الشعبة']} | 🎯 اللجنة: {r['اللجنة']}\n🚩 الحالة: *{r['الحالة']}*\n---\n"
@@ -139,7 +139,7 @@ elif page == "📊 لوحة الإدارة":
             else: st.info("لا توجد سجلات.")
 
         with t2:
-            # تقرير حالة اللجان (تم إصلاح NameError)
+            # تقرير حالة اللجان
             all_comms = set([str(s['committee']) for s in std.data if s['committee']])
             done_comms = set([str(a['committee']) for a in att.data])
             not_done = sorted(list(all_comms - done_comms), key=smart_sort)
@@ -147,4 +147,6 @@ elif page == "📊 لوحة الإدارة":
             c_done, c_not = st.columns(2)
             c_done.success(f"✅ لجان رصدت ({len(done_comms)}):\n\n" + ", ".join(sorted(list(done_comms), key=smart_sort)))
             c_not.error(f"❌ لجان لم ترصد ({len(not_done)}):\n\n" + ", ".join(not_done))
-    else: st.sidebar.info("أدخل كلمة المرور (1234)")
+    else:
+        # إخفاء كلمة المرور الصريحة واستبدالها بنص ترحيبي
+        st.sidebar.info("🔓 يرجى إدخال كلمة المرور للوصول للصلاحيات")
