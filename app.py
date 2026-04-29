@@ -23,6 +23,28 @@ if 'teacher_name' not in st.session_state:
 
 st.set_page_config(page_title="نظام غياب الطلاب - أ. عارف الحداد", layout="wide")
 
+# دالة لتحويل الجدول إلى HTML أنيق جاهز للطباعة (PDF)
+def create_pdf_html(df, report_date):
+    html_table = df.to_html(index=False, classes='report-table')
+    html_content = f"""
+    <div dir="rtl" style="font-family: Arial; padding: 20px; border: 2px solid #333;">
+        <h2 style="text-align: center; color: #2c3e50;">كشف الغياب والتأخر اليومي</h2>
+        <p style="text-align: center;"><b>التاريخ:</b> {report_date}</p>
+        <hr>
+        <style>
+            .report-table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+            .report-table th, .report-table td {{ border: 1px solid #ddd; padding: 12px; text-align: center; }}
+            .report-table th {{ background-color: #f2f2f2; color: #333; }}
+            .report-table tr:nth-child(even) {{ background-color: #fafafa; }}
+        </style>
+        {html_table}
+        <div style="margin-top: 30px; text-align: left;">
+            <p>ختم الإدارة: ........................</p>
+        </div>
+    </div>
+    """
+    return html_content
+
 def get_system_status():
     try:
         res = supabase.table("settings").select("is_open").eq("setting_name", "attendance_status").execute()
@@ -86,7 +108,6 @@ elif page == "📊 لوحة الإدارة":
     if st.sidebar.text_input("كلمة المرور", type="password") == "1234":
         current_status = get_system_status()
         
-        # أزرار التحكم بالنظام
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if current_status:
@@ -106,18 +127,11 @@ elif page == "📊 لوحة الإدارة":
             report_date = st.date_input("📅 تاريخ المتابعة / المسح", datetime.now())
         
         with col_reset:
-            # زر مسح البيانات مع تحسين التحديث الفوري
             if st.button("⚠️ مسح غياب هذا التاريخ", use_container_width=True):
                 try:
-                    # المسح الفعلي من قاعدة البيانات
-                    result = supabase.table('attendance').delete().eq('date', str(report_date)).execute()
-                    if result:
-                        st.success(f"🗑️ تم المسح بنجاح. جاري التحديث...")
-                        time.sleep(1)
-                        # هذه التعليمة تجبر الواجهة على التحديث واختفاء الأسماء
-                        st.rerun() 
-                except Exception as e:
-                    st.error(f"حدث خطأ أثناء المسح: {e}")
+                    supabase.table('attendance').delete().eq('date', str(report_date)).execute()
+                    st.success(f"🗑️ تم المسح بنجاح."); time.sleep(1); st.rerun() 
+                except Exception as e: st.error(f"حدث خطأ: {e}")
 
         st.divider()
         att_res = supabase.table('attendance').select("*").eq('date', str(report_date)).execute()
@@ -131,12 +145,21 @@ elif page == "📊 لوحة الإدارة":
                 
                 if not report_df.empty:
                     st.table(report_df)
-                    csv = report_df.to_csv(index=False).encode('utf-8-sig')
-                    st.download_button(label="📥 تحميل الكشف (Excel)", data=csv, file_name=f"غياب_{report_date}.csv", mime="text/csv")
-                else:
-                    st.success("الكل حاضر لهذا اليوم!")
-            else: 
-                st.info("لا توجد سجلات غياب لهذا التاريخ في قاعدة البيانات.")
+                    
+                    # --- ميزة تصدير PDF/صورة ---
+                    col_pdf, col_csv = st.columns(2)
+                    with col_pdf:
+                        # إنشاء زر يقوم بفتح نافذة الطباعة
+                        if st.button("📄 تصدير الكشف كـ PDF (جاهز للطباعة)"):
+                            report_html = create_pdf_html(report_df, report_date)
+                            st.markdown(report_html, unsafe_allow_html=True)
+                            st.info("⬆️ يظهر الكشف أعلاه بشكل رسمي. اضغط (Ctrl + P) أو 'طباعة' من الجوال لحفظه كـ PDF فوراً.")
+                    
+                    with col_csv:
+                        csv = report_df.to_csv(index=False).encode('utf-8-sig')
+                        st.download_button(label="📥 تحميل كملف Excel", data=csv, file_name=f"غياب_{report_date}.csv")
+                else: st.success("الكل حاضر لهذا اليوم!")
+            else: st.info("لا توجد سجلات غياب لهذا التاريخ.")
             
         with tab2:
             all_std = supabase.table('students').select("committee").execute()
