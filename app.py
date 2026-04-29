@@ -12,6 +12,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
+# دالة الترتيب الذكي لمنع خطأ NameError
 def smart_sort(x):
     try: return int(x)
     except: return str(x)
@@ -23,11 +24,12 @@ if 'teacher_name' not in st.session_state:
 
 st.set_page_config(page_title="نظام غياب الطلاب - أ. عارف الحداد", layout="wide")
 
-# دالة لجلب حالة النظام مع إنشاء السجل إذا لم يوجد
+# دالة محسنة للتحقق من الحالة وضمان عمل الزر
 def get_system_status():
     try:
         res = supabase.table("settings").select("is_open").eq("setting_name", "attendance_status").execute()
         if not res.data:
+            # إذا كان السجل مفقوداً، ننشئه ليعمل الزر
             supabase.table("settings").insert({"setting_name": "attendance_status", "is_open": True}).execute()
             return True
         return res.data[0]['is_open']
@@ -77,16 +79,10 @@ if page == "🔑 دخول المعلم":
                 
                 if st.button("💾 حفظ التعديلات وإرسال الكشف"):
                     try:
-                        # حذف القديم ثم إدخال الجديد لمنع التكرار
                         supabase.table('attendance').delete().eq('committee', selected_committee).eq('date', str(target_date)).execute()
                         supabase.table('attendance').insert(attendance_results).execute()
-                        st.balloons()
-                        st.success("✅ تم الحفظ بنجاح!")
-                        time.sleep(1)
-                        st.session_state.logged_in = False
-                        st.rerun()
-                    except Exception as e: 
-                        st.error(f"تأكد من وجود عمود teacher_name في جدول attendance في Supabase.")
+                        st.balloons(); st.success("✅ تم الحفظ بنجاح!"); time.sleep(1); st.session_state.logged_in = False; st.rerun()
+                    except Exception as e: st.error(f"خطأ في قاعدة البيانات: {e}")
 
 # --- 2. لوحة الإدارة ---
 elif page == "📊 لوحة الإدارة":
@@ -95,15 +91,15 @@ elif page == "📊 لوحة الإدارة":
         st.subheader("⚙️ إعدادات التحكم بالنظام")
         current_status = get_system_status()
         
-        # عرض الحالة الحالية بتنسيق ملون
+        # تنسيق الألوان كما طلبت
         if current_status:
             st.success("🟢 النظام الآن: مفتوح لاستقبال الرصد")
-            if st.button("🔴 إيقاف رصد الغياب الآن", use_container_width=True):
+            if st.button("🔴 إيقاف رصد الغياب الآن (تحويل للأحمر)", use_container_width=True):
                 supabase.table("settings").update({"is_open": False}).eq("setting_name", "attendance_status").execute()
                 st.rerun()
         else:
             st.error("🔴 النظام الآن: مغلق")
-            if st.button("🟢 تفعيل رصد الغياب الآن", use_container_width=True):
+            if st.button("🟢 تفعيل رصد الغياب الآن (تحويل للأخضر)", use_container_width=True):
                 supabase.table("settings").update({"is_open": True}).eq("setting_name", "attendance_status").execute()
                 st.rerun()
         
