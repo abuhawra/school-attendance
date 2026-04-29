@@ -13,7 +13,18 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. تعريف الدوال الأساسية لضمان عدم ظهور أخطاء NameError
+# 2. إخفاء القائمة العلوية وأيقونات Share/GitHub
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            header {visibility: hidden;}
+            footer {visibility: hidden;}
+            .stAppDeployButton {display:none;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
+# 3. الدوال الأساسية
 def smart_sort(x):
     try: return int(x)
     except: return str(x)
@@ -30,7 +41,7 @@ if 'confirm_delete' not in st.session_state: st.session_state.confirm_delete = F
 
 st.set_page_config(page_title="نظام غياب الطلاب - أ. عارف الحداد", layout="wide")
 
-# 3. القائمة الجانبية
+# 4. القائمة الجانبية
 st.sidebar.title("🏫 القائمة الرئيسية")
 page = st.sidebar.radio("انتقل إلى:", ["🔑 دخول المعلم", "📊 لوحة الإدارة"])
 
@@ -71,7 +82,6 @@ if page == "🔑 دخول المعلم":
                     stat = c2.radio("الحالة", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['id'], horizontal=True)
                     results.append({"student_name": s['student_name'], "committee": sel_c, "status": stat, "date": str(t_date), "teacher_name": st.session_state.teacher_name})
                 
-                # زر (حفظ وخروج)
                 if st.button("💾 حفظ الكشف وخروج"):
                     supabase.table('attendance').delete().eq('committee', sel_c).eq('date', str(t_date)).execute()
                     supabase.table('attendance').insert(results).execute()
@@ -85,7 +95,6 @@ elif page == "📊 لوحة الإدارة":
     st.header("📊 لوحة الإدارة والتقارير")
     pw = st.sidebar.text_input("كلمة المرور", type="password")
     
-    # التحقق من كلمة المرور
     if pw == "1234":
         c_status, c_del = st.columns(2)
         with c_status:
@@ -130,7 +139,6 @@ elif page == "📊 لوحة الإدارة":
                 final = m[m['status'].isin(['غائب', 'متأخر'])][['student_name', 'section', 'committee_x', 'status']]
                 final.columns = ['الاسم', 'الشعبة', 'اللجنة', 'الحالة']
                 
-                # إرسال الكشف التفصيلي عبر واتساب
                 msg = f"*تقرير الغياب - {rep_date}*\n\n"
                 for _, r in final.iterrows():
                     msg += f"👤 {r['الاسم']}\n🏢 الشعبة: {r['الشعبة']} | 🎯 اللجنة: {r['اللجنة']}\n🚩 الحالة: *{r['الحالة']}*\n---\n"
@@ -139,7 +147,6 @@ elif page == "📊 لوحة الإدارة":
             else: st.info("لا توجد سجلات.")
 
         with t2:
-            # تقرير حالة اللجان
             all_comms = set([str(s['committee']) for s in std.data if s['committee']])
             done_comms = set([str(a['committee']) for a in att.data])
             not_done = sorted(list(all_comms - done_comms), key=smart_sort)
@@ -148,5 +155,4 @@ elif page == "📊 لوحة الإدارة":
             c_done.success(f"✅ لجان رصدت ({len(done_comms)}):\n\n" + ", ".join(sorted(list(done_comms), key=smart_sort)))
             c_not.error(f"❌ لجان لم ترصد ({len(not_done)}):\n\n" + ", ".join(not_done))
     else:
-        # إخفاء كلمة المرور الصريحة واستبدالها بنص ترحيبي
         st.sidebar.info("🔓 يرجى إدخال كلمة المرور للوصول للصلاحيات")
