@@ -28,7 +28,7 @@ def check_system_status():
 st.sidebar.title("🏫 القائمة الرئيسية")
 page = st.sidebar.radio("انتقل إلى:", ["🔑 دخول المعلم", "📊 لوحة الإدارة"])
 
-# --- 1. واجهة المعلم (مع ميزة استرجاع البيانات للتعديل) ---
+# --- 1. واجهة المعلم (مع ترتيب اللجان رقمياً) ---
 if page == "🔑 دخول المعلم":
     is_open = check_system_status()
     if not is_open:
@@ -50,25 +50,32 @@ if page == "🔑 دخول المعلم":
             st.divider()
             target_date = st.date_input("📅 تاريخ الرصد", datetime.now())
             
+            # جلب اللجان وترتيبها رقمياً
             s_data = supabase.table('students').select("committee").execute()
-            committees = sorted(list(set([item['committee'] for item in s_data.data if item['committee']])))
-            selected_committee = st.selectbox("🎯 اختر اللجنة", ["اختر اللجنة..."] + committees)
+            raw_committees = list(set([item['committee'] for item in s_data.data if item['committee']]))
+            
+            # دالة للترتيب الذكي (تتعامل مع الأرقام والنصوص)
+            def smart_sort(x):
+                try:
+                    return int(x)
+                except:
+                    return x
+
+            sorted_committees = sorted(raw_committees, key=smart_sort)
+            selected_committee = st.selectbox("🎯 اختر اللجنة", ["اختر اللجنة..."] + sorted_committees)
             
             if selected_committee != "اختر اللجنة...":
-                # جلب الطلاب وجلب الحالات المرصودة سابقاً اليوم
                 students_query = supabase.table('students').select("*").eq('committee', selected_committee).execute()
                 old_att_query = supabase.table('attendance').select("student_name, status").eq('committee', selected_committee).eq('date', str(target_date)).execute()
                 
-                # تحويل الحالات القديمة لقاموس لسهولة البحث: { 'اسم الطالب': 'الحالة' }
                 history = {row['student_name']: row['status'] for row in old_att_query.data}
                 
                 if students_query.data:
                     attendance_results = []
-                    st.info("💡 يتم عرض الحالات التي رُصدت سابقاً (إن وجدت). يمكنك التعديل ثم الحفظ.")
+                    st.info("💡 يتم عرض الحالات المرصودة سابقاً. يمكنك التعديل ثم الحفظ.")
                     
                     for student in students_query.data:
                         s_name = student['student_name']
-                        # تحديد الحالة الافتراضية: إذا كان مسجلاً سابقاً نضع حالته، وإلا نضعه "حاضر"
                         prev_status = history.get(s_name, "حاضر")
                         options = ["حاضر", "غائب", "متأخر"]
                         default_index = options.index(prev_status)
@@ -85,7 +92,6 @@ if page == "🔑 دخول المعلم":
                     
                     if st.button("💾 حفظ التعديلات وإرسال الكشف"):
                         try:
-                            # حذف القديم لنفس اللجنة والتاريخ ثم إدخال الجديد
                             supabase.table('attendance').delete().eq('committee', selected_committee).eq('date', str(target_date)).execute()
                             supabase.table('attendance').insert(attendance_results).execute()
                             st.balloons()
@@ -100,7 +106,6 @@ elif page == "📊 لوحة الإدارة":
     st.header("📊 لوحة الإدارة")
     password = st.sidebar.text_input("كلمة مرور الإدارة", type="password")
     if password == "1234":
-        # نظام التحكم
         current_status = check_system_status()
         st.subheader("⚙️ إعدادات النظام")
         if st.button("إغلاق النظام" if current_status else "فتح النظام"):
@@ -108,13 +113,12 @@ elif page == "📊 لوحة الإدارة":
             st.rerun()
         
         st.divider()
-        # التقارير
         report_date = st.date_input("📅 تاريخ المتابعة", datetime.now())
         att_res = supabase.table('attendance').select("*").eq('date', str(report_date)).execute()
         if att_res.data:
             df = pd.DataFrame(att_res.data).rename(columns={'student_name':'الاسم','committee':'اللجنة','status':'الحالة','teacher_name':'المعلم'})
             tab1, tab2 = st.tabs(["⚠️ كشف الغياب/التأخر", "🚩 حالة اللجان"])
             with tab1: st.table(df[df['الحالة'].isin(['غائب','متأخر'])][['الاسم','اللجنة','الحالة','المعلم']])
-            with tab2: st.write("✅ اللجان التي رصدت:", list(df['اللجنة'].unique()))
+            with tab2: st.write("✅ اللجان التي رصدت:", sorted(list(df['اللجنة'].unique()), key=smart_sort))
         else: st.warning("لا توجد بيانات.")
     else: st.info("أدخل كلمة المرور.")
