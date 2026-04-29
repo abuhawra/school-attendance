@@ -23,12 +23,11 @@ if 'teacher_name' not in st.session_state:
 
 st.set_page_config(page_title="نظام غياب الطلاب - أ. عارف الحداد", layout="wide")
 
-# دالة محسنة للتحقق من الحالة ومعالجة عدم وجود السطر
+# دالة لجلب حالة النظام مع إنشاء السجل إذا لم يوجد
 def get_system_status():
     try:
         res = supabase.table("settings").select("is_open").eq("setting_name", "attendance_status").execute()
         if not res.data:
-            # إذا لم يوجد السطر، نقوم بإنشائه فوراً
             supabase.table("settings").insert({"setting_name": "attendance_status", "is_open": True}).execute()
             return True
         return res.data[0]['is_open']
@@ -78,26 +77,35 @@ if page == "🔑 دخول المعلم":
                 
                 if st.button("💾 حفظ التعديلات وإرسال الكشف"):
                     try:
+                        # حذف القديم ثم إدخال الجديد لمنع التكرار
                         supabase.table('attendance').delete().eq('committee', selected_committee).eq('date', str(target_date)).execute()
                         supabase.table('attendance').insert(attendance_results).execute()
                         st.balloons()
                         st.success("✅ تم الحفظ بنجاح!")
-                        time.sleep(1.5)
+                        time.sleep(1)
                         st.session_state.logged_in = False
                         st.rerun()
-                    except Exception as e: st.error(f"تأكد من وجود عمود teacher_name في Supabase. الخطأ: {e}")
+                    except Exception as e: 
+                        st.error(f"تأكد من وجود عمود teacher_name في جدول attendance في Supabase.")
 
 # --- 2. لوحة الإدارة ---
 elif page == "📊 لوحة الإدارة":
     st.header("📊 لوحة الإدارة والتقارير")
     if st.sidebar.text_input("كلمة المرور", type="password") == "1234":
-        st.subheader("⚙️ إعدادات النظام")
+        st.subheader("⚙️ إعدادات التحكم بالنظام")
         current_status = get_system_status()
-        btn_label = "🔴 إغلاق رصد الغياب" if current_status else "🟢 فتح رصد الغياب"
         
-        if st.button(btn_label):
-            supabase.table("settings").update({"is_open": not current_status}).eq("setting_name", "attendance_status").execute()
-            st.rerun()
+        # عرض الحالة الحالية بتنسيق ملون
+        if current_status:
+            st.success("🟢 النظام الآن: مفتوح لاستقبال الرصد")
+            if st.button("🔴 إيقاف رصد الغياب الآن", use_container_width=True):
+                supabase.table("settings").update({"is_open": False}).eq("setting_name", "attendance_status").execute()
+                st.rerun()
+        else:
+            st.error("🔴 النظام الآن: مغلق")
+            if st.button("🟢 تفعيل رصد الغياب الآن", use_container_width=True):
+                supabase.table("settings").update({"is_open": True}).eq("setting_name", "attendance_status").execute()
+                st.rerun()
         
         st.divider()
         report_date = st.date_input("📅 تاريخ المتابعة", datetime.now())
@@ -110,7 +118,7 @@ elif page == "📊 لوحة الإدارة":
             if att_res.data:
                 df = pd.DataFrame(att_res.data).rename(columns={'student_name':'الاسم','committee':'اللجنة','status':'الحالة','teacher_name':'المعلم'})
                 st.table(df[df['الحالة'].isin(['غائب','متأخر'])])
-            else: st.info("لا توجد بيانات.")
+            else: st.info("لا توجد بيانات لهذا التاريخ.")
         with tab2:
             submitted = set(row['committee'] for row in att_res.data) if att_res.data else set()
             not_submitted = all_comm - submitted
