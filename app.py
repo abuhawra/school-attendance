@@ -10,7 +10,7 @@ supabase = create_client(URL, KEY)
 # --- 2. تهيئة الصفحة وتنسيق اللغة العربية ---
 st.set_page_config(page_title="نظام رصد الغياب", layout="centered")
 
-# كود لتنسيق الواجهة لتدعم اللغة العربية من اليمين لليسار
+# تنسيق CSS لضمان مظهر احترافي ودعم العربية
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo&display=swap');
@@ -26,6 +26,9 @@ st.markdown("""
         background-color: #007bff;
         color: white;
     }
+    div[data-baseweb="input"] {
+        direction: ltr; /* لجعل كتابة الأرقام أسهل */
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -37,72 +40,78 @@ if 'authenticated' not in st.session_state:
 
 if not st.session_state.authenticated:
     st.subheader("🔐 دخول المعلم")
-    national_id_input = st.text_input("أدخل السجل المدني الخاص بك", type="password")
+    # تم تغيير نوع الحقل إلى نص عادي مع تنظيف المسافات آلياً
+    national_id_input = st.text_input("أدخل السجل المدني الخاص بك").strip()
     
     if st.button("تسجيل الدخول"):
-        # التأكد من وجود السجل في جدول المعلمين
-        res = supabase.table("teachers").select("*").eq("national_id", national_id_input).execute()
-        if res.data:
-            st.session_state.authenticated = True
-            st.session_state.teacher_name = res.data[0]['teacher_name']
-            st.rerun()
+        if national_id_input:
+            with st.spinner('جاري التحقق من السجل...'):
+                # محاولة البحث عن المعلم (تغطية حالات النص والرقم)
+                res = supabase.table("teachers").select("*").eq("national_id", national_id_input).execute()
+                
+                if res.data:
+                    st.session_state.authenticated = True
+                    st.session_state.teacher_name = res.data[0]['teacher_name']
+                    st.success("تم الدخول بنجاح")
+                    st.rerun()
+                else:
+                    st.error("السجل المدني غير مسجل في النظام. تأكد من الرقم المرفوع في ملف الإكسل.")
         else:
-            st.error("السجل المدني غير مسجل في النظام. يرجى مراجعة الإدارة.")
+            st.warning("يرجى إدخال رقم السجل المدني")
 else:
     # --- 4. واجهة رصد الغياب بعد الدخول ---
     st.info(f"مرحباً بك أ/ {st.session_state.teacher_name}")
     
-    # جلب قوائم اللجان المتوفرة من جدول الطلاب
-    res_comm = supabase.table("students").select("committee").execute()
-    committees = sorted(list(set([r['committee'] for r in res_comm.data])))
-    
-    selected_comm = st.selectbox("اختر اللجنة المراد رصدها", [""] + committees)
-
-    if selected_comm:
-        # جلب طلاب اللجنة المختارة
-        res_students = supabase.table("students").select("*").eq("committee", selected_comm).execute()
-        students = res_students.data
+    # جلب قوائم اللجان المتوفرة
+    try:
+        res_comm = supabase.table("students").select("committee").execute()
+        committees = sorted(list(set([r['committee'] for r in res_comm.data])))
         
-        st.subheader(f"قائمة طلاب لجنة: {selected_comm}")
-        st.write("---")
-        
-        # مصفوفة لتخزين سجلات الغياب فقط
-        attendance_to_save = []
+        selected_comm = st.selectbox("اختر اللجنة المراد رصدها", [""] + committees)
 
-        for std in students:
-            col1, col2 = st.columns([3, 2])
+        if selected_comm:
+            # جلب طلاب اللجنة المختارة
+            res_students = supabase.table("students").select("*").eq("committee", selected_comm).execute()
+            students = res_students.data
             
-            with col1:
-                st.write(f"👤 {std['student_name']}")
-            
-            with col2:
-                # راديو بوتون لاختيار الحالة
-                status = st.radio(
-                    f"حالة {std['student_name']}",
-                    ["حاضر", "غائب", "متأخر"],
-                    key=f"status_{std['id']}",
-                    horizontal=True,
-                    label_visibility="collapsed"
-                )
-                
-                # إذا لم يكن حاضراً، نضيفه للقائمة التي ستُرسل لقاعدة البيانات
-                if status != "حاضر":
-                    attendance_to_save.append({
-                        "student_name": std['student_name'],
-                        "committee": selected_comm,
-                        "status": status,
-                        "teacher_name": st.session_state.teacher_name
-                    })
+            st.subheader(f"قائمة طلاب لجنة: {selected_comm}")
             st.write("---")
+            
+            attendance_to_save = []
 
-        # زر إرسال البيانات النهائية
-        if st.button("إرسال تقرير الغياب إلى الإدارة"):
-            if attendance_to_save:
-                with st.spinner('جاري إرسال البيانات...'):
-                    supabase.table("attendance_records").insert(attendance_to_save).execute()
-                    st.success(f"تم رصد {len(attendance_to_save)} حالة بنجاح!")
-            else:
-                st.warning("لم يتم رصد أي غياب أو تأخر (الجميع حضور).")
+            for std in students:
+                col1, col2 = st.columns([3, 2])
+                
+                with col1:
+                    st.write(f"👤 {std['student_name']}")
+                
+                with col2:
+                    status = st.radio(
+                        f"حالة {std['student_name']}",
+                        ["حاضر", "غائب", "متأخر"],
+                        key=f"status_{std['id']}",
+                        horizontal=True,
+                        label_visibility="collapsed"
+                    )
+                    
+                    if status != "حاضر":
+                        attendance_to_save.append({
+                            "student_name": std['student_name'],
+                            "committee": selected_comm,
+                            "status": status,
+                            "teacher_name": st.session_state.teacher_name
+                        })
+                st.write("---")
+
+            if st.button("إرسال تقرير الغياب إلى الإدارة"):
+                if attendance_to_save:
+                    with st.spinner('جاري إرسال البيانات...'):
+                        supabase.table("attendance_records").insert(attendance_to_save).execute()
+                        st.success(f"تم رصد {len(attendance_to_save)} حالة بنجاح! ✅")
+                else:
+                    st.warning("لم يتم رصد أي غياب أو تأخر (الجميع حضور).")
+    except Exception as e:
+        st.error(f"حدث خطأ في جلب البيانات: {e}")
                 
     if st.sidebar.button("تسجيل الخروج"):
         st.session_state.authenticated = False
