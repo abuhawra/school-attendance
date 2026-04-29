@@ -13,7 +13,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. إخفاء القائمة العلوية وأيقونات Share/GitHub
+# 2. إخفاء القائمة العلوية وأيقونات التعديل
 hide_st_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -39,9 +39,20 @@ def get_system_status():
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'confirm_delete' not in st.session_state: st.session_state.confirm_delete = False
 
-st.set_page_config(page_title="نظام غياب الطلاب - أ. عارف الحداد", layout="wide")
+st.set_page_config(page_title="نظام غياب الطلاب - مدرسة القطيف الثانوية", layout="wide")
 
-# 4. القائمة الجانبية
+# 4. الترويسة الرسمية الجديدة
+st.markdown("""
+    <div style="text-align: center; background-color: #f0f2f6; padding: 20px; border-radius: 10px; margin-bottom: 25px;">
+        <h2 style="margin: 0; color: #1f77b4;">مدرسة القطيف الثانوية</h2>
+        <h3 style="margin: 10px 0; color: #333;">برنامج الغياب</h3>
+        <p style="margin: 5px 0; font-weight: bold;">مدير المدرسة: أ. فراس آل عبدالمحسن</p>
+        <hr style="border: 0.5px solid #ccc; width: 50%;">
+        <p style="margin: 5px 0; font-size: 0.9em; color: #555;">تنفيذ وبرمجة: أ. عارف أحمد الحداد</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# 5. القائمة الجانبية
 st.sidebar.title("🏫 القائمة الرئيسية")
 page = st.sidebar.radio("انتقل إلى:", ["🔑 دخول المعلم", "📊 لوحة الإدارة"])
 
@@ -51,9 +62,7 @@ if page == "🔑 دخول المعلم":
         st.error("🚫 النظام مغلق حالياً.")
     else:
         if not st.session_state.logged_in:
-            st.header("🔑 تسجيل دخول المعلم")
-            st.caption("💠 برمجة (أ.عارف أحمد الحداد)") 
-            
+            st.subheader("🔑 تسجيل دخول المعلم")
             nid = st.text_input("أدخل رقم السجل المدني:", key="nid_input")
             if st.button("دخول"):
                 res = supabase.table("teachers").select("*").eq("national_id", nid.strip()).execute()
@@ -82,6 +91,7 @@ if page == "🔑 دخول المعلم":
                     stat = c2.radio("الحالة", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['id'], horizontal=True)
                     results.append({"student_name": s['student_name'], "committee": sel_c, "status": stat, "date": str(t_date), "teacher_name": st.session_state.teacher_name})
                 
+                # زر حفظ وخروج
                 if st.button("💾 حفظ الكشف وخروج"):
                     supabase.table('attendance').delete().eq('committee', sel_c).eq('date', str(t_date)).execute()
                     supabase.table('attendance').insert(results).execute()
@@ -139,6 +149,7 @@ elif page == "📊 لوحة الإدارة":
                 final = m[m['status'].isin(['غائب', 'متأخر'])][['student_name', 'section', 'committee_x', 'status']]
                 final.columns = ['الاسم', 'الشعبة', 'اللجنة', 'الحالة']
                 
+                # إرسال الكشف عبر واتساب
                 msg = f"*تقرير الغياب - {rep_date}*\n\n"
                 for _, r in final.iterrows():
                     msg += f"👤 {r['الاسم']}\n🏢 الشعبة: {r['الشعبة']} | 🎯 اللجنة: {r['اللجنة']}\n🚩 الحالة: *{r['الحالة']}*\n---\n"
