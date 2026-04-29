@@ -27,7 +27,7 @@ st.markdown("""
         color: white;
     }
     div[data-baseweb="input"] {
-        direction: ltr; /* لجعل كتابة الأرقام أسهل */
+        direction: ltr; /* لجعل كتابة الأرقام من اليسار لليمين أسهل */
     }
     </style>
     """, unsafe_allow_html=True)
@@ -40,29 +40,33 @@ if 'authenticated' not in st.session_state:
 
 if not st.session_state.authenticated:
     st.subheader("🔐 دخول المعلم")
-    # تم تغيير نوع الحقل إلى نص عادي مع تنظيف المسافات آلياً
-    national_id_input = st.text_input("أدخل السجل المدني الخاص بك").strip()
+    # استخدام strip() لإزالة أي مسافات زائدة
+    input_id = st.text_input("أدخل السجل المدني الخاص بك").strip()
     
     if st.button("تسجيل الدخول"):
-        if national_id_input:
+        if input_id:
             with st.spinner('جاري التحقق من السجل...'):
-                # محاولة البحث عن المعلم (تغطية حالات النص والرقم)
-                res = supabase.table("teachers").select("*").eq("national_id", national_id_input).execute()
+                # الخطوة أ: البحث عن المدخل كـ "نص" (String)
+                res = supabase.table("teachers").select("*").eq("national_id", input_id).execute()
+                
+                # الخطوة ب: إذا لم يجد نتيجة، يحاول البحث عنه كـ "رقم" (Integer)
+                if not res.data and input_id.isdigit():
+                    res = supabase.table("teachers").select("*").eq("national_id", int(input_id)).execute()
                 
                 if res.data:
                     st.session_state.authenticated = True
                     st.session_state.teacher_name = res.data[0]['teacher_name']
-                    st.success("تم الدخول بنجاح")
+                    st.success("تم الدخول بنجاح!")
                     st.rerun()
                 else:
-                    st.error("السجل المدني غير مسجل في النظام. تأكد من الرقم المرفوع في ملف الإكسل.")
+                    st.error(f"السجل ({input_id}) غير مسجل. تأكد من رفعه في ملف الإكسل بشكل صحيح.")
         else:
-            st.warning("يرجى إدخال رقم السجل المدني")
+            st.warning("يرجى إدخال السجل المدني أولاً.")
 else:
     # --- 4. واجهة رصد الغياب بعد الدخول ---
     st.info(f"مرحباً بك أ/ {st.session_state.teacher_name}")
     
-    # جلب قوائم اللجان المتوفرة
+    # جلب قوائم اللجان المتوفرة من جدول الطلاب
     try:
         res_comm = supabase.table("students").select("committee").execute()
         committees = sorted(list(set([r['committee'] for r in res_comm.data])))
