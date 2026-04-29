@@ -5,7 +5,7 @@ from datetime import datetime
 import time
 import urllib.parse
 
-# 1. إعدادات الاتصال (يجب أن تكون في البداية)
+# 1. إعدادات الاتصال
 url = "https://lsmevvsogsqqqjyuqzbx.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzbWV2dnNvZ3NxcXFqeXVxemJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDMyOTgsImV4cCI6MjA5Mjk3OTI5OH0.ecqJS75fPbKqwSAiBzP6Qonn4cuymgwjB96tIGek8j0"
 
@@ -13,7 +13,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. تعريف الدوال الأساسية لتجنب NameError
+# 2. تعريف الدوال الأساسية
 def smart_sort(x):
     try: return int(x)
     except: return str(x)
@@ -41,6 +41,9 @@ if page == "🔑 دخول المعلم":
     else:
         if not st.session_state.logged_in:
             st.header("🔑 تسجيل دخول المعلم")
+            # إضافة عبارة البرمجة المطلوبة
+            st.caption("💠 برمجة (أ.عارف أحمد الحداد)") 
+            
             nid = st.text_input("أدخل رقم السجل المدني:", key="nid_input")
             if st.button("دخول"):
                 res = supabase.table("teachers").select("*").eq("national_id", nid.strip()).execute()
@@ -51,9 +54,6 @@ if page == "🔑 دخول المعلم":
                 else: st.error("❌ السجل غير صحيح.")
         else:
             st.success(f"✅ مرحباً أستاذ: {st.session_state.teacher_name}")
-            if st.button("🔄 تسجيل خروج"):
-                st.session_state.logged_in = False
-                st.rerun()
             st.divider()
             t_date = st.date_input("📅 تاريخ الرصد", datetime.now())
             s_data = supabase.table('students').select("committee").execute()
@@ -71,17 +71,22 @@ if page == "🔑 دخول المعلم":
                     c1.write(s['student_name'])
                     stat = c2.radio("الحالة", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['id'], horizontal=True)
                     results.append({"student_name": s['student_name'], "committee": sel_c, "status": stat, "date": str(t_date), "teacher_name": st.session_state.teacher_name})
-                if st.button("💾 حفظ الكشف"):
+                
+                # تعديل الزر ليصبح (حفظ وخروج)
+                if st.button("💾 حفظ الكشف وخروج"):
                     supabase.table('attendance').delete().eq('committee', sel_c).eq('date', str(t_date)).execute()
                     supabase.table('attendance').insert(results).execute()
-                    st.success("✅ تم الحفظ!"); time.sleep(0.5); st.rerun()
+                    st.success("✅ تم الحفظ بنجاح!")
+                    time.sleep(1)
+                    st.session_state.logged_in = False # تسجيل الخروج تلقائياً بعد الحفظ
+                    st.rerun()
 
 # --- واجهة الإدارة ---
 elif page == "📊 لوحة الإدارة":
     st.header("📊 لوحة الإدارة والتقارير")
     pw = st.sidebar.text_input("كلمة المرور", type="password")
     if pw == "1234":
-        # 1. إعدادات النظام والحذف
+        # إعدادات النظام والحذف
         c_status, c_del = st.columns(2)
         with c_status:
             is_open = get_system_status()
@@ -125,7 +130,7 @@ elif page == "📊 لوحة الإدارة":
                 final = m[m['status'].isin(['غائب', 'متأخر'])][['student_name', 'section', 'committee_x', 'status']]
                 final.columns = ['الاسم', 'الشعبة', 'اللجنة', 'الحالة']
                 
-                # إصلاح الواتساب التفصيلي
+                # الواتساب التفصيلي
                 msg = f"*تقرير الغياب - {rep_date}*\n\n"
                 for _, r in final.iterrows():
                     msg += f"👤 {r['الاسم']}\n🏢 الشعبة: {r['الشعبة']} | 🎯 اللجنة: {r['اللجنة']}\n🚩 الحالة: *{r['الحالة']}*\n---\n"
@@ -134,7 +139,7 @@ elif page == "📊 لوحة الإدارة":
             else: st.info("لا توجد سجلات.")
 
         with t2:
-            # تقرير حالة اللجان (تم الإصلاح)
+            # تقرير حالة اللجان (تم إصلاح NameError)
             all_comms = set([str(s['committee']) for s in std.data if s['committee']])
             done_comms = set([str(a['committee']) for a in att.data])
             not_done = sorted(list(all_comms - done_comms), key=smart_sort)
