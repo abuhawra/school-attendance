@@ -18,7 +18,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. تنسيق الواجهة
+# 2. تنسيق الواجهة (مدرسة القطيف الثانوية)
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="wide")
 
 st.markdown("""
@@ -43,7 +43,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. الدوال المساعدة
+# 3. الدوال المساعدة للترتيب ومعالجة اللغة العربية
 def smart_sort(x):
     try: return int(x)
     except: return str(x)
@@ -54,42 +54,11 @@ def fix_arabic(text):
         return get_display(reshaped)
     except: return str(text)
 
-def create_pdf(df, report_date):
-    pdf = FPDF()
-    pdf.add_page()
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    font_path = os.path.join(current_dir, "arial.ttf")
-    has_font = False
-    if os.path.exists(font_path):
-        try:
-            pdf.add_font("ArabicFont", "", font_path)
-            pdf.set_font("ArabicFont", size=12)
-            has_font = True
-        except: has_font = False
-    
-    if has_font:
-        pdf.set_font("ArabicFont", size=16)
-        pdf.cell(200, 10, txt=fix_arabic(f"تقرير الغياب ليوم {report_date}"), ln=True, align='C')
-        pdf.ln(10)
-        pdf.cell(30, 10, fix_arabic("الحالة"), 1, align='C')
-        pdf.cell(30, 10, fix_arabic("الشعبة"), 1, align='C')
-        pdf.cell(130, 10, fix_arabic("الاسم"), 1, align='C')
-        pdf.ln()
-        for _, row in df.iterrows():
-            pdf.cell(30, 10, fix_arabic(row['الحالة']), 1, align='C')
-            pdf.cell(30, 10, fix_arabic(row['الشعبة']), 1, align='C')
-            pdf.cell(130, 10, fix_arabic(row['الاسم']), 1, align='R')
-            pdf.ln()
-    else:
-        pdf.set_font("Arial", size=14)
-        pdf.cell(200, 10, txt=f"Attendance Report - {report_date}", ln=True, align='C')
-    return pdf.output()
-
-# 4. التنقل بين الصفحات
+# 4. إدارة الصفحات والتنقل
 if 'page' not in st.session_state: st.session_state.page = "home"
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
-# الصفحة الرئيسية
+# --- الصفحة الرئيسية ---
 if st.session_state.page == "home":
     st.write("<br><br>", unsafe_allow_html=True)
     st.markdown("""
@@ -97,7 +66,7 @@ if st.session_state.page == "home":
             <h1 style="color: #1f77b4;">برنامج تحضير الغياب الرقمي</h1>
             <h2>مدرسة القطيف الثانوية</h2>
             <hr style="width: 40%; margin: auto;">
-            <p style="margin-top:10px;">إشراف: <b>أ. عارف أحمد الحداد</b></p>
+            <p style="margin-top:10px;">إشراف الأستاذ: <b>عارف أحمد الحداد</b></p>
         </div>
     """, unsafe_allow_html=True)
     
@@ -110,7 +79,7 @@ if st.session_state.page == "home":
         if st.button("⚙️ لوحة تحكم الإدارة", use_container_width=True, type="secondary"):
             st.session_state.page = "admin"; st.rerun()
 
-# صفحة التحضير
+# --- صفحة التحضير ---
 elif st.session_state.page == "attendance":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if not st.session_state.logged_in:
@@ -144,9 +113,9 @@ elif st.session_state.page == "attendance":
                 st.success("✅ تم حفظ البيانات بنجاح!"); time.sleep(1)
                 st.session_state.page = "home"; st.session_state.logged_in = False; st.rerun()
 
-# صفحة الإدارة
+# --- صفحة الإدارة ---
 elif st.session_state.page == "admin":
-    if st.button("⬅️ عودة للمؤشر الرئيسي"): st.session_state.page = "home"; st.rerun()
+    if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     pw = st.text_input("كلمة مرور الإدارة:", type="password")
     if pw == "1234":
         tab1, tab2, tab3 = st.tabs(["📊 التقارير والواتساب", "🗂️ إدارة بيانات الطلاب", "🧹 إدارة سجلات الغياب"])
@@ -178,33 +147,42 @@ elif st.session_state.page == "admin":
         with tab2:
             st.subheader("إدارة قاعدة بيانات الطلاب")
             
-            # --- ميزة النسخة الاحتياطية ---
+            # --- ميزة النسخة الاحتياطية (تم تحديث المحرك هنا) ---
             st.info("💾 النسخ الاحتياطي والاستعادة")
             col_bk1, col_bk2 = st.columns(2)
             
             with col_bk1:
                 if st.button("📥 إنشاء نسخة احتياطية (Excel)"):
-                    all_students = supabase.table('students').select("student_name, section, committee").execute()
-                    if all_students.data:
-                        df_backup = pd.DataFrame(all_students.data)
-                        output = io.BytesIO()
-                        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                            df_backup.to_excel(writer, index=False, sheet_name='Students')
-                        st.download_button(
-                            label="⬇️ تحميل النسخة الاحتياطية",
-                            data=output.getvalue(),
-                            file_name=f"backup_students_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
+                    try:
+                        all_students = supabase.table('students').select("student_name, section, committee").execute()
+                        if all_students.data:
+                            df_backup = pd.DataFrame(all_students.data)
+                            output = io.BytesIO()
+                            # استخدام engine='openpyxl' لضمان التوافق
+                            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                                df_backup.to_excel(writer, index=False, sheet_name='Students')
+                            
+                            st.download_button(
+                                label="⬇️ تحميل النسخة الجاهزة",
+                                data=output.getvalue(),
+                                file_name=f"backup_students_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
+                        else: st.error("لا توجد بيانات لتصديرها.")
+                    except Exception as e:
+                        st.error(f"حدث خطأ أثناء التصدير: {e}")
             
             with col_bk2:
                 restore_file = st.file_uploader("📂 اختيار ملف لاسترجاع النسخة", type=['xlsx'], key="restore")
                 if restore_file:
                     if st.button("🔄 تأكيد استرجاع البيانات"):
-                        df_restore = pd.read_excel(restore_file)
-                        supabase.table('students').delete().neq('id', 0).execute() # مسح القديم
-                        supabase.table('students').insert(df_restore.to_dict(orient='records')).execute()
-                        st.success("تم استرجاع النسخة الاحتياطية بنجاح.")
+                        try:
+                            df_restore = pd.read_excel(restore_file)
+                            supabase.table('students').delete().neq('id', 0).execute() 
+                            supabase.table('students').insert(df_restore.to_dict(orient='records')).execute()
+                            st.success("تم استرجاع النسخة الاحتياطية بنجاح.")
+                        except Exception as e:
+                            st.error(f"خطأ في الاسترجاع: {e}")
 
             st.divider()
             
@@ -221,23 +199,6 @@ elif st.session_state.page == "admin":
                 if st.button("✅ تأكيد الرفع"):
                     supabase.table('students').insert(df_up.to_dict(orient='records')).execute()
                     st.success("تم الرفع بنجاح.")
-            
-            st.divider()
-            
-            st.subheader("🔍 تعديل بيانات طالب")
-            s_name = st.text_input("ابحث عن اسم الطالب:")
-            if s_name:
-                search_res = supabase.table('students').select("*").ilike('student_name', f'%{s_name}%').execute()
-                if search_res.data:
-                    selected_st = st.selectbox("اختر الطالب:", [s['student_name'] for s in search_res.data])
-                    st_data = [s for s in search_res.data if s['student_name'] == selected_st][0]
-                    with st.form("edit_form"):
-                        n_name = st.text_input("الاسم:", value=st_data['student_name'])
-                        n_sec = st.text_input("الشعبة:", value=st_data['section'])
-                        n_com = st.text_input("اللجنة:", value=st_data['committee'])
-                        if st.form_submit_button("حفظ التغييرات"):
-                            supabase.table('students').update({"student_name": n_name, "section": n_sec, "committee": n_com}).eq('id', st_data['id']).execute()
-                            st.success("تم التحديث.")
 
         with tab3:
             st.subheader("تنظيف سجلات الغياب")
