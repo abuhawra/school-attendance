@@ -3,8 +3,6 @@ from supabase import create_client
 import pandas as pd
 from datetime import datetime
 import time
-import urllib.parse
-import io
 
 # 1. إعدادات الاتصال بقاعدة البيانات
 url = "https://lsmevvsogsqqqjyuqzbx.supabase.co"
@@ -14,105 +12,73 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. هندسة التوسيط المطلق وتنسيق الواجهة
+# 2. هندسة الواجهة والتوسيط
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="centered")
 
 st.markdown("""
     <style>
-    /* إخفاء القوائم والترويسات */
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     footer {visibility: hidden;}
     .stAppDeployButton {display: none !important;}
     
-    /* خلفية هادئة مريحة للعين */
-    .stApp {
-        background-color: #f9fbff;
-    }
+    /* خلفية هادئة */
+    .stApp { background-color: #f9fbff; }
 
-    /* ضمان توسيط جميع محتويات الحاوية الرئيسية */
-    .block-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-    }
-
-    /* تنسيق النصوص وتوسيطها */
-    .center-container {
+    /* حاوية التوسيط للنصوص */
+    .center-text {
         text-align: center !important;
         direction: rtl;
         width: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
     }
 
-    /* تكبير الخطوط بشكل متناسق */
-    .main-title { font-size: 38px !important; font-weight: 800; color: #2c3e50; margin-bottom: 5px; width: 100%; }
-    .school-name { font-size: 26px !important; color: #546e7a; margin-bottom: 25px; width: 100%; }
-    .label-style { font-size: 24px !important; color: #78909c; font-weight: bold; margin-top: 25px; width: 100%; }
-    .name-style { font-size: 34px !important; color: #1e88e5; font-weight: 900; margin-bottom: 10px; width: 100%; }
+    .main-title { font-size: 35px !important; font-weight: 800; color: #2c3e50; }
+    .school-name { font-size: 24px !important; color: #546e7a; }
+    .label-style { font-size: 22px !important; color: #78909c; font-weight: bold; }
+    .name-style { font-size: 32px !important; color: #1e88e5; font-weight: 900; }
 
-    /* --- التوسيط الإجباري للأزرار --- */
-    div.stButton {
-        display: flex !important;
-        justify-content: center !important;
-        width: 100% !important;
+    /* --- تنسيق الأزرار وتوسيطها --- */
+    .stButton {
+        display: flex;
+        justify-content: center;
     }
 
     .stButton button {
         width: 100% !important;
-        max-width: 380px !important; 
-        height: 75px !important;
-        border-radius: 20px !important;
-        font-size: 24px !important;
+        max-width: 350px !important;
+        height: 65px !important;
+        border-radius: 15px !important;
+        font-size: 22px !important;
         font-weight: bold !important;
-        margin: 15px auto !important;
-        display: block !important;
-        box-shadow: 0 6px 15px rgba(0,0,0,0.1) !important;
-        border: none !important;
+        margin-top: 10px !important;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
     }
-    
-    /* ألوان هادئة واحترافية */
-    button[kind="primary"] { background-color: #3498db !important; color: white !important; }
-    button[kind="secondary"] { background-color: #90a4ae !important; color: white !important; }
 
-    /* تحسين شكل الفواصل وتوسيطها */
-    hr { 
-        border: 0; 
-        height: 2px; 
-        background-image: linear-gradient(to right, transparent, #3498db, transparent); 
-        margin: 30px auto; 
-        width: 80%;
-    }
+    /* ألوان الأزرار */
+    button[kind="primary"] { background-color: #3498db !important; color: white !important; }
+    button[kind="secondary"] { background-color: #cfd8dc !important; color: #455a64 !important; }
+
+    /* تحسين شكل الفواصل */
+    hr { border: 0; height: 1px; background: #ddd; margin: 25px 0; }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. إدارة التنقل بين الصفحات
+# 3. إدارة التنقل
 if 'page' not in st.session_state: st.session_state.page = "home"
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
 # --- الصفحة الرئيسية ---
 if st.session_state.page == "home":
-    # استخدام حاوية مخصصة لضمان التوسيط الأفقي للنصوص
-    st.markdown('<div class="center-container">', unsafe_allow_html=True)
+    st.markdown('<div class="center-text">', unsafe_allow_html=True)
     st.markdown('<div class="main-title">برنامج التحضير الرقمي</div>', unsafe_allow_html=True)
     st.markdown('<div class="school-name">مدرسة القطيف الثانوية</div>', unsafe_allow_html=True)
     st.markdown('<hr>', unsafe_allow_html=True)
-    
     st.markdown('<div class="label-style">فكرة وتنفيذ</div>', unsafe_allow_html=True)
     st.markdown('<div class="name-style">أ. عارف أحمد الحداد</div>', unsafe_allow_html=True)
-    
     st.markdown('<div class="label-style">مدير المدرسة</div>', unsafe_allow_html=True)
     st.markdown('<div class="name-style">أ. فراس عبدالله آل عبدالمحسن</div>', unsafe_allow_html=True)
-    st.markdown('<hr>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<hr></div>', unsafe_allow_html=True)
 
-    st.write("<br>", unsafe_allow_html=True)
-
-    # الأزرار ستظهر الآن في المنتصف تماماً
     if st.button("📝 ابدأ تحضير الطلاب", type="primary"):
         st.session_state.page = "attendance"
         st.rerun()
@@ -123,59 +89,54 @@ if st.session_state.page == "home":
 
 # --- صفحة التحضير ---
 elif st.session_state.page == "attendance":
-    if st.button("⬅️ عودة للرئيسية"):
-        st.session_state.page = "home"; st.rerun()
+    if st.button("⬅️ عودة للرئيسية", type="secondary"):
+        st.session_state.page = "home"
+        st.rerun()
         
     if not st.session_state.logged_in:
-        st.markdown('<div class="center-container main-title" style="font-size:24px !important;">تسجيل الدخول</div>', unsafe_allow_html=True)
-        nid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
-        if st.button("تسجيل الدخول"):
+        st.markdown('<div class="center-text label-style">تسجيل دخول المعلم</div>', unsafe_allow_html=True)
+        nid = st.text_input("السجل المدني:", type="password")
+        if st.button("دخول"):
             res = supabase.table("teachers").select("*").eq("national_id", nid.strip()).execute()
             if res.data:
                 st.session_state.logged_in = True
                 st.session_state.teacher_name = res.data[0].get('name_tech', 'المعلم')
                 st.rerun()
             else:
-                st.error("عذراً، السجل المدني غير موجود")
+                st.error("السجل غير صحيح")
     else:
-        st.info(f"المعلم المسؤول: {st.session_state.teacher_name}")
-        t_date = st.date_input("تاريخ التحضير", datetime.now())
-        
+        st.success(f"المعلم: {st.session_state.teacher_name}")
+        t_date = st.date_input("التاريخ", datetime.now())
         s_data = supabase.table('students').select("committee").execute()
         coms = sorted(list(set([str(i['committee']) for i in s_data.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else x)
-        sel_c = st.selectbox("اختر اللجنة:", ["---"] + coms)
+        sel_c = st.selectbox("اللجنة:", ["---"] + coms)
         
         if sel_c != "---":
             students = supabase.table('students').select("*").eq('committee', sel_c).execute()
             results = []
-            
             for s in students.data:
-                st.markdown(f"👤 **{s['student_name']}**")
-                stat = st.radio(f"الحالة لـ {s['student_name']}", ["حاضر", "غائب", "متأخر"], key=f"st_{s['id']}", horizontal=True, label_visibility="collapsed")
-                results.append({
-                    "student_name": s['student_name'], 
-                    "committee": sel_c, 
-                    "status": stat, 
-                    "date": str(t_date), 
-                    "teacher_name": st.session_state.teacher_name
-                })
+                st.write(f"👤 **{s['student_name']}**")
+                stat = st.radio(f"الحالة", ["حاضر", "غائب", "متأخر"], key=f"s_{s['id']}", horizontal=True)
+                results.append({"student_name": s['student_name'], "committee": sel_c, "status": stat, "date": str(t_date), "teacher_name": st.session_state.teacher_name})
             
-            st.divider()
-            if st.button("💾 حفظ وإرسال الكشف", type="primary"):
-                with st.spinner('جاري الحفظ...'):
-                    supabase.table('attendance').delete().eq('committee', sel_c).eq('date', str(t_date)).execute()
-                    supabase.table('attendance').insert(results).execute()
-                    st.success("✅ تم حفظ الغياب بنجاح!")
-                    time.sleep(1.5)
-                    st.session_state.page = "home"
-                    st.session_state.logged_in = False
-                    st.rerun()
+            if st.button("💾 حفظ الكشف", type="primary"):
+                supabase.table('attendance').delete().eq('committee', sel_c).eq('date', str(t_date)).execute()
+                supabase.table('attendance').insert(results).execute()
+                st.success("تم الحفظ")
+                time.sleep(1)
+                st.session_state.page = "home"
+                st.session_state.logged_in = False
+                st.rerun()
 
 # --- صفحة الإدارة ---
 elif st.session_state.page == "admin":
-    if st.button("⬅️ عودة"):
-        st.session_state.page = "home"; st.rerun()
+    # زر العودة في أعلى الصفحة ومنفصل لضمان الاستجابة
+    if st.button("⬅️ عودة للقائمة الرئيسية", type="secondary"):
+        st.session_state.page = "home"
+        st.rerun()
     
+    st.divider()
     admin_pw = st.text_input("كلمة مرور الإدارة:", type="password")
     if admin_pw == "1234":
         st.success("مرحباً بك في لوحة التحكم")
+        # هنا تضع تقاريرك لاحقاً
