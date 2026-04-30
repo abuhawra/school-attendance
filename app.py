@@ -4,6 +4,8 @@ import pandas as pd
 from datetime import datetime
 import time
 import urllib.parse
+from fpdf import FPDF
+import base64
 
 # 1. إعدادات الاتصال بقاعدة البيانات
 url = "https://lsmevvsogsqqqjyuqzbx.supabase.co"
@@ -13,54 +15,33 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. إخفاء عناصر Streamlit وتنسيق الواجهة (تحديث شامل للCSS)
+# 2. إخفاء عناصر Streamlit وتنسيق الأزرار
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="wide")
 
 hide_st_style = """
             <style>
-            /* 1. إخفاء القائمة العلوية والتذييل والأيقونات الجانبية تماماً */
             #MainMenu {visibility: hidden;}
             header {visibility: hidden;}
             footer {visibility: hidden;}
-            
-            /* إخفاء زر Deploy الأحمر وأي أيقونات حالة في الزاوية اليمنى */
-            .stAppDeployButton, 
-            [data-testid="stStatusWidget"],
-            .st-emotion-cache-zq5wmm,
-            .st-emotion-cache-15ec6h0,
-            .st-emotion-cache-1rs6os {
-                display: none !important;
-            }
+            .stAppDeployButton, [data-testid="stStatusWidget"], .st-emotion-cache-zq5wmm { display: none !important; }
 
-            /* 2. تنسيق زر (تحضير الطلاب) - أزرق فاتح */
-            /* نستهدف الزر عبر النص الموجود داخله لضمان الدقة */
+            /* زر تحضير الطلاب - أزرق فاتح */
             button[kind="primary"] {
                 background-color: #ADD8E6 !important;
                 color: #000000 !important;
                 border: 2px solid #ADD8E6 !important;
-                font-weight: bold !important;
             }
-            button[kind="primary"]:hover {
-                background-color: #87CEEB !important; /* لون أغمق قليلاً عند التمرير */
-                border-color: #87CEEB !important;
-            }
-
-            /* 3. تنسيق زر (إدارة التطبيق) - برتقالي */
+            /* زر إدارة التطبيق - برتقالي */
             button[kind="secondary"] {
                 background-color: #FFA500 !important;
                 color: #FFFFFF !important;
                 border: 2px solid #FFA500 !important;
-                font-weight: bold !important;
-            }
-            button[kind="secondary"]:hover {
-                background-color: #FF8C00 !important; /* لون أغمق قليلاً عند التمرير */
-                border-color: #FF8C00 !important;
             }
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# 3. الدوال الأساسية
+# 3. دوال مساعدة
 def smart_sort(x):
     try: return int(x)
     except: return str(x)
@@ -71,164 +52,118 @@ def get_system_status():
         return res.data[0]['is_open'] if res.data else True
     except: return True
 
+def create_pdf(df, report_date):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.add_font('Arial', '', '', unicode=True) # تأكد من توفر خط يدعم العربية إذا أردت العربية بالكامل
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt=f"Attendance Report - {report_date}", ln=True, align='C')
+    pdf.ln(10)
+    
+    # أعمدة الجدول
+    pdf.cell(80, 10, "Student Name", 1)
+    pdf.cell(30, 10, "Section", 1)
+    pdf.cell(40, 10, "Committee", 1)
+    pdf.cell(30, 10, "Status", 1)
+    pdf.ln()
+    
+    for _, row in df.iterrows():
+        pdf.cell(80, 10, str(row['الاسم']), 1)
+        pdf.cell(30, 10, str(row['الشعبة']), 1)
+        pdf.cell(40, 10, str(row['اللجنة']), 1)
+        pdf.cell(30, 10, str(row['الحالة']), 1)
+        pdf.ln()
+    
+    return pdf.output(dest='S').encode('latin-1')
+
 # تهيئة متغيرات الجلسة
 if 'page' not in st.session_state: st.session_state.page = "home"
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-if 'confirm_delete' not in st.session_state: st.session_state.confirm_delete = False
 
-# --- 4. صفحة البداية (Home Page) ---
+# --- 4. الصفحة الرئيسية ---
 if st.session_state.page == "home":
     st.write("<br><br>", unsafe_allow_html=True)
     st.markdown(f"""
-        <div style="text-align: center; border: 2px solid #1f77b4; padding: 40px; border-radius: 20px; background-color: #f8f9fa; box-shadow: 2px 2px 15px rgba(0,0,0,0.1);">
-            <h1 style="color: #1f77b4; margin-bottom: 10px;">برنامج تحضير الغياب</h1>
-            <h2 style="color: #333; margin-bottom: 30px;">مدرسة القطيف الثانوية</h2>
-            <div style="margin-bottom: 25px;">
-                <h4 style="color: #555; margin-bottom: 5px;">فكرة وبرمجة</h4>
-                <h3 style="color: #2c3e50; margin-top: 0;">أ. عارف أحمد الحداد</h3>
-            </div>
-            <div style="margin-bottom: 35px;">
-                <h4 style="color: #555; margin-bottom: 5px;">مدير المدرسة</h4>
-                <h3 style="color: #2c3e50; margin-top: 0;">أ. فراس آل عبدالمحسن</h3>
-            </div>
+        <div style="text-align: center; border: 2px solid #1f77b4; padding: 40px; border-radius: 20px; background-color: #f8f9fa;">
+            <h1 style="color: #1f77b4;">برنامج تحضير الغياب</h1>
+            <h2>مدرسة القطيف الثانوية</h2>
+            <h3 style="color: #2c3e50;">أ. عارف أحمد الحداد</h3>
         </div>
     """, unsafe_allow_html=True)
     
     st.write("<br>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
-        # زر تحضير الطلاب تم تعريفه كـ primary ليأخذ اللون الأزرق الفاتح
         if st.button("📝 تحضير الطلاب", use_container_width=True, type="primary"):
             st.session_state.page = "attendance"; st.rerun()
     with col2:
-        # زر إدارة التطبيق تم تعريفه كـ secondary ليأخذ اللون البرتقالي
         if st.button("⚙️ إدارة التطبيق", use_container_width=True, type="secondary"):
             st.session_state.page = "admin"; st.rerun()
 
-# --- 5. صفحة تحضير الطلاب ---
+# --- 5. صفحة التحضير ---
 elif st.session_state.page == "attendance":
-    if st.button("⬅️ العودة للرئيسية"): st.session_state.page = "home"; st.rerun()
+    if st.button("⬅️ العودة"): st.session_state.page = "home"; st.rerun()
     if not get_system_status():
-        st.error("🚫 النظام مغلق حالياً من قبل الإدارة.")
+        st.error("🚫 النظام مغلق حالياً.")
     else:
         if not st.session_state.logged_in:
-            st.header("🔑 دخول المعلم")
-            nid = st.text_input("أدخل رقم السجل المدني:", key="nid_input")
+            nid = st.text_input("أدخل السجل المدني:", type="password")
             if st.button("دخول"):
                 res = supabase.table("teachers").select("*").eq("national_id", nid.strip()).execute()
                 if res.data:
                     st.session_state.logged_in = True
                     st.session_state.teacher_name = res.data[0].get('name_tech', 'المعلم')
                     st.rerun()
-                else: st.error("❌ السجل غير صحيح.")
         else:
-            st.success(f"✅ مرحباً أستاذ: {st.session_state.teacher_name}")
-            t_date = st.date_input("📅 تاريخ الرصد", datetime.now())
+            st.success(f"مرحباً: {st.session_state.teacher_name}")
+            t_date = st.date_input("التاريخ", datetime.now())
             s_data = supabase.table('students').select("committee").execute()
-            all_c = sorted(list(set([str(i['committee']) for i in s_data.data if i['committee']])), key=smart_sort)
-            sel_c = st.selectbox("🎯 اختر اللجنة:", ["---"] + all_c)
+            committees = sorted(list(set([str(i['committee']) for i in s_data.data if i['committee']])), key=smart_sort)
+            sel_c = st.selectbox("اختر اللجنة:", ["---"] + committees)
             if sel_c != "---":
                 students = supabase.table('students').select("*").eq('committee', sel_c).execute()
-                old = supabase.table('attendance').select("*").eq('committee', sel_c).eq('date', str(t_date)).execute()
-                history = {r['student_name']: r['status'] for r in old.data}
                 results = []
                 for s in students.data:
-                    prev = history.get(s['student_name'], "حاضر")
                     c1, c2 = st.columns([2, 1])
                     c1.write(s['student_name'])
-                    stat = c2.radio("الحالة", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['id'], horizontal=True)
+                    stat = c2.radio("الحالة", ["حاضر", "غائب", "متأخر"], key=s['id'], horizontal=True)
                     results.append({"student_name": s['student_name'], "committee": sel_c, "status": stat, "date": str(t_date), "teacher_name": st.session_state.teacher_name})
-                if st.button("💾 حفظ الكشف وخروج"):
+                if st.button("💾 حفظ"):
                     supabase.table('attendance').delete().eq('committee', sel_c).eq('date', str(t_date)).execute()
                     supabase.table('attendance').insert(results).execute()
-                    st.success("✅ تم الحفظ بنجاح!"); time.sleep(1)
-                    st.session_state.logged_in = False; st.session_state.page = "home"; st.rerun()
+                    st.success("تم الحفظ!"); time.sleep(1); st.session_state.page = "home"; st.rerun()
 
-# --- 6. صفحة الإدارة ---
+# --- 6. صفحة الإدارة والتقارير ---
 elif st.session_state.page == "admin":
-    if st.button("⬅️ العودة للرئيسية"): st.session_state.page = "home"; st.rerun()
-    st.header("📊 لوحة الإدارة والتقارير")
+    if st.button("⬅️ العودة"): st.session_state.page = "home"; st.rerun()
     pw = st.text_input("كلمة المرور", type="password")
     if pw == "1234":
-        if st.button("🗂️ إدارة بيانات الطلاب (Excel)", use_container_width=True):
-            st.session_state.page = "data_management"; st.rerun()
-        st.divider()
-        c_status, c_del = st.columns(2)
-        with c_status:
-            is_open = get_system_status()
-            if is_open:
-                st.success("🟢 النظام: مفتوح")
-                if st.button("🔴 إيقاف الرصد"):
-                    supabase.table("settings").update({"is_open": False}).eq("setting_name", "attendance_status").execute(); st.rerun()
-            else:
-                st.error("🔴 النظام: مغلق")
-                if st.button("🟢 تفعيل الرصد"):
-                    supabase.table("settings").update({"is_open": True}).eq("setting_name", "attendance_status").execute(); st.rerun()
-        with c_del:
-            st.warning("🗑️ حذف بيانات يوم")
-            d_date = st.date_input("اختر التاريخ", datetime.now(), key="del_date")
-            if st.button(f"⚠️ مسح غياب يوم {d_date}"): st.session_state.confirm_delete = True
-            if st.session_state.confirm_delete:
-                st.error("تأكيد الحذف؟")
-                if st.button("✅ نعم"):
-                    supabase.table('attendance').delete().eq('date', str(d_date)).execute()
-                    st.session_state.confirm_delete = False; st.success("تم الحذف"); time.sleep(0.5); st.rerun()
-        st.divider()
-        rep_date = st.date_input("📅 تاريخ المتابعة", datetime.now(), key="rep_date")
+        st.header("📊 التقارير والمتابعة")
+        rep_date = st.date_input("تاريخ التقرير", datetime.now())
         att = supabase.table('attendance').select("*").eq('date', str(rep_date)).execute()
         std = supabase.table('students').select("student_name, section, committee").execute()
-        t1, t2 = st.tabs(["⚠️ كشف الغياب التفصيلي", "🚩 حالة اللجان"])
-        with t1:
-            if att.data:
-                df_a, df_s = pd.DataFrame(att.data), pd.DataFrame(std.data)
-                m = pd.merge(df_a, df_s, on='student_name', how='left')
-                final = m[m['status'].isin(['غائب', 'متأخر'])][['student_name', 'section', 'committee_x', 'status']]
-                final.columns = ['الاسم', 'الشعبة', 'اللجنة', 'الحالة']
-                msg = f"*تقرير الغياب - {rep_date}*\n\n"
-                for _, r in final.iterrows(): msg += f"👤 {r['الاسم']}\n🏢 الشعبة: {r['الشعبة']} | 🎯 اللجنة: {r['اللجنة']}\n🚩 الحالة: *{r['الحالة']}*\n---\n"
-                st.link_button("📱 إرسال الكشف عبر واتساب", f"https://wa.me/?text={urllib.parse.quote(msg)}"); st.table(final)
-            else: st.info("لا توجد سجلات.")
-        with t2:
-            all_c = set([str(s['committee']) for s in std.data if s['committee']])
-            done_c = set([str(a['committee']) for a in att.data])
-            not_done = sorted(list(all_c - done_c), key=smart_sort)
-            c_done, c_not = st.columns(2)
-            c_done.success(f"✅ رصدت ({len(done_c)}):\n\n" + ", ".join(sorted(list(done_c), key=smart_sort)))
-            c_not.error(f"❌ لم ترصد ({len(not_done)}):\n\n" + ", ".join(not_done))
-    else: st.info("🔓 أدخل كلمة المرور")
 
-# --- 7. صفحة إدارة البيانات ---
-elif st.session_state.page == "data_management":
-    if st.button("⬅️ العودة للإدارة"): st.session_state.page = "admin"; st.rerun()
-    st.header("🗂️ إدارة بيانات الطلاب")
-    tab_upload, tab_edit = st.tabs(["📤 رفع وحذف البيانات", "✏️ تعديل بيانات طالب"])
-    
-    with tab_upload:
-        st.subheader("1. حذف جميع الطلاب")
-        if st.button("❌ مسح قاعدة البيانات"):
-            supabase.table('students').delete().neq('id', 0).execute()
-            st.success("تم المسح.")
+        if att.data:
+            df_a, df_s = pd.DataFrame(att.data), pd.DataFrame(std.data)
+            m = pd.merge(df_a, df_s, on='student_name', how='left')
+            final = m[m['status'].isin(['غائب', 'متأخر'])][['student_name', 'section', 'committee_x', 'status']]
+            final.columns = ['الاسم', 'الشعبة', 'اللجنة', 'الحالة']
             
-        st.divider()
-        st.subheader("2. رفع ملف Excel جديد")
-        uploaded_file = st.file_uploader("رفع ملف Excel", type=['xlsx'])
-        if uploaded_file:
-            df = pd.read_excel(uploaded_file)
-            if st.button("🚀 بدء الرفع"):
-                supabase.table('students').insert(df.to_dict(orient='records')).execute()
-                st.success("تم الرفع بنجاح!")
+            st.table(final)
 
-    with tab_edit:
-        st.subheader("3. تعديل بيانات طالب محدد")
-        search_name = st.text_input("ابحث عن اسم الطالب للتعديل:")
-        if search_name:
-            res = supabase.table('students').select("*").ilike('student_name', f'%{search_name}%').execute()
-            if res.data:
-                for student in res.data:
-                    with st.expander(f"تعديل: {student['student_name']}"):
-                        new_name = st.text_input("الاسم", student['student_name'], key=f"n_{student['id']}")
-                        new_sec = st.text_input("الشعبة", student['section'], key=f"s_{student['id']}")
-                        new_comm = st.text_input("اللجنة", student['committee'], key=f"c_{student['id']}")
-                        if st.button("💾 حفظ التعديل", key=f"b_{student['id']}"):
-                            supabase.table('students').update({"student_name": new_name, "section": new_sec, "committee": new_comm}).eq('id', student['id']).execute()
-                            st.success("تم التحديث!"); time.sleep(0.5); st.rerun()
+            # زر الواتساب (متوافق مع ويب والأعمال)
+            msg = f"*تقرير الغياب - {rep_date}*\n\n"
+            for _, r in final.iterrows():
+                msg += f"👤 {r['الاسم']} | {r['الحالة']}\n"
+            
+            whatsapp_url = f"https://api.whatsapp.com/send?text={urllib.parse.quote(msg)}"
+            st.link_button("📱 إرسال عبر الواتساب (Web/Business)", whatsapp_url)
+
+            # زر PDF
+            if st.button("📄 عرض وتحميل PDF"):
+                pdf_data = create_pdf(final, rep_date)
+                b64 = base64.b64encode(pdf_data).decode('latin-1')
+                href = f'<a href="data:application/octet-stream;base64,{b64}" download="attendance_{rep_date}.pdf">اضغط هنا لتحميل ملف PDF</a>'
+                st.markdown(href, unsafe_allow_html=True)
+        else:
+            st.info("لا توجد بيانات لهذا التاريخ.")
