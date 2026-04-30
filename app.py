@@ -13,7 +13,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. إعدادات الواجهة والتنسيق الجمالي (CSS)
+# 2. إعدادات الواجهة والتنسيق (CSS)
 st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
 st.markdown("""
     <style>
@@ -53,21 +53,24 @@ st.markdown("""
     .credit-text { font-size: 20px; margin: 5px 0; }
     .manager-text { font-size: 18px; color: #e8eaf6; font-weight: bold; }
     
+    /* تمييز مكان إدخال الأرقام السرية والسجل المدني */
+    .stTextInput > div > div > input {
+        background-color: #ffffff !important;
+        border: 2px solid #1a237e !important;
+        border-radius: 10px !important;
+        color: #1a237e !important;
+        font-weight: bold !important;
+    }
+
     /* تنسيق الأزرار */
     div.stButton > button {
         width: 100%;
         border-radius: 15px;
         font-weight: bold;
-        height: 80px;
-        font-size: 22px !important;
+        height: 70px;
+        font-size: 20px !important;
         transition: all 0.3s;
-        border: none;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
-    
-    div.stButton > button:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
     }
     
     .whatsapp-btn { 
@@ -84,7 +87,7 @@ st.markdown("""
 
 if 'page' not in st.session_state: st.session_state.page = "home"
 
-# --- 🏠 1. الصفحة الرئيسية (الواجهة المعدلة) ---
+# --- 🏠 1. الصفحة الرئيسية ---
 if st.session_state.page == "home":
     st.markdown("""
         <div class="hero-section">
@@ -96,24 +99,21 @@ if st.session_state.page == "home":
         </div>
     """, unsafe_allow_html=True)
     
-    st.write(" ") # مساحة فارغة
-    
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if st.button("📝 دخول المعلمين للرصد", type="primary"): 
             st.session_state.page = "att_login"
             st.rerun()
-        
         st.write(" ")
-        
         if st.button("⚙️ لوحة الإدارة والتقارير"): 
             st.session_state.page = "admin_login"
             st.rerun()
 
-# --- 📝 2. نظام رصد المعلمين (كود مستقر) ---
+# --- 📝 2. نظام رصد المعلمين ---
 elif st.session_state.page == "att_login":
     if st.button("⬅️ عودة للرئيسية"): st.session_state.page = "home"; st.rerun()
-    t_id = st.text_input("أدخل رقم السجل المدني للمعلم:", type="password")
+    st.markdown("### 🔐 منطقة دخول المعلم")
+    t_id = st.text_input("أدخل رقم السجل المدني للمعلم:", type="password", help="سيظهر النص بلون مختلف لسهولة الإدخال")
     if st.button("دخول"):
         res = supabase.table("teachers").select("*").eq("national_id", t_id.strip()).execute()
         if res.data:
@@ -138,10 +138,14 @@ elif st.session_state.page == "taking_attendance":
             supabase.table('attendance').insert(results).execute()
             st.success("✅ تم حفظ البيانات بنجاح"); time.sleep(1); st.session_state.page = "home"; st.rerun()
 
-# --- ⚙️ 3. لوحة الإدارة (كود مستقر) ---
+# --- ⚙️ 3. لوحة الإدارة ---
 elif st.session_state.page == "admin_login":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    if st.text_input("رمز دخول المسؤول:", type="password") == "1234": st.session_state.page = "admin_panel"; st.rerun()
+    st.markdown("### 🔒 إدارة النظام")
+    admin_code = st.text_input("رمز دخول المسؤول:", type="password")
+    if admin_code == "1234": 
+        st.session_state.page = "admin_panel"
+        st.rerun()
 
 elif st.session_state.page == "admin_panel":
     if st.button("⬅️ تسجيل الخروج"): st.session_state.page = "home"; st.rerun()
@@ -155,6 +159,7 @@ elif st.session_state.page == "admin_panel":
             df = pd.DataFrame(res.data)
             df_abs = df[df['status'].isin(['غائب', 'متأخر'])].copy()
             if not df_abs.empty:
+                # جلب الشعبة للعرض في الجدول فقط
                 classes = []
                 for name in df_abs['student_name']:
                     try:
@@ -170,9 +175,12 @@ elif st.session_state.page == "admin_panel":
                 final_view.columns = ['رقم اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة', 'المعلم']
                 st.table(final_view)
                 
+                # --- تعديل رسالة واتساب (حذف الشعبة + مسافة بين الطلاب) ---
                 msg = f"🗓️ *تقرير مدرسة القطيف التقني*%0A📅 *التاريخ:* {d}%0A---------------------------------------%0A"
                 for _, r in df_abs.iterrows():
-                    msg += f"📦 *لجنة:* {r['committee']} | 🏫 *شعبة:* {r['الشعبة']}%0A👤 *الاسم:* {r['student_name']} ({r['status']})%0A"
+                    # تمت إضافة %0A إضافية لعمل سطر فارغ (مسافة) وحذف الشعبة
+                    msg += f"📦 *لجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']} ({r['status']})%0A%0A"
+                
                 st.markdown(f'<a href="https://wa.me/?text={msg}" target="_blank" class="whatsapp-btn">إرسال التقرير عبر واتساب 📲</a>', unsafe_allow_html=True)
             else: st.success("جميع الطلاب حاضرون لهذا اليوم")
 
@@ -193,15 +201,10 @@ elif st.session_state.page == "admin_panel":
                 if c not in done_coms: st.write(f"⚠️ لجنة {c}")
 
     with tab3:
-        if st.text_input("أدخل الرقم السري للتحكم بالبيانات:", type="password") == "4321":
-            st.success("تم تفعيل صلاحيات الإدارة")
-            col_a, col_b = st.columns(2)
-            with col_a:
-                std_res = supabase.table('students').select("*").execute()
-                if std_res.data:
-                    df_std = pd.DataFrame(std_res.data)
-                    st.download_button("تحميل نسخة احتياطية CSV", data=df_std.to_csv(index=False).encode('utf-8-sig'), file_name=f"backup_{today_date}.csv")
-            with col_b:
-                if st.button("❌ حذف كافة بيانات الطلاب"):
-                    supabase.table('students').delete().neq('student_name', 'none').execute()
-                    st.success("تم المسح"); st.rerun()
+        st.subheader("🛠️ أدوات التحكم بالبيانات")
+        admin_pass = st.text_input("أدخل الرقم السري للتحكم (4321):", type="password")
+        if admin_pass == "4321":
+            st.success("تم تفعيل الصلاحيات")
+            if st.button("❌ حذف كافة بيانات الطلاب نهائياً"):
+                supabase.table('students').delete().neq('student_name', 'none').execute()
+                st.success("تم المسح بنجاح"); st.rerun()
