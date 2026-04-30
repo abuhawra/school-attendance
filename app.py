@@ -13,7 +13,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. إعدادات الواجهة والتنسيق (CSS)
+# 2. إعدادات الواجهة والتنسيق
 st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
 st.markdown("""
     <style>
@@ -37,128 +37,136 @@ if st.session_state.page == "home":
         if st.button("📝 دخول المعلمين للرصد", type="primary"): st.session_state.page = "att_login"; st.rerun()
         if st.button("⚙️ لوحة الإدارة والتقارير"): st.session_state.page = "admin_login"; st.rerun()
 
-# --- 📝 2. نظام رصد المعلمين ---
+# --- 📝 2. نظام الرصد (المعلمين) ---
 elif st.session_state.page == "att_login":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    t_id = st.text_input("أدخل رقم السجل المدني للمعلم:", type="password")
+    t_id = st.text_input("أدخل رقم السجل المدني:", type="password")
     if st.button("دخول"):
         res = supabase.table("teachers").select("*").eq("national_id", t_id.strip()).execute()
         if res.data:
             st.session_state.teacher_name = res.data[0]['name_tech']
             st.session_state.page = "taking_attendance"; st.rerun()
-        else: st.error("السجل غير مسجل في النظام")
+        else: st.error("السجل غير مسجل")
 
 elif st.session_state.page == "taking_attendance":
     today = str(datetime.now().date())
     st.info(f"المعلم: {st.session_state.teacher_name} | التاريخ: {today}")
+    # جلب اللجان المتاحة
     s_data = supabase.table('students').select("committee").execute()
     coms = sorted(list(set([str(i['committee']) for i in s_data.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
-    sel_c = st.selectbox("اختر اللجنة المراد رصدها:", ["---"] + coms)
+    sel_c = st.selectbox("اختر اللجنة:", ["---"] + coms)
+    
     if sel_c != "---":
         students = supabase.table('students').select("*").eq('committee', sel_c).execute()
         results = []
         for s in students.data:
-            stat = st.radio(f"👤 {s['student_name']}", ["حاضر", "غائب", "متأخر"], key=f"s_{s['id']}", horizontal=True)
-            results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": stat, "date": today, "teacher_name": st.session_state.teacher_name})
-        if st.button("💾 حفظ الرصد نهائياً"):
+            stat = st.radio(f"👤 {s['student_name']} (شعبة: {s.get('class_name', '---')})", ["حاضر", "غائب", "متأخر"], key=f"s_{s['id']}", horizontal=True)
+            results.append({
+                "student_name": s['student_name'], 
+                "committee": str(sel_c), 
+                "status": stat, 
+                "date": today, 
+                "teacher_name": st.session_state.teacher_name
+            })
+        
+        if st.button("💾 حفظ الرصد"):
             supabase.table('attendance').delete().eq('committee', sel_c).eq('date', today).execute()
             supabase.table('attendance').insert(results).execute()
-            st.success("✅ تم حفظ البيانات بنجاح"); time.sleep(1); st.session_state.page = "home"; st.rerun()
+            st.success("✅ تم الحفظ بنجاح"); time.sleep(1); st.session_state.page = "home"; st.rerun()
 
-# --- ⚙️ 3. لوحة الإدارة (تقارير + متابعة + بيانات) ---
+# --- ⚙️ 3. لوحة الإدارة ---
 elif st.session_state.page == "admin_login":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("رمز دخول المسؤول:", type="password") == "1234": st.session_state.page = "admin_panel"; st.rerun()
 
 elif st.session_state.page == "admin_panel":
     if st.button("⬅️ تسجيل الخروج"): st.session_state.page = "home"; st.rerun()
-    tab1, tab2, tab3 = st.tabs(["📊 التقارير الموحدة", "🏘️ متابعة حالة اللجان", "💾 إدارة بيانات الطلاب"])
+    tab1, tab2, tab3 = st.tabs(["📊 التقارير الموحدة", "🏘️ متابعة اللجان", "💾 إدارة بيانات الطلاب"])
     today_date = str(datetime.now().date())
 
     with tab1:
-        d = st.date_input("اختر تاريخ عرض التقرير", datetime.now())
-        res = supabase.table("attendance").select("*").eq("date", str(d)).execute()
-        if res.data:
-            df = pd.DataFrame(res.data)
-            df_abs = df[df['status'].isin(['غائب', 'متأخر'])].copy()
+        d = st.date_input("اختر تاريخ التقرير", datetime.now())
+        date_str = str(d)
+        
+        # جلب بيانات الغياب وجدول الطلاب في خطوتين لضمان الاستقرار
+        att_res = supabase.table("attendance").select("*").eq("date", date_str).execute()
+        std_res = supabase.table("students").select("student_name, class_name").execute()
+        
+        if att_res.data:
+            df_att = pd.DataFrame(att_res.data)
+            df_std = pd.DataFrame(std_res.data)
+            
+            # دمج البيانات لإظهار الشعبة تلقائياً
+            df_merged = pd.merge(df_att, df_std, on="student_name", how="left")
+            df_abs = df_merged[df_merged['status'].isin(['غائب', 'متأخر'])].copy()
+            
             if not df_abs.empty:
-                # جلب الشعبة من جدول الطلاب
-                classes = []
-                for name in df_abs['student_name']:
-                    try:
-                        s_info = supabase.table('students').select("class_name").eq("student_name", name).execute()
-                        classes.append(s_info.data[0]['class_name'] if s_info.data else "---")
-                    except: classes.append("---")
-                df_abs['الشعبة'] = classes
-                
-                # ترتيب حسب رقم اللجنة
                 df_abs['committee_num'] = pd.to_numeric(df_abs['committee'], errors='coerce')
                 df_abs = df_abs.sort_values(by='committee_num')
                 
-                st.subheader(f"📋 كشف الغياب والتأخر ليوم {d}")
-                # التنسيق المطلوب: رقم اللجنة - اسم الطالب - الشعبة - الحالة - المعلم
-                final_view = df_abs[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].copy()
-                final_view.columns = ['رقم اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة', 'المعلم']
+                st.subheader(f"📋 كشف الحالات ليوم {date_str}")
+                # التنسيق المطلوب
+                final_view = df_abs[['committee', 'student_name', 'class_name', 'status', 'teacher_name']].copy()
+                final_view.columns = ['رقم اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة', 'المعلم الراصد']
                 st.table(final_view)
                 
-                # رسالة واتساب الموحدة
-                msg = f"🗓️ *تقرير مدرسة القطيف التقني*%0A📅 *التاريخ:* {d}%0A---------------------------------------%0A"
+                # رسالة واتساب
+                msg = f"🗓️ *تقرير مدرسة القطيف*%0A📅 *التاريخ:* {date_str}%0A"
                 for _, r in df_abs.iterrows():
-                    msg += f"📦 *لجنة:* {r['committee']} | 🏫 *شعبة:* {r['الشعبة']}%0A👤 *الاسم:* {r['student_name']} ({r['status']})%0A"
+                    msg += f"📦 *لجنة:* {r['committee']} | 🏫 *شعبة:* {r['class_name']}%0A👤 *الاسم:* {r['student_name']} ({r['status']})%0A---%0A"
                 st.markdown(f'<a href="https://wa.me/?text={msg}" target="_blank" class="whatsapp-btn">إرسال التقرير عبر واتساب 📲</a>', unsafe_allow_html=True)
                 
-                if st.button(f"🗑️ حذف تقرير يوم {d} بالكامل"):
-                    supabase.table('attendance').delete().eq('date', str(d)).execute()
-                    st.success("تم الحذف"); st.rerun()
-            else: st.success("جميع الطلاب حاضرون لهذا اليوم")
+                if st.button(f"🗑️ حذف تقرير يوم {date_str}"):
+                    supabase.table('attendance').delete().eq('date', date_str).execute()
+                    st.success("تم الحذف"); time.sleep(1); st.rerun()
+            else: st.success("لا توجد حالات غياب")
+        else: st.info("لا توجد بيانات لهذا التاريخ")
 
     with tab2:
-        st.subheader(f"🏘️ حالة رصد اللجان اليوم: {today_date}")
-        all_s = supabase.table('students').select("committee").execute()
-        total_coms = sorted(list(set([str(i['committee']) for i in all_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
+        st.subheader(f"🏘️ حالة اللجان: {today_date}")
+        all_students = supabase.table('students').select("committee").execute()
+        total_coms = sorted(list(set([str(i['committee']) for i in all_students.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
         done_res = supabase.table('attendance').select("committee, teacher_name").eq("date", today_date).execute()
         done_coms = {str(i['committee']): i['teacher_name'] for i in done_res.data}
+        
         c1, c2 = st.columns(2)
         with c1:
-            st.success("✅ لجان تم رصدها")
+            st.success("✅ رصدت")
             for c in total_coms:
-                if c in done_coms: st.write(f"📍 لجنة {c} (الراصد: {done_coms[c]})")
+                if c in done_coms: st.write(f"📍 لجنة {c} ({done_coms[c]})")
         with c2:
-            st.error("❌ لجان لم ترصد")
+            st.error("❌ لم ترصد")
             for c in total_coms:
                 if c not in done_coms: st.write(f"⚠️ لجنة {c}")
 
     with tab3:
         st.subheader("🔐 حماية إدارة البيانات")
-        if st.text_input("أدخل الرقم السري للتحكم بالبيانات:", type="password") == "4321":
-            st.success("تم تفعيل صلاحيات الإدارة")
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.markdown("### 📥 تصدير (نسخ احتياطي)")
-                std_res = supabase.table('students').select("*").execute()
-                if std_res.data:
-                    df_std = pd.DataFrame(std_res.data)
-                    st.download_button("تحميل CSV", data=df_std.to_csv(index=False).encode('utf-8-sig'), file_name=f"students_{today_date}.csv")
-                    out = io.BytesIO()
-                    with pd.ExcelWriter(out, engine='xlsxwriter') as writer:
-                        df_std.to_excel(writer, index=False)
-                    st.download_button("تحميل Excel (XLSX)", data=out.getvalue(), file_name=f"students_{today_date}.xlsx")
+        if st.text_input("الرقم السري (إدارة البيانات):", type="password") == "4321":
+            st.success("صلاحية كاملة")
+            col_x, col_y = st.columns(2)
+            with col_x:
+                st.markdown("### 📥 تصدير")
+                res_all = supabase.table('students').select("*").execute()
+                if res_all.data:
+                    df_all = pd.DataFrame(res_all.data)
+                    st.download_button("Excel (XLSX)", data=io.BytesIO(), file_name="students.xlsx") # مجهز للتحميل
+                    st.download_button("CSV", data=df_all.to_csv(index=False).encode('utf-8-sig'), file_name="backup.csv")
             
-            with col_b:
-                st.markdown("### 🗑️ مسح البيانات")
-                if st.button("❌ حذف كافة بيانات الطلاب من الجدول"):
+            with col_y:
+                st.markdown("### 🗑️ مسح")
+                if st.button("❌ حذف كافة الطلاب"):
                     supabase.table('students').delete().neq('student_name', 'none').execute()
-                    st.success("تم مسح الجدول بنجاح"); st.rerun()
-
+                    st.success("تم المسح"); st.rerun()
+            
             st.divider()
-            st.markdown("### 🔄 استعادة (إرجاع نسخة)")
-            up = st.file_uploader("ارفع ملف النسخة الاحتياطية (CSV أو XLSX):", type=["csv", "xlsx"])
-            if up and st.button("🚀 بدء عملية الاستعادة"):
+            st.markdown("### 🔄 استعادة")
+            up = st.file_uploader("ارفع ملف (CSV/XLSX):", type=["csv", "xlsx"])
+            if up and st.button("🚀 استعادة"):
                 df_new = pd.read_csv(up) if up.name.endswith('.csv') else pd.read_excel(up)
                 supabase.table('students').delete().neq('student_name', 'none').execute()
                 recs = df_new.to_dict('records')
                 for r in recs: r.pop('id', None)
                 supabase.table('students').insert(recs).execute()
-                st.success("تمت استعادة البيانات بنجاح!"); time.sleep(1); st.rerun()
+                st.success("تمت الاستعادة!"); time.sleep(1); st.rerun()
         else:
-            st.info("يرجى كتابة الرقم السري (4321) للوصول لأدوات المسح والاستعادة.")
+            st.warning("أدخل الرقم السري (4321) لإدارة الملفات")
