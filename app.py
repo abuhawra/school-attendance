@@ -57,7 +57,6 @@ def create_pdf(df, report_date):
     pdf = FPDF()
     pdf.add_page()
     
-    # تحديد مسار ملف الخط بدقة في بيئة السحابة
     current_dir = os.path.dirname(os.path.abspath(__file__))
     font_path = os.path.join(current_dir, "arial.ttf")
     
@@ -69,36 +68,27 @@ def create_pdf(df, report_date):
             has_font = True
         except: has_font = False
     
-    # العنوان
     if has_font:
         pdf.set_font("ArabicFont", size=16)
         pdf.cell(200, 10, txt=fix_arabic(f"تقرير الغياب ليوم {report_date}"), ln=True, align='C')
-    else:
-        pdf.set_font("Arial", size=14)
-        pdf.cell(200, 10, txt=f"Attendance Report - {report_date}", ln=True, align='C')
-    
-    pdf.ln(10)
-    
-    if not has_font:
-        pdf.set_font("Arial", size=12)
-        pdf.cell(190, 10, txt="Font Error: Please Reboot App on Streamlit Cloud", ln=True, align='C')
-        pdf.ln(5)
-        pdf.cell(40, 10, "Status", 1)
-        pdf.cell(150, 10, "Student Name", 1)
-        pdf.ln()
-        for _, row in df.iterrows():
-            st_en = "Absent" if row['الحالة'] == "غائب" else "Late"
-            pdf.cell(40, 10, st_en, 1)
-            pdf.cell(150, 10, "Arabic Font Missing", 1)
-            pdf.ln()
-    else:
-        # طباعة الجدول باللغة العربية
+        pdf.ln(10)
         pdf.cell(40, 10, fix_arabic("الحالة"), 1, align='C')
         pdf.cell(150, 10, fix_arabic("الاسم"), 1, align='C')
         pdf.ln()
         for _, row in df.iterrows():
             pdf.cell(40, 10, fix_arabic(row['الحالة']), 1, align='C')
             pdf.cell(150, 10, fix_arabic(row['الاسم']), 1, align='R')
+            pdf.ln()
+    else:
+        pdf.set_font("Arial", size=14)
+        pdf.cell(200, 10, txt=f"Attendance Report - {report_date}", ln=True, align='C')
+        pdf.ln(10)
+        pdf.set_font("Arial", size=10)
+        pdf.cell(190, 10, txt="Note: Text rendered in English format due to missing font file.", ln=True, align='C')
+        pdf.ln(5)
+        for _, row in df.iterrows():
+            pdf.cell(40, 10, "Absent/Late", 1)
+            pdf.cell(150, 10, "Check App for Name", 1)
             pdf.ln()
             
     return pdf.output()
@@ -183,11 +173,24 @@ elif st.session_state.page == "admin":
             
             st.table(final)
             
+            # تحسين رابط الواتساب ليفتح التطبيق المثبت (عادي أو أعمال)
             msg = f"*تقرير غياب مدرسة القطيف الثانوية*\n*التاريخ:* {rep_date}\n\n"
             for _, r in final.iterrows():
                 msg += f"• {r['الاسم']} ({r['الحالة']})\n"
-            wa_link = f"https://api.whatsapp.com/send?text={urllib.parse.quote(msg)}"
-            st.link_button("📱 إرسال للوكيل عبر الواتساب", wa_link, use_container_width=True)
+            
+            # الرابط العالمي wa.me يخير المستخدم بين التطبيقات المتاحة
+            encoded_msg = urllib.parse.quote(msg)
+            wa_link = f"https://wa.me/?text={encoded_msg}"
+            
+            st.markdown(f"""
+                <a href="{wa_link}" target="_blank" style="text-decoration: none;">
+                    <div style="background-color: #25D366; color: white; padding: 10px; border-radius: 10px; text-align: center; font-weight: bold; cursor: pointer;">
+                        📱 إرسال للوكيل (واتساب عادي أو أعمال)
+                    </div>
+                </a>
+            """, unsafe_allow_html=True)
+            
+            st.write("<br>", unsafe_allow_html=True)
             
             if st.button("📄 إصدار تقرير PDF للتحميل", use_container_width=True):
                 try:
