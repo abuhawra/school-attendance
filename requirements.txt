@@ -1,6 +1,8 @@
 streamlit
 supabase
 pandas
-fpdf2
+openpyxl
+xlsxwriter
 arabic-reshaper
 python-bidi
+fpdf2
