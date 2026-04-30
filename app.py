@@ -77,40 +77,52 @@ elif st.session_state.page == "admin_panel":
 
     with tab1:
         d = st.date_input("اختر تاريخ عرض التقرير", datetime.now())
-        res = supabase.table("attendance").select("*").eq("date", str(d)).execute()
-        if res.data:
-            df = pd.DataFrame(res.data)
-            df_abs = df[df['status'].isin(['غائب', 'متأخر'])].copy()
-            if not df_abs.empty:
-                # جلب الشعبة من جدول الطلاب
-                classes = []
-                for name in df_abs['student_name']:
-                    try:
-                        s_info = supabase.table('students').select("class_name").eq("student_name", name).execute()
-                        classes.append(s_info.data[0]['class_name'] if s_info.data else "---")
-                    except: classes.append("---")
-                df_abs['الشعبة'] = classes
+        res_att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
+        
+        if res_att.data:
+            # جلب بيانات الطلاب (الاسم والشعبة) لربطها بتقرير الغياب
+            res_std = supabase.table("students").select("student_name, class_name").execute()
+            
+            if res_std.data:
+                df_att = pd.DataFrame(res_att.data)
+                df_std = pd.DataFrame(res_std.data)
                 
-                # ترتيب حسب رقم اللجنة
-                df_abs['committee_num'] = pd.to_numeric(df_abs['committee'], errors='coerce')
-                df_abs = df_abs.sort_values(by='committee_num')
+                # دمج الجدولين للحصول على الشعبة
+                df_merged = pd.merge(df_att, df_std, on="student_name", how="left")
                 
-                st.subheader(f"📋 كشف الغياب والتأخر ليوم {d}")
-                # التنسيق المطلوب: رقم اللجنة - اسم الطالب - الشعبة - الحالة - المعلم
-                final_view = df_abs[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].copy()
-                final_view.columns = ['رقم اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة', 'المعلم']
-                st.table(final_view)
+                # فلترة الغياب والتأخر
+                df_abs = df_merged[df_merged['status'].isin(['غائب', 'متأخر'])].copy()
                 
-                # رسالة واتساب الموحدة
-                msg = f"🗓️ *تقرير مدرسة القطيف التقني*%0A📅 *التاريخ:* {d}%0A---------------------------------------%0A"
-                for _, r in df_abs.iterrows():
-                    msg += f"📦 *لجنة:* {r['committee']} | 🏫 *شعبة:* {r['الشعبة']}%0A👤 *الاسم:* {r['student_name']} ({r['status']})%0A"
-                st.markdown(f'<a href="https://wa.me/?text={msg}" target="_blank" class="whatsapp-btn">إرسال التقرير عبر واتساب 📲</a>', unsafe_allow_html=True)
-                
-                if st.button(f"🗑️ حذف تقرير يوم {d} بالكامل"):
-                    supabase.table('attendance').delete().eq('date', str(d)).execute()
-                    st.success("تم الحذف"); st.rerun()
-            else: st.success("جميع الطلاب حاضرون لهذا اليوم")
+                if not df_abs.empty:
+                    # ترتيب حسب رقم اللجنة
+                    df_abs['committee_num'] = pd.to_numeric(df_abs['committee'], errors='coerce')
+                    df_abs = df_abs.sort_values(by='committee_num')
+                    
+                    st.subheader(f"📋 كشف الغياب والتأخر ليوم {d}")
+                    # التنسيق المطلوب: رقم اللجنة - اسم الطالب - الشعبة - الحالة - المعلم
+                    final_view = df_abs[['committee', 'student_name', 'class_name', 'status', 'teacher_name']].copy()
+                    final_view.columns = ['رقم اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة', 'المعلم']
+                    
+                    # استبدال القيم الفارغة في الشعبة بـ ---
+                    final_view['الشعبة'] = final_view['الشعبة'].fillna("---")
+                    
+                    st.table(final_view)
+                    
+                    # رسالة واتساب الموحدة
+                    msg = f"🗓️ *تقرير مدرسة القطيف التقني*%0A📅 *التاريخ:* {d}%0A---------------------------------------%0A"
+                    for _, r in final_view.iterrows():
+                        msg += f"📦 *لجنة:* {r['رقم اللجنة']} | 🏫 *شعبة:* {r['الشعبة']}%0A👤 *الاسم:* {r['اسم الطالب']} ({r['الحالة']})%0A"
+                    st.markdown(f'<a href="https://wa.me/?text={msg}" target="_blank" class="whatsapp-btn">إرسال التقرير عبر واتساب 📲</a>', unsafe_allow_html=True)
+                    
+                    if st.button(f"🗑️ حذف تقرير يوم {d} بالكامل"):
+                        supabase.table('attendance').delete().eq('date', str(d)).execute()
+                        st.success("تم الحذف"); st.rerun()
+                else:
+                    st.success("جميع الطلاب حاضرون لهذا اليوم")
+            else:
+                st.error("لم يتم العثور على بيانات الطلاب في النظام.")
+        else:
+            st.info("لا توجد سجلات تحضير لهذا التاريخ.")
 
     with tab2:
         st.subheader(f"🏘️ حالة رصد اللجان اليوم: {today_date}")
