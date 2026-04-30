@@ -13,7 +13,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. هندسة الواجهة والتنسيق
+# 2. هندسة الواجهة والتنسيق (توسيط كامل)
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="centered")
 
 st.markdown("""
@@ -27,16 +27,29 @@ st.markdown("""
     .main-title { font-size: 35px !important; font-weight: 800; color: #2c3e50; }
     .label-style { font-size: 22px !important; color: #78909c; font-weight: bold; }
     .name-style { font-size: 32px !important; color: #1e88e5; font-weight: 900; }
-    .stButton button { width: 100% !important; max-width: 350px !important; height: 55px !important; border-radius: 12px !important; font-size: 20px !important; font-weight: bold; margin: 10px auto !important; display: block; }
+    
+    /* توسيط الأزرار */
+    .stButton { display: flex; justify-content: center; }
+    .stButton button { 
+        width: 100% !important; 
+        max-width: 350px !important; 
+        height: 55px !important; 
+        border-radius: 12px !important; 
+        font-size: 20px !important; 
+        font-weight: bold; 
+        margin: 10px auto !important; 
+        display: block; 
+    }
     button[kind="primary"] { background-color: #3498db !important; color: white !important; }
     button[kind="secondary"] { background-color: #cfd8dc !important; color: #455a64 !important; }
-    div[data-testid="stExpander"] { direction: rtl; }
+    
+    /* تنسيق الجداول لتكون من اليمين لليسار */
+    div[data-testid="stDataFrame"] { direction: rtl !important; }
     </style>
     """, unsafe_allow_html=True)
 
 # 3. إدارة التنقل
 if 'page' not in st.session_state: st.session_state.page = "home"
-if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'admin_logged_in' not in st.session_state: st.session_state.admin_logged_in = False
 
 # --- الصفحة الرئيسية ---
@@ -54,13 +67,6 @@ if st.session_state.page == "home":
     if st.button("⚙️ دخول لوحة التحكم", type="secondary"):
         st.session_state.page = "admin_login"; st.rerun()
 
-# --- صفحة التحضير ---
-elif st.session_state.page == "attendance":
-    if st.button("⬅️ عودة"):
-        st.session_state.page = "home"; st.rerun()
-    # كود التحضير (مختصر للعرض)
-    st.info("صفحة تحضير الطلاب")
-
 # --- صفحة تسجيل دخول الإدارة ---
 elif st.session_state.page == "admin_login":
     if st.button("⬅️ عودة"):
@@ -71,43 +77,52 @@ elif st.session_state.page == "admin_login":
         st.session_state.admin_logged_in = True
         st.session_state.page = "admin_panel"; st.rerun()
 
-# --- لوحة التحكم وعرض الغياب ---
+# --- لوحة التحكم وعرض الغياب المفلتر ---
 elif st.session_state.page == "admin_panel":
     if st.button("⬅️ خروج"):
         st.session_state.admin_logged_in = False; st.session_state.page = "home"; st.rerun()
     
     st.markdown('<div class="center-text main-title">لوحة التحكم</div>', unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["📊 تقارير الغياب اليومي", "🗂️ إدارة البيانات"])
+    tab1, tab2 = st.tabs(["📊 تقارير الغياب والتأخر", "🗂️ إدارة البيانات"])
     
     with tab1:
-        st.markdown('<div class="center-text label-style">استعراض كشوف الغياب</div>', unsafe_allow_html=True)
-        search_date = st.date_input("اختر التاريخ لعرض الغياب:", datetime.now())
+        st.markdown('<div class="center-text label-style">استعراض كشوف (غائب / متأخر)</div>', unsafe_allow_html=True)
+        search_date = st.date_input("اختر التاريخ:", datetime.now())
         
-        if st.button("🔍 عرض الغياب"):
-            # جلب البيانات من جدول attendance بناءً على التاريخ
+        if st.button("🔍 عرض التقرير"):
+            # جلب البيانات
             response = supabase.table("attendance").select("*").eq("date", str(search_date)).execute()
             
             if response.data:
                 df = pd.DataFrame(response.data)
-                # ترتيب الأعمدة للعرض
-                df_display = df[['student_name', 'status', 'committee', 'teacher_name']]
-                df_display.columns = ['اسم الطالب', 'الحالة', 'اللجنة', 'المعلم المحضر']
                 
-                st.success(f"تم العثور على {len(df)} سجل لهذا اليوم")
-                st.dataframe(df_display, use_container_width=True)
+                # --- الفلترة المطلوبة: استبعاد "حاضر" ---
+                # سيعرض فقط الطلاب الذين حالتهم "غائب" أو "متأخر"
+                df_filtered = df[df['status'].isin(['غائب', 'متأخر'])]
                 
-                # خيار تحميل التقرير Excel
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    df_display.to_excel(writer, index=False, sheet_name='Sheet1')
-                st.download_button(
-                    label="📥 تحميل التقرير كملف Excel",
-                    data=output.getvalue(),
-                    file_name=f"غياب_{search_date}.xlsx",
-                    mime="application/vnd.ms-excel"
-                )
+                if not df_filtered.empty:
+                    # ترتيب وتنسيق الأعمدة
+                    df_display = df_filtered[['student_name', 'status', 'committee', 'teacher_name']]
+                    df_display.columns = ['اسم الطالب', 'الحالة', 'اللجنة', 'المعلم المحضر']
+                    
+                    st.success(f"تم العثور على {len(df_filtered)} حالات (غياب/تأخر)")
+                    st.dataframe(df_display, use_container_width=True, hide_index=True)
+                    
+                    # خيار التحميل
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                        df_display.to_excel(writer, index=False, sheet_name='الغياب')
+                    st.download_button(
+                        label="📥 تحميل تقرير الغياب (Excel)",
+                        data=output.getvalue(),
+                        file_name=f"تقرير_غياب_{search_date}.xlsx",
+                        mime="application/vnd.ms-excel"
+                    )
+                else:
+                    st.balloons()
+                    st.success("ما شاء الله! لا يوجد غياب أو تأخر في هذا اليوم (الجميع حاضر).")
             else:
-                st.warning("لا توجد سجلات غياب محفوظة لهذا التاريخ.")
+                st.warning("لا توجد بيانات غياب مسجلة لهذا التاريخ.")
 
     with tab2:
-        st.write("إدارة قاعدة البيانات (قريباً)")
+        st.info("قسم إدارة البيانات والرفع.")
