@@ -17,7 +17,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. تنسيق الواجهة (ألوان مدرسة القطيف الثانوية)
+# 2. تنسيق الواجهة
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="wide")
 
 st.markdown("""
@@ -27,14 +27,12 @@ st.markdown("""
     footer {visibility: hidden;}
     .stAppDeployButton {display: none !important;}
     
-    /* زر تحضير الطلاب - أزرق فاتح */
     button[kind="primary"] {
         background-color: #ADD8E6 !important;
         color: #000 !important;
         border: 2px solid #ADD8E6 !important;
         font-weight: bold;
     }
-    /* زر إدارة التطبيق - برتقالي */
     button[kind="secondary"] {
         background-color: #FFA500 !important;
         color: #fff !important;
@@ -44,7 +42,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. الدوال المساعدة لمعالجة النصوص والملفات
+# 3. الدوال المساعدة
 def smart_sort(x):
     try: return int(x)
     except: return str(x)
@@ -59,20 +57,31 @@ def create_pdf(df, report_date):
     pdf = FPDF()
     pdf.add_page()
     
-    font_path = "arial.ttf"
-    has_font = os.path.exists(font_path)
+    # تحديد مسار ملف الخط بدقة في بيئة السحابة
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    font_path = os.path.join(current_dir, "arial.ttf")
     
-    if has_font:
+    has_font = False
+    if os.path.exists(font_path):
         try:
             pdf.add_font("ArabicFont", "", font_path)
             pdf.set_font("ArabicFont", size=12)
+            has_font = True
         except: has_font = False
+    
+    # العنوان
+    if has_font:
+        pdf.set_font("ArabicFont", size=16)
+        pdf.cell(200, 10, txt=fix_arabic(f"تقرير الغياب ليوم {report_date}"), ln=True, align='C')
+    else:
+        pdf.set_font("Arial", size=14)
+        pdf.cell(200, 10, txt=f"Attendance Report - {report_date}", ln=True, align='C')
+    
+    pdf.ln(10)
     
     if not has_font:
         pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt=f"Attendance Report - {report_date}", ln=True, align='C')
-        pdf.ln(10)
-        pdf.cell(190, 10, txt="NOTICE: Please upload 'arial.ttf' to GitHub for Arabic support", ln=True, align='C')
+        pdf.cell(190, 10, txt="Font Error: Please Reboot App on Streamlit Cloud", ln=True, align='C')
         pdf.ln(5)
         pdf.cell(40, 10, "Status", 1)
         pdf.cell(150, 10, "Student Name", 1)
@@ -80,11 +89,10 @@ def create_pdf(df, report_date):
         for _, row in df.iterrows():
             st_en = "Absent" if row['الحالة'] == "غائب" else "Late"
             pdf.cell(40, 10, st_en, 1)
-            pdf.cell(150, 10, "Check App for Arabic Names", 1)
+            pdf.cell(150, 10, "Arabic Font Missing", 1)
             pdf.ln()
     else:
-        pdf.cell(200, 10, txt=f"Attendance Report - {report_date}", ln=True, align='C')
-        pdf.ln(10)
+        # طباعة الجدول باللغة العربية
         pdf.cell(40, 10, fix_arabic("الحالة"), 1, align='C')
         pdf.cell(150, 10, fix_arabic("الاسم"), 1, align='C')
         pdf.ln()
@@ -95,11 +103,11 @@ def create_pdf(df, report_date):
             
     return pdf.output()
 
-# 4. منطق التنقل بين الصفحات
+# 4. التنقل بين الصفحات
 if 'page' not in st.session_state: st.session_state.page = "home"
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
-# --- الصفحة الرئيسية ---
+# الصفحة الرئيسية
 if st.session_state.page == "home":
     st.write("<br><br>", unsafe_allow_html=True)
     st.markdown("""
@@ -120,7 +128,7 @@ if st.session_state.page == "home":
         if st.button("⚙️ لوحة تحكم الإدارة", use_container_width=True, type="secondary"):
             st.session_state.page = "admin"; st.rerun()
 
-# --- صفحة التحضير ---
+# صفحة التحضير
 elif st.session_state.page == "attendance":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     
@@ -155,7 +163,7 @@ elif st.session_state.page == "attendance":
                 st.success("✅ تم حفظ البيانات بنجاح!"); time.sleep(1)
                 st.session_state.page = "home"; st.session_state.logged_in = False; st.rerun()
 
-# --- صفحة الإدارة والتقارير ---
+# صفحة الإدارة
 elif st.session_state.page == "admin":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     pw = st.text_input("كلمة مرور الإدارة:", type="password")
@@ -175,23 +183,18 @@ elif st.session_state.page == "admin":
             
             st.table(final)
             
-            # واتساب
             msg = f"*تقرير غياب مدرسة القطيف الثانوية*\n*التاريخ:* {rep_date}\n\n"
             for _, r in final.iterrows():
                 msg += f"• {r['الاسم']} ({r['الحالة']})\n"
             wa_link = f"https://api.whatsapp.com/send?text={urllib.parse.quote(msg)}"
             st.link_button("📱 إرسال للوكيل عبر الواتساب", wa_link, use_container_width=True)
             
-            # PDF (تم إصلاح نوع البيانات هنا)
             if st.button("📄 إصدار تقرير PDF للتحميل", use_container_width=True):
                 try:
                     pdf_output = create_pdf(final, rep_date)
-                    # تحويل المخرجات إلى bytes لضمان التوافق مع Streamlit
-                    pdf_bytes = bytes(pdf_output)
-                    
                     st.download_button(
                         label="⬇️ تحميل الملف الآن",
-                        data=pdf_bytes,
+                        data=bytes(pdf_output),
                         file_name=f"تقرير_غياب_{rep_date}.pdf",
                         mime="application/pdf"
                     )
