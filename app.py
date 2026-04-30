@@ -14,13 +14,14 @@ if 'supabase' not in st.session_state:
 supabase = st.session_state.supabase
 
 # 2. إعدادات الواجهة والتنسيق
-st.set_page_config(page_title="نظام مدرسة القطيف - النسخة الشاملة", layout="wide")
+st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #f8f9fa; direction: rtl; }
     .main-title { font-size: 32px; font-weight: 800; color: #1a237e; text-align: center; margin-bottom: 20px; }
     .whatsapp-btn { background-color: #25D366; color: white; padding: 18px; border-radius: 15px; text-align: center; text-decoration: none; display: block; font-weight: bold; margin: 20px auto; max-width: 600px; font-size: 20px; border: 1px solid #128C7E; }
-    div.stButton > button { width: 100%; border-radius: 12px; font-weight: bold; height: 55px; font-size: 18px; }
+    div.stButton > button { width: 100%; border-radius: 12px; font-weight: bold; height: 50px; }
+    .delete-btn button { background-color: #ff4b4b !important; color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -38,13 +39,13 @@ if st.session_state.page == "home":
 # --- 📝 2. نظام الرصد ---
 elif st.session_state.page == "att_login":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    t_id = st.text_input("أدخل رقم السجل المدني:", type="password")
+    t_id = st.text_input("رقم السجل المدني:", type="password")
     if st.button("دخول"):
         res = supabase.table("teachers").select("*").eq("national_id", t_id.strip()).execute()
         if res.data:
             st.session_state.teacher_name = res.data[0]['name_tech']
             st.session_state.page = "taking_attendance"; st.rerun()
-        else: st.error("السجل غير موجود")
+        else: st.error("السجل غير مسجل")
 
 elif st.session_state.page == "taking_attendance":
     today = str(datetime.now().date())
@@ -63,14 +64,14 @@ elif st.session_state.page == "taking_attendance":
             supabase.table('attendance').insert(results).execute()
             st.success("✅ تم الحفظ بنجاح"); time.sleep(1); st.session_state.page = "home"; st.rerun()
 
-# --- ⚙️ 3. لوحة الإدارة (النسخة الكاملة) ---
+# --- ⚙️ 3. لوحة الإدارة (النسخة الشاملة) ---
 elif st.session_state.page == "admin_login":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("رمز دخول المسؤول:", type="password") == "1234": st.session_state.page = "admin_panel"; st.rerun()
 
 elif st.session_state.page == "admin_panel":
     if st.button("⬅️ تسجيل الخروج"): st.session_state.page = "home"; st.rerun()
-    tab1, tab2, tab3 = st.tabs(["📊 التقارير", "🏘️ متابعة اللجان", "💾 النسخ الاحتياطي والاستعادة"])
+    tab1, tab2, tab3 = st.tabs(["📊 التقارير الموحدة", "🏘️ متابعة اللجان", "💾 إدارة بيانات الطلاب"])
     today_date = str(datetime.now().date())
 
     with tab1:
@@ -82,6 +83,7 @@ elif st.session_state.page == "admin_panel":
             if not df_abs.empty:
                 df_abs['committee_num'] = pd.to_numeric(df_abs['committee'], errors='coerce')
                 df_abs = df_abs.sort_values(by='committee_num')
+                # جلب الشعبة
                 classes = []
                 for n in df_abs['student_name']:
                     try:
@@ -93,7 +95,7 @@ elif st.session_state.page == "admin_panel":
                 msg = f"🗓️ *تقرير مدرسة القطيف*%0A📅 *التاريخ:* {d}%0A"
                 for _, r in df_abs.iterrows():
                     msg += f"📦 *لجنة:* {r['committee']} | 🏫 *شعبة:* {r['الشعبة']}%0A👤 *الاسم:* {r['student_name']} ({r['status']})%0A"
-                st.markdown(f'<a href="https://wa.me/?text={msg}" target="_blank" class="whatsapp-btn">إرسال عبر واتساب 📲</a>', unsafe_allow_html=True)
+                st.markdown(f'<a href="https://wa.me/?text={msg}" target="_blank" class="whatsapp-btn">إرسال التقرير عبر واتساب 📲</a>', unsafe_allow_html=True)
             else: st.success("لا يوجد غياب")
 
     with tab2:
@@ -102,65 +104,78 @@ elif st.session_state.page == "admin_panel":
         total_coms = sorted(list(set([str(i['committee']) for i in all_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
         done_res = supabase.table('attendance').select("committee, teacher_name").eq("date", today_date).execute()
         done_coms = {str(i['committee']): i['teacher_name'] for i in done_res.data}
-        col1, col2 = st.columns(2)
-        with col1:
+        c1, c2 = st.columns(2)
+        with c1:
             st.success("✅ رصدت")
             for c in total_coms:
                 if c in done_coms: st.write(f"📍 لجنة {c} ({done_coms[c]})")
-        with col2:
+        with c2:
             st.error("❌ لم ترصد")
             for c in total_coms:
                 if c not in done_coms: st.write(f"⚠️ لجنة {c}")
 
     with tab3:
-        st.subheader("💾 إدارة النسخ الاحتياطية")
+        st.subheader("⚙️ أدوات إدارة البيانات")
         
-        # --- 1. التصدير (تحميل) ---
-        st.markdown("### 1. تحميل نسخة احتياطية (تصدير)")
-        std_res = supabase.table('students').select("*").execute()
-        if std_res.data:
-            df_backup = pd.DataFrame(std_res.data)
-            col_b1, col_b2 = st.columns(2)
-            with col_b1:
-                st.download_button("📥 تحميل بصيغة CSV", data=df_backup.to_csv(index=False).encode('utf-8-sig'), file_name=f"students_{today_date}.csv", mime="text/csv")
-            with col_b2:
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    df_backup.to_excel(writer, index=False, sheet_name='Students')
-                st.download_button("📥 تحميل بصيغة Excel (XLSX)", data=output.getvalue(), file_name=f"students_{today_date}.xlsx")
+        # --- الجزء الأول: النسخ والحذف ---
+        col_act1, col_act2 = st.columns(2)
+        
+        with col_act1:
+            st.markdown("### 📥 تصدير البيانات (نسخ)")
+            std_res = supabase.table('students').select("*").execute()
+            if std_res.data:
+                df_backup = pd.DataFrame(std_res.data)
+                # تحميل CSV
+                st.download_button("تحميل نسخة CSV", data=df_backup.to_csv(index=False).encode('utf-8-sig'), file_name=f"backup_{today_date}.csv")
+                # تحميل Excel
+                out = io.BytesIO()
+                with pd.ExcelWriter(out, engine='xlsxwriter') as writer:
+                    df_backup.to_excel(writer, index=False)
+                st.download_button("تحميل نسخة Excel (XLSX)", data=out.getvalue(), file_name=f"backup_{today_date}.xlsx")
+
+        with col_act2:
+            st.markdown("### 🗑️ منطقة الحذف")
+            st.write("حذف كافة الطلاب من النظام (تفريغ الجدول)")
+            if st.button("❌ حذف كافة بيانات الطلاب", key="del_all_btn"):
+                st.session_state.confirm_delete = True
+            
+            if st.session_state.get('confirm_delete'):
+                st.warning("❗ هل أنت متأكد تماماً من حذف جميع البيانات؟")
+                col_y, col_n = st.columns(2)
+                with col_y:
+                    if st.button("نعم، احذف الآن"):
+                        supabase.table('students').delete().neq('student_name', 'none').execute()
+                        st.success("✅ تم مسح البيانات بنجاح")
+                        st.session_state.confirm_delete = False
+                        time.sleep(1)
+                        st.rerun()
+                with col_n:
+                    if st.button("إلغاء"):
+                        st.session_state.confirm_delete = False
+                        st.rerun()
 
         st.divider()
 
-        # --- 2. الاستعادة (رفع إما CSV أو XLSX) ---
-        st.markdown("### 2. إرجاع نسخة احتياطية (استعادة)")
-        st.warning("⚠️ تنبيه: الاستعادة ستحذف بيانات الطلاب الحالية وتستبدلها بالملف المرفوع.")
-        uploaded_file = st.file_uploader("اختر ملف النسخة الاحتياطية (CSV أو XLSX):", type=["csv", "xlsx"])
+        # --- الجزء الثاني: الاستعادة ---
+        st.markdown("### 🔄 إرجاع نسخة احتياطية (استعادة)")
+        up_file = st.file_uploader("ارفع ملف النسخة (CSV أو XLSX):", type=["csv", "xlsx"])
         
-        if uploaded_file is not None:
+        if up_file:
             try:
-                # قراءة الملف بناءً على صيغته
-                if uploaded_file.name.endswith('.csv'):
-                    new_data = pd.read_csv(uploaded_file)
-                else:
-                    new_data = pd.read_excel(uploaded_file)
+                df_new = pd.read_csv(up_file) if up_file.name.endswith('.csv') else pd.read_excel(up_file)
+                st.write("معاينة البيانات:")
+                st.dataframe(df_new.head(3))
                 
-                st.write("معاينة البيانات المراد استعادتها:")
-                st.dataframe(new_data.head())
-                
-                if st.button("🚀 تنفيذ استعادة النسخة الآن"):
-                    with st.spinner("جاري استبدال البيانات..."):
-                        # حذف البيانات القديمة
+                if st.button("🚀 تنفيذ استعادة البيانات"):
+                    with st.spinner("جاري الرفع..."):
+                        # تفريغ الجدول أولاً
                         supabase.table('students').delete().neq('student_name', 'none').execute()
-                        
-                        # تجهيز البيانات الجديدة للرفع
-                        records = new_data.to_dict('records')
-                        # إزالة عمود 'id' إن وجد لتجنب تكرار المفاتيح الأساسية
-                        for r in records: r.pop('id', None)
-                        
-                        # رفع البيانات
-                        supabase.table('students').insert(records).execute()
-                        st.success("✅ تمت استعادة النسخة بنجاح!")
-                        time.sleep(2)
+                        # الرفع
+                        recs = df_new.to_dict('records')
+                        for r in recs: r.pop('id', None) # إزالة الآيدي التلقائي
+                        supabase.table('students').insert(recs).execute()
+                        st.success("✅ تمت الاستعادة بنجاح!")
+                        time.sleep(1)
                         st.rerun()
             except Exception as e:
-                st.error(f"خطأ في معالجة الملف: {e}")
+                st.error(f"حدث خطأ: {e}")
