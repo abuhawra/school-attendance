@@ -27,7 +27,6 @@ st.markdown("""
     
     .stApp { background-color: #f0f2f6; }
     
-    /* تنسيق الحاوية الرئيسية */
     .hero-section {
         background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
         padding: 40px;
@@ -53,7 +52,7 @@ st.markdown("""
     .credit-text { font-size: 20px; margin: 5px 0; }
     .manager-text { font-size: 18px; color: #e8eaf6; font-weight: bold; }
     
-    /* تمييز مكان إدخال الأرقام السرية والسجل المدني */
+    /* تمييز حقول الإدخال بلون مختلف */
     .stTextInput > div > div > input {
         background-color: #ffffff !important;
         border: 2px solid #1a237e !important;
@@ -62,7 +61,6 @@ st.markdown("""
         font-weight: bold !important;
     }
 
-    /* تنسيق الأزرار */
     div.stButton > button {
         width: 100%;
         border-radius: 15px;
@@ -113,7 +111,7 @@ if st.session_state.page == "home":
 elif st.session_state.page == "att_login":
     if st.button("⬅️ عودة للرئيسية"): st.session_state.page = "home"; st.rerun()
     st.markdown("### 🔐 منطقة دخول المعلم")
-    t_id = st.text_input("أدخل رقم السجل المدني للمعلم:", type="password", help="سيظهر النص بلون مختلف لسهولة الإدخال")
+    t_id = st.text_input("أدخل رقم السجل المدني للمعلم:", type="password")
     if st.button("دخول"):
         res = supabase.table("teachers").select("*").eq("national_id", t_id.strip()).execute()
         if res.data:
@@ -159,7 +157,6 @@ elif st.session_state.page == "admin_panel":
             df = pd.DataFrame(res.data)
             df_abs = df[df['status'].isin(['غائب', 'متأخر'])].copy()
             if not df_abs.empty:
-                # جلب الشعبة للعرض في الجدول فقط
                 classes = []
                 for name in df_abs['student_name']:
                     try:
@@ -175,12 +172,9 @@ elif st.session_state.page == "admin_panel":
                 final_view.columns = ['رقم اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة', 'المعلم']
                 st.table(final_view)
                 
-                # --- تعديل رسالة واتساب (حذف الشعبة + مسافة بين الطلاب) ---
                 msg = f"🗓️ *تقرير مدرسة القطيف التقني*%0A📅 *التاريخ:* {d}%0A---------------------------------------%0A"
                 for _, r in df_abs.iterrows():
-                    # تمت إضافة %0A إضافية لعمل سطر فارغ (مسافة) وحذف الشعبة
                     msg += f"📦 *لجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']} ({r['status']})%0A%0A"
-                
                 st.markdown(f'<a href="https://wa.me/?text={msg}" target="_blank" class="whatsapp-btn">إرسال التقرير عبر واتساب 📲</a>', unsafe_allow_html=True)
             else: st.success("جميع الطلاب حاضرون لهذا اليوم")
 
@@ -202,9 +196,39 @@ elif st.session_state.page == "admin_panel":
 
     with tab3:
         st.subheader("🛠️ أدوات التحكم بالبيانات")
-        admin_pass = st.text_input("أدخل الرقم السري للتحكم (4321):", type="password")
+        admin_pass = st.text_input("أدخل الرقم السري للتحكم بالبيانات (4321):", type="password")
         if admin_pass == "4321":
-            st.success("تم تفعيل الصلاحيات")
-            if st.button("❌ حذف كافة بيانات الطلاب نهائياً"):
+            st.success("تم تفعيل صلاحيات الإدارة")
+            
+            # --- أزرار التصدير والاستعادة ---
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown("### 📥 تصدير البيانات")
+                std_res = supabase.table('students').select("*").execute()
+                if std_res.data:
+                    df_std = pd.DataFrame(std_res.data)
+                    # زر CSV
+                    st.download_button("💾 نسخة CSV", data=df_std.to_csv(index=False).encode('utf-8-sig'), file_name=f"students_{today_date}.csv")
+                    # زر XLSX
+                    out = io.BytesIO()
+                    with pd.ExcelWriter(out, engine='xlsxwriter') as writer:
+                        df_std.to_excel(writer, index=False)
+                    st.download_button("📊 نسخة XLSX", data=out.getvalue(), file_name=f"students_{today_date}.xlsx")
+            
+            with col_b:
+                st.markdown("### 🔄 استعادة النسخة")
+                up_file = st.file_uploader("ارفع ملف النسخة الاحتياطية:", type=["csv", "xlsx"])
+                if up_file and st.button("🚀 بدء عملية الاستعادة"):
+                    df_up = pd.read_csv(up_file) if up_file.name.endswith('.csv') else pd.read_excel(up_file)
+                    # مسح القديم
+                    supabase.table('students').delete().neq('student_name', 'none').execute()
+                    # إدخال الجديد
+                    recs = df_up.to_dict('records')
+                    for r in recs: r.pop('id', None)
+                    supabase.table('students').insert(recs).execute()
+                    st.success("تمت الاستعادة بنجاح!"); time.sleep(1); st.rerun()
+
+            st.divider()
+            if st.button("🗑️ حذف كافة بيانات الطلاب نهائياً", type="secondary"):
                 supabase.table('students').delete().neq('student_name', 'none').execute()
-                st.success("تم المسح بنجاح"); st.rerun()
+                st.success("تم مسح الجدول بنجاح"); st.rerun()
