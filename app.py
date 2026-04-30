@@ -36,6 +36,7 @@ def get_system_status():
         return res.data[0]['is_open'] if res.data else True
     except: return True
 
+# تهيئة متغيرات الجلسة
 if 'page' not in st.session_state: st.session_state.page = "home"
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'confirm_delete' not in st.session_state: st.session_state.confirm_delete = False
@@ -60,23 +61,16 @@ if st.session_state.page == "home":
     
     st.write("<br>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
-    
     with col1:
         if st.button("📝 تحضير الطلاب", use_container_width=True, type="primary"):
-            st.session_state.page = "attendance"
-            st.rerun()
-            
+            st.session_state.page = "attendance"; st.rerun()
     with col2:
         if st.button("⚙️ إدارة التطبيق", use_container_width=True):
-            st.session_state.page = "admin"
-            st.rerun()
+            st.session_state.page = "admin"; st.rerun()
 
 # --- 5. صفحة تحضير الطلاب ---
 elif st.session_state.page == "attendance":
-    if st.button("⬅️ العودة للرئيسية"):
-        st.session_state.page = "home"
-        st.rerun()
-        
+    if st.button("⬅️ العودة للرئيسية"): st.session_state.page = "home"; st.rerun()
     if not get_system_status():
         st.error("🚫 النظام مغلق حالياً من قبل الإدارة.")
     else:
@@ -96,7 +90,6 @@ elif st.session_state.page == "attendance":
             s_data = supabase.table('students').select("committee").execute()
             all_c = sorted(list(set([str(i['committee']) for i in s_data.data if i['committee']])), key=smart_sort)
             sel_c = st.selectbox("🎯 اختر اللجنة:", ["---"] + all_c)
-            
             if sel_c != "---":
                 students = supabase.table('students').select("*").eq('committee', sel_c).execute()
                 old = supabase.table('attendance').select("*").eq('committee', sel_c).eq('date', str(t_date)).execute()
@@ -108,62 +101,47 @@ elif st.session_state.page == "attendance":
                     c1.write(s['student_name'])
                     stat = c2.radio("الحالة", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['id'], horizontal=True)
                     results.append({"student_name": s['student_name'], "committee": sel_c, "status": stat, "date": str(t_date), "teacher_name": st.session_state.teacher_name})
-                
                 if st.button("💾 حفظ الكشف وخروج"):
                     supabase.table('attendance').delete().eq('committee', sel_c).eq('date', str(t_date)).execute()
                     supabase.table('attendance').insert(results).execute()
-                    st.success("✅ تم الحفظ بنجاح!")
-                    time.sleep(1)
-                    st.session_state.logged_in = False
-                    st.session_state.page = "home"
-                    st.rerun()
+                    st.success("✅ تم الحفظ بنجاح!"); time.sleep(1)
+                    st.session_state.logged_in = False; st.session_state.page = "home"; st.rerun()
 
 # --- 6. صفحة الإدارة ---
 elif st.session_state.page == "admin":
-    if st.button("⬅️ العودة للرئيسية"):
-        st.session_state.page = "home"
-        st.rerun()
-        
+    if st.button("⬅️ العودة للرئيسية"): st.session_state.page = "home"; st.rerun()
     st.header("📊 لوحة الإدارة والتقارير")
     pw = st.text_input("كلمة المرور", type="password")
-    
     if pw == "1234":
+        # زر التنقل الجديد لصفحة البيانات
+        if st.button("🗂️ إدارة بيانات الطلاب (Excel)", use_container_width=True):
+            st.session_state.page = "data_management"; st.rerun()
+        st.divider()
         c_status, c_del = st.columns(2)
         with c_status:
             is_open = get_system_status()
             if is_open:
                 st.success("🟢 النظام: مفتوح")
                 if st.button("🔴 إيقاف الرصد"):
-                    supabase.table("settings").update({"is_open": False}).eq("setting_name", "attendance_status").execute()
-                    st.rerun()
+                    supabase.table("settings").update({"is_open": False}).eq("setting_name", "attendance_status").execute(); st.rerun()
             else:
                 st.error("🔴 النظام: مغلق")
                 if st.button("🟢 تفعيل الرصد"):
-                    supabase.table("settings").update({"is_open": True}).eq("setting_name", "attendance_status").execute()
-                    st.rerun()
-        
+                    supabase.table("settings").update({"is_open": True}).eq("setting_name", "attendance_status").execute(); st.rerun()
         with c_del:
             st.warning("🗑️ حذف بيانات يوم")
             d_date = st.date_input("اختر التاريخ", datetime.now(), key="del_date")
             if st.button(f"⚠️ مسح غياب يوم {d_date}"): st.session_state.confirm_delete = True
             if st.session_state.confirm_delete:
-                st.error("تأكيد الحذف النهائي؟")
-                cy, cn = st.columns(2)
-                if cy.button("✅ نعم"):
+                st.error("تأكيد الحذف؟")
+                if st.button("✅ نعم"):
                     supabase.table('attendance').delete().eq('date', str(d_date)).execute()
-                    st.session_state.confirm_delete = False
-                    st.success("تم الحذف"); time.sleep(0.5); st.rerun()
-                if cn.button("❌ تراجع"):
-                    st.session_state.confirm_delete = False
-                    st.rerun()
-
+                    st.session_state.confirm_delete = False; st.success("تم الحذف"); time.sleep(0.5); st.rerun()
         st.divider()
         rep_date = st.date_input("📅 تاريخ المتابعة", datetime.now(), key="rep_date")
         att = supabase.table('attendance').select("*").eq('date', str(rep_date)).execute()
         std = supabase.table('students').select("student_name, section, committee").execute()
-        
         t1, t2 = st.tabs(["⚠️ كشف الغياب التفصيلي", "🚩 حالة اللجان"])
-        
         with t1:
             if att.data:
                 df_a, df_s = pd.DataFrame(att.data), pd.DataFrame(std.data)
@@ -171,18 +149,55 @@ elif st.session_state.page == "admin":
                 final = m[m['status'].isin(['غائب', 'متأخر'])][['student_name', 'section', 'committee_x', 'status']]
                 final.columns = ['الاسم', 'الشعبة', 'اللجنة', 'الحالة']
                 msg = f"*تقرير الغياب - {rep_date}*\n\n"
-                for _, r in final.iterrows():
-                    msg += f"👤 {r['الاسم']}\n🏢 الشعبة: {r['الشعبة']} | 🎯 اللجنة: {r['اللجنة']}\n🚩 الحالة: *{r['الحالة']}*\n---\n"
-                st.link_button("📱 إرسال الكشف التفصيلي عبر واتساب", f"https://wa.me/?text={urllib.parse.quote(msg)}")
-                st.table(final)
+                for _, r in final.iterrows(): msg += f"👤 {r['الاسم']}\n🏢 الشعبة: {r['الشعبة']} | 🎯 اللجنة: {r['اللجنة']}\n🚩 الحالة: *{r['الحالة']}*\n---\n"
+                st.link_button("📱 إرسال الكشف عبر واتساب", f"https://wa.me/?text={urllib.parse.quote(msg)}"); st.table(final)
             else: st.info("لا توجد سجلات.")
-
         with t2:
-            all_comms = set([str(s['committee']) for s in std.data if s['committee']])
-            done_comms = set([str(a['committee']) for a in att.data])
-            not_done = sorted(list(all_comms - done_comms), key=smart_sort)
+            all_c = set([str(s['committee']) for s in std.data if s['committee']])
+            done_c = set([str(a['committee']) for a in att.data])
+            not_done = sorted(list(all_c - done_c), key=smart_sort)
             c_done, c_not = st.columns(2)
-            c_done.success(f"✅ لجان رصدت ({len(done_comms)}):\n\n" + ", ".join(sorted(list(done_comms), key=smart_sort)))
-            c_not.error(f"❌ لجان لم ترصد ({len(not_done)}):\n\n" + ", ".join(not_done))
-    else:
-        st.info("🔓 يرجى إدخال كلمة المرور للوصول للصلاحيات")
+            c_done.success(f"✅ رصدت ({len(done_c)}):\n\n" + ", ".join(sorted(list(done_c), key=smart_sort)))
+            c_not.error(f"❌ لم ترصد ({len(not_done)}):\n\n" + ", ".join(not_done))
+    else: st.info("🔓 أدخل كلمة المرور")
+
+# --- 7. صفحة إدارة البيانات (New Page) ---
+elif st.session_state.page == "data_management":
+    if st.button("⬅️ العودة للإدارة"): st.session_state.page = "admin"; st.rerun()
+    st.header("🗂️ إدارة بيانات الطلاب")
+    
+    tab_upload, tab_edit = st.tabs(["📤 رفع وحذف البيانات", "✏️ تعديل بيانات طالب"])
+    
+    with tab_upload:
+        st.subheader("1. حذف جميع الطلاب")
+        st.warning("⚠️ تحذير: هذا الإجراء سيقوم بمسح كافة أسماء الطلاب من النظام.")
+        if st.button("❌ حذف جميع الأسماء"):
+            supabase.table('students').delete().neq('id', 0).execute()
+            st.success("تم مسح قاعدة البيانات بنجاح.")
+            
+        st.divider()
+        st.subheader("2. رفع ملف Excel جديد")
+        st.info("يجب أن يحتوي الملف على الأعمدة التالية: student_name, section, committee")
+        uploaded_file = st.file_uploader("اختر ملف Excel", type=['xlsx'])
+        if uploaded_file:
+            df = pd.read_excel(uploaded_file)
+            if st.button("🚀 بدء الرفع"):
+                data_to_insert = df.to_dict(orient='records')
+                supabase.table('students').insert(data_to_insert).execute()
+                st.success(f"تم رفع {len(data_to_insert)} طالب بنجاح!")
+
+    with tab_edit:
+        st.subheader("3. تعديل بيانات طالب محدد")
+        search_name = st.text_input("ابحث عن اسم الطالب للتعديل:")
+        if search_name:
+            res = supabase.table('students').select("*").ilike('student_name', f'%{search_name}%').execute()
+            if res.data:
+                for student in res.data:
+                    with st.expander(f"تعديل: {student['student_name']}"):
+                        new_name = st.text_input("الاسم", student['student_name'], key=f"n_{student['id']}")
+                        new_sec = st.text_input("الشعبة", student['section'], key=f"s_{student['id']}")
+                        new_comm = st.text_input("اللجنة", student['committee'], key=f"c_{student['id']}")
+                        if st.button("💾 حفظ التعديل", key=f"b_{student['id']}"):
+                            supabase.table('students').update({"student_name": new_name, "section": new_sec, "committee": new_comm}).eq('id', student['id']).execute()
+                            st.success("تم التحديث!"); time.sleep(0.5); st.rerun()
+            else: st.warning("لم يتم العثور على طالب بهذا الاسم.")
