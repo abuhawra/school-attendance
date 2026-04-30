@@ -14,12 +14,12 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. هندسة التوسيط الكامل وتنسيق الواجهة
+# 2. هندسة التوسيط المطلق وتنسيق الواجهة
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="centered")
 
 st.markdown("""
     <style>
-    /* إخفاء القوائم غير الضرورية */
+    /* إخفاء القوائم والترويسات */
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     footer {visibility: hidden;}
@@ -30,30 +30,41 @@ st.markdown("""
         background-color: #f9fbff;
     }
 
+    /* ضمان توسيط جميع محتويات الحاوية الرئيسية */
+    .block-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
     /* تنسيق النصوص وتوسيطها */
     .center-container {
         text-align: center !important;
         direction: rtl;
         width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 
     /* تكبير الخطوط بشكل متناسق */
-    .main-title { font-size: 38px !important; font-weight: 800; color: #2c3e50; margin-bottom: 5px; }
-    .school-name { font-size: 26px !important; color: #546e7a; margin-bottom: 25px; }
-    .label-style { font-size: 24px !important; color: #78909c; font-weight: bold; margin-top: 25px; }
-    .name-style { font-size: 34px !important; color: #1e88e5; font-weight: 900; margin-bottom: 10px; }
+    .main-title { font-size: 38px !important; font-weight: 800; color: #2c3e50; margin-bottom: 5px; width: 100%; }
+    .school-name { font-size: 26px !important; color: #546e7a; margin-bottom: 25px; width: 100%; }
+    .label-style { font-size: 24px !important; color: #78909c; font-weight: bold; margin-top: 25px; width: 100%; }
+    .name-style { font-size: 34px !important; color: #1e88e5; font-weight: 900; margin-bottom: 10px; width: 100%; }
 
-    /* --- توسيط الأزرار تماماً في منتصف الشاشة --- */
+    /* --- التوسيط الإجباري للأزرار --- */
     div.stButton {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
     }
 
     .stButton button {
         width: 100% !important;
-        max-width: 380px !important; /* عرض مثالي للجوال */
+        max-width: 380px !important; 
         height: 75px !important;
         border-radius: 20px !important;
         font-size: 24px !important;
@@ -62,22 +73,20 @@ st.markdown("""
         display: block !important;
         box-shadow: 0 6px 15px rgba(0,0,0,0.1) !important;
         border: none !important;
-        transition: transform 0.2s ease;
     }
     
-    .stButton button:active {
-        transform: scale(0.98);
-    }
-
     /* ألوان هادئة واحترافية */
     button[kind="primary"] { background-color: #3498db !important; color: white !important; }
     button[kind="secondary"] { background-color: #90a4ae !important; color: white !important; }
 
-    /* تحسين شكل الفواصل */
-    hr { border: 0; height: 2px; background-image: linear-gradient(to right, transparent, #3498db, transparent); margin: 30px 0; }
-    
-    /* تنسيق الراديو بوتون ليكون واضحاً */
-    div[data-testid="stMarkdownContainer"] p { font-size: 20px !important; font-weight: bold; }
+    /* تحسين شكل الفواصل وتوسيطها */
+    hr { 
+        border: 0; 
+        height: 2px; 
+        background-image: linear-gradient(to right, transparent, #3498db, transparent); 
+        margin: 30px auto; 
+        width: 80%;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -87,6 +96,7 @@ if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
 # --- الصفحة الرئيسية ---
 if st.session_state.page == "home":
+    # استخدام حاوية مخصصة لضمان التوسيط الأفقي للنصوص
     st.markdown('<div class="center-container">', unsafe_allow_html=True)
     st.markdown('<div class="main-title">برنامج التحضير الرقمي</div>', unsafe_allow_html=True)
     st.markdown('<div class="school-name">مدرسة القطيف الثانوية</div>', unsafe_allow_html=True)
@@ -131,7 +141,6 @@ elif st.session_state.page == "attendance":
         st.info(f"المعلم المسؤول: {st.session_state.teacher_name}")
         t_date = st.date_input("تاريخ التحضير", datetime.now())
         
-        # جلب قائمة اللجان
         s_data = supabase.table('students').select("committee").execute()
         coms = sorted(list(set([str(i['committee']) for i in s_data.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else x)
         sel_c = st.selectbox("اختر اللجنة:", ["---"] + coms)
@@ -170,4 +179,3 @@ elif st.session_state.page == "admin":
     admin_pw = st.text_input("كلمة مرور الإدارة:", type="password")
     if admin_pw == "1234":
         st.success("مرحباً بك في لوحة التحكم")
-        # يمكن إضافة تقارير أو أدوات إدارة البيانات هنا
