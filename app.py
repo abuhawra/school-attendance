@@ -56,8 +56,10 @@ def fix_arabic(text):
 def create_pdf(df, report_date):
     pdf = FPDF()
     pdf.add_page()
+    
     current_dir = os.path.dirname(os.path.abspath(__file__))
     font_path = os.path.join(current_dir, "arial.ttf")
+    
     has_font = False
     if os.path.exists(font_path):
         try:
@@ -82,6 +84,9 @@ def create_pdf(df, report_date):
     else:
         pdf.set_font("Arial", size=14)
         pdf.cell(200, 10, txt=f"Attendance Report - {report_date}", ln=True, align='C')
+        pdf.ln(10)
+        pdf.set_font("Arial", size=10)
+        pdf.cell(190, 10, txt="Font Error: Arabic names display in App only.", ln=True, align='C')
             
     return pdf.output()
 
@@ -147,66 +152,62 @@ elif st.session_state.page == "attendance":
 
 # صفحة الإدارة
 elif st.session_state.page == "admin":
-    if st.button("⬅️ عودة للمؤشر الرئيسي"): st.session_state.page = "home"; st.rerun()
+    if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     pw = st.text_input("كلمة مرور الإدارة:", type="password")
     if pw == "1234":
-        tab1, tab2 = st.tabs(["📊 تقارير الغياب", "🗂️ إدارة بيانات الطلاب"])
+        st.subheader("📊 استخراج تقارير الغياب")
+        rep_date = st.date_input("تاريخ التقرير المطلوب", datetime.now())
+        att = supabase.table('attendance').select("*").eq('date', str(rep_date)).execute()
         
-        with tab1:
-            rep_date = st.date_input("تاريخ التقرير المطلوب", datetime.now())
-            att = supabase.table('attendance').select("*").eq('date', str(rep_date)).execute()
+        if att.data:
+            df_att = pd.DataFrame(att.data)
+            std = supabase.table('students').select("student_name, section, committee").execute()
+            df_s = pd.DataFrame(std.data)
             
-            if att.data:
-                df_att = pd.DataFrame(att.data)
-                std = supabase.table('students').select("student_name, section, committee").execute()
-                df_s = pd.DataFrame(std.data)
-                final = pd.merge(df_att, df_s, on='student_name', how='left')
-                final = final[final['status'].isin(['غائب', 'متأخر'])]
-                display_df = final[['student_name', 'section', 'committee_y', 'status']]
-                display_df.columns = ['الاسم', 'الشعبة', 'اللجنة', 'الحالة']
-                st.table(display_df)
-                
-                msg = f"*تقرير غياب مدرسة القطيف الثانوية*\n*التاريخ:* {rep_date}\n"
-                for _, r in display_df.iterrows():
-                    msg += f"--------------------------\n👤 {r['الاسم']}\n🏫 الشعبة: {r['الشعبة']}\n📦 اللجنة: {r['اللجنة']}\n📍 الحالة: {r['الحالة']}\n"
-                
-                encoded_msg = urllib.parse.quote(msg)
-                st.markdown(f'<a href="https://wa.me/?text={encoded_msg}" target="_blank"><div style="background-color: #25D366; color: white; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold;">📱 إرسال للوكيل (واتساب)</div></a>', unsafe_allow_html=True)
-            else: st.warning("لا توجد سجلات غياب لهذا التاريخ.")
-
-        with tab2:
-            st.subheader("⚙️ التحكم في قاعدة بيانات الطلاب")
+            final = pd.merge(df_att, df_s, on='student_name', how='left')
+            # فلترة الغائبين والمتأخرين فقط
+            final = final[final['status'].isin(['غائب', 'متأخر'])]
             
-            # 1. حذف جميع الأسماء
-            if st.button("⚠️ حذف جميع بيانات الطلاب الحالية", type="secondary"):
-                supabase.table('students').delete().neq('id', 0).execute()
-                st.success("تم مسح جميع الأسماء بنجاح.")
+            display_df = final[['student_name', 'section', 'committee_y', 'status']]
+            display_df.columns = ['الاسم', 'الشعبة', 'اللجنة', 'الحالة']
             
-            st.divider()
+            st.table(display_df)
             
-            # 2. رفع بيانات من إكسل
-            st.write("📤 رفع بيانات الطلاب من ملف Excel")
-            st.caption("يجب أن يحتوي الملف على الأعمدة: student_name, section, committee")
-            uploaded_file = st.file_uploader("اختر ملف إكسل", type=['xlsx'])
-            if uploaded_file:
-                df_upload = pd.read_excel(uploaded_file)
-                if st.button("تأكيد الرفع إلى القاعدة"):
-                    data_to_insert = df_upload.to_dict(orient='records')
-                    supabase.table('students').insert(data_to_insert).execute()
-                    st.success(f"تم رفع {len(data_to_insert)} طالب بنجاح.")
+            # صياغة رسالة الواتساب المطلوبة
+            msg = f"*تقرير غياب مدرسة القطيف الثانوية*\n"
+            msg += f"*التاريخ:* {rep_date}\n"
+            msg += "--------------------------\n"
             
-            st.divider()
+            for _, r in display_df.iterrows():
+                msg += f"👤 *الاسم:* {r['الاسم']}\n"
+                msg += f"🏫 *الشعبة:* {r['الشعبة']}\n"
+                msg += f"📦 *اللجنة:* {r['اللجنة']}\n"
+                msg += f"📍 *الحالة:* {r['الحالة']}\n"
+                msg += "--------------------------\n"
             
-            # 3. تعديل بيانات طالب
-            st.write("🔍 تعديل بيانات طالب محدد")
-            search_name = st.text_input("ادخل اسم الطالب للبحث عنه:")
-            if search_name:
-                res = supabase.table('students').select("*").ilike('student_name', f'%{search_name}%').execute()
-                if res.data:
-                    student_to_edit = res.data[0]
-                    new_name = st.text_input("الاسم الجديد:", value=student_to_edit['student_name'])
-                    new_sec = st.text_input("الشعبة الجديدة:", value=student_to_edit['section'])
-                    new_com = st.text_input("اللجنة الجديدة:", value=student_to_edit['committee'])
-                    if st.button("حفظ التعديلات"):
-                        supabase.table('students').update({"student_name": new_name, "section": new_sec, "committee": new_com}).eq('id', student_to_edit['id']).execute()
-                        st.success("تم تحديث البيانات.")
+            encoded_msg = urllib.parse.quote(msg)
+            wa_link = f"https://wa.me/?text={encoded_msg}"
+            
+            st.markdown(f"""
+                <a href="{wa_link}" target="_blank" style="text-decoration: none;">
+                    <div style="background-color: #25D366; color: white; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; cursor: pointer; font-size: 18px;">
+                        📱 إرسال التقرير عبر الواتساب (عادي / أعمال)
+                    </div>
+                </a>
+            """, unsafe_allow_html=True)
+            
+            st.write("<br>", unsafe_allow_html=True)
+            
+            if st.button("📄 إصدار تقرير PDF للتحميل", use_container_width=True):
+                try:
+                    pdf_output = create_pdf(display_df, rep_date)
+                    st.download_button(
+                        label="⬇️ تحميل ملف PDF",
+                        data=bytes(pdf_output),
+                        file_name=f"تقرير_غياب_{rep_date}.pdf",
+                        mime="application/pdf"
+                    )
+                except Exception as e:
+                    st.error(f"حدث خطأ في الـ PDF: {e}")
+        else:
+            st.warning("لا توجد سجلات غياب لهذا التاريخ.")
