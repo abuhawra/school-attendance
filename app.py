@@ -14,7 +14,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. تحسين مظهر الصفحة بالكامل عبر الـ CSS العام فقط
+# 2. تحسين مظهر الصفحة بالكامل وتكبير الخطوط
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="centered")
 
 st.markdown("""
@@ -25,7 +25,7 @@ st.markdown("""
     footer {visibility: hidden;}
     
     /* جعل جميع النصوص في المنتصف وخط واضح */
-    .stMarkdown, div[data-testid="stText"], h1, h2, h3, p {
+    .stMarkdown, div[data-testid="stText"], h1, h2, h3, p, span {
         text-align: center !important;
         direction: rtl;
     }
@@ -34,15 +34,36 @@ st.markdown("""
     .stApp {
         background-color: #f0f2f6;
     }
+
+    /* تكبير حجم الخط للعناوين الفرعية (فكرة وتنفيذ / مدير المدرسة) */
+    .stCaption {
+        font-size: 20px !important;
+        color: #555 !important;
+        font-weight: bold !important;
+    }
+
+    /* تكبير حجم الخط للأسماء */
+    h3 {
+        font-size: 28px !important;
+        color: #1f77b4 !important;
+        margin-top: 5px !important;
+        margin-bottom: 20px !important;
+    }
     
-    /* تنسيق الأزرار بشكل جذاب وهادئ */
+    /* تنسيق الأزرار وتوسيطها */
+    div.stButton {
+        display: flex;
+        justify-content: center;
+    }
+
     div.stButton > button {
         width: 100%;
-        height: 60px;
+        max-width: 380px; /* تحديد عرض أقصى للزر ليكون متناسقاً */
+        height: 65px;
         border-radius: 15px;
-        font-size: 20px !important;
+        font-size: 22px !important;
         font-weight: bold;
-        margin-top: 10px;
+        margin: 10px auto;
     }
     
     /* لون زر التحضير */
@@ -65,40 +86,35 @@ st.markdown("""
 if 'page' not in st.session_state: st.session_state.page = "home"
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
-# --- الصفحة الرئيسية المحدثة (بدون أي أكواد HTML في المحتوى) ---
+# --- الصفحة الرئيسية (توسيط وتكبير الخطوط) ---
 if st.session_state.page == "home":
-    st.write("") # مسافة علوية
+    st.write("<br>", unsafe_allow_html=True)
     st.title("برنامج التحضير الرقمي")
-    st.subheader("مدرسة القطيف الثانوية")
+    st.header("مدرسة القطيف الثانوية")
     
-    st.divider() # خط فاصل أنيق
+    st.divider() 
     
-    # عرض الأسماء باستخدام أدوات Streamlit المباشرة
+    # عرض الأسماء بخط عريض وواضح
     st.caption("فكرة وتنفيذ")
     st.subheader("أ. عارف أحمد الحداد")
-    
-    st.write("") # مسافة بين الأسماء
     
     st.caption("مدير المدرسة")
     st.subheader("أ. فراس عبدالله آل عبدالمحسن")
     
     st.divider()
-    st.write("")
+    st.write("<br>", unsafe_allow_html=True)
     
-    # الأزرار الرئيسية
+    # الأزرار الرئيسية موسطة تلقائياً عبر CSS
     if st.button("📝 ابدأ تحضير الطلاب", type="primary"):
-        st.session_state.page = "attendance"
-        st.rerun()
+        st.session_state.page = "attendance"; st.rerun()
     
     if st.button("⚙️ دخول لوحة التحكم", type="secondary"):
-        st.session_state.page = "admin"
-        st.rerun()
+        st.session_state.page = "admin"; st.rerun()
 
 # --- صفحة التحضير ---
 elif st.session_state.page == "attendance":
     if st.button("⬅️ عودة"):
-        st.session_state.page = "home"
-        st.rerun()
+        st.session_state.page = "home"; st.rerun()
         
     if not st.session_state.logged_in:
         st.info("الرجاء تسجيل الدخول للمتابعة")
@@ -115,7 +131,6 @@ elif st.session_state.page == "attendance":
         st.write(f"المعلم المسؤول: **{st.session_state.teacher_name}**")
         t_date = st.date_input("تاريخ اليوم", datetime.now())
         
-        # جلب اللجان
         s_data = supabase.table('students').select("committee").execute()
         coms = sorted(list(set([str(i['committee']) for i in s_data.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else x)
         sel_c = st.selectbox("اختر اللجنة المراد تحضيرها:", ["---"] + coms)
@@ -140,15 +155,12 @@ elif st.session_state.page == "attendance":
                 supabase.table('attendance').insert(results).execute()
                 st.success("تم حفظ كشف الغياب بنجاح!")
                 time.sleep(2)
-                st.session_state.page = "home"
-                st.session_state.logged_in = False
-                st.rerun()
+                st.session_state.page = "home"; st.session_state.logged_in = False; st.rerun()
 
 # --- صفحة الإدارة ---
 elif st.session_state.page == "admin":
     if st.button("⬅️ عودة"):
-        st.session_state.page = "home"
-        st.rerun()
+        st.session_state.page = "home"; st.rerun()
         
     pw = st.text_input("كلمة مرور الإدارة:", type="password")
     if pw == "1234":
@@ -165,4 +177,3 @@ elif st.session_state.page == "admin":
 
         with tab2:
             st.write("إدارة قاعدة بيانات المعلمين والطلاب")
-            # يمكن إضافة خصائص الرفع والتحميل هنا لاحقاً
