@@ -5,7 +5,8 @@ from datetime import datetime
 import time
 import urllib.parse
 from fpdf import FPDF
-import base64
+from arabic_reshaper import reshape
+from bidi.algorithm import get_display
 
 # 1. إعدادات الاتصال بقاعدة البيانات
 url = "https://lsmevvsogsqqqjyuqzbx.supabase.co"
@@ -25,23 +26,23 @@ hide_st_style = """
             footer {visibility: hidden;}
             .stAppDeployButton, [data-testid="stStatusWidget"], .st-emotion-cache-zq5wmm { display: none !important; }
 
-            /* زر تحضير الطلاب - أزرق فاتح */
             button[kind="primary"] {
                 background-color: #ADD8E6 !important;
                 color: #000000 !important;
                 border: 2px solid #ADD8E6 !important;
+                font-weight: bold;
             }
-            /* زر إدارة التطبيق - برتقالي */
             button[kind="secondary"] {
                 background-color: #FFA500 !important;
                 color: #FFFFFF !important;
                 border: 2px solid #FFA500 !important;
+                font-weight: bold;
             }
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# 3. دوال مساعدة
+# 3. الدوال المساعدة المطورة
 def smart_sort(x):
     try: return int(x)
     except: return str(x)
@@ -52,35 +53,48 @@ def get_system_status():
         return res.data[0]['is_open'] if res.data else True
     except: return True
 
+def fix_arabic(text):
+    """دالة لتصحيح النصوص العربية للـ PDF"""
+    reshaped_text = reshape(str(text))
+    return get_display(reshaped_text)
+
 def create_pdf(df, report_date):
     pdf = FPDF()
     pdf.add_page()
-    pdf.add_font('Arial', '', '', unicode=True) # تأكد من توفر خط يدعم العربية إذا أردت العربية بالكامل
-    pdf.set_font("Arial", size=12)
+    
+    # يفضل رفع ملف arial.ttf في مجلد المشروع لضمان ظهور العربية
+    # إذا لم يتوفر ملف الخط، سيظهر التقرير بالإنجليزية
+    try:
+        # pdf.add_font('Arial', '', 'arial.ttf', uni=True) 
+        pdf.set_font("Arial", size=16)
+    except:
+        pdf.set_font("Arial", size=16)
+
     pdf.cell(200, 10, txt=f"Attendance Report - {report_date}", ln=True, align='C')
     pdf.ln(10)
     
-    # أعمدة الجدول
-    pdf.cell(80, 10, "Student Name", 1)
-    pdf.cell(30, 10, "Section", 1)
-    pdf.cell(40, 10, "Committee", 1)
-    pdf.cell(30, 10, "Status", 1)
+    # العناوين
+    pdf.set_font("Arial", size=12)
+    pdf.cell(70, 10, "Student Name", 1, align='C')
+    pdf.cell(40, 10, "Section", 1, align='C')
+    pdf.cell(40, 10, "Committee", 1, align='C')
+    pdf.cell(40, 10, "Status", 1, align='C')
     pdf.ln()
     
     for _, row in df.iterrows():
-        pdf.cell(80, 10, str(row['الاسم']), 1)
-        pdf.cell(30, 10, str(row['الشعبة']), 1)
-        pdf.cell(40, 10, str(row['اللجنة']), 1)
-        pdf.cell(30, 10, str(row['الحالة']), 1)
+        # نستخدم دالة fix_arabic للأسماء
+        pdf.cell(70, 10, fix_arabic(row['الاسم']), 1, align='R')
+        pdf.cell(40, 10, str(row['الشعبة']), 1, align='C')
+        pdf.cell(40, 10, str(row['اللجنة']), 1, align='C')
+        pdf.cell(40, 10, fix_arabic(row['الحالة']), 1, align='R')
         pdf.ln()
     
-    return pdf.output(dest='S').encode('latin-1')
+    return pdf.output()
 
-# تهيئة متغيرات الجلسة
+# --- 4. منطق الصفحات ---
 if 'page' not in st.session_state: st.session_state.page = "home"
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
-# --- 4. الصفحة الرئيسية ---
 if st.session_state.page == "home":
     st.write("<br><br>", unsafe_allow_html=True)
     st.markdown(f"""
@@ -100,7 +114,6 @@ if st.session_state.page == "home":
         if st.button("⚙️ إدارة التطبيق", use_container_width=True, type="secondary"):
             st.session_state.page = "admin"; st.rerun()
 
-# --- 5. صفحة التحضير ---
 elif st.session_state.page == "attendance":
     if st.button("⬅️ العودة"): st.session_state.page = "home"; st.rerun()
     if not get_system_status():
@@ -114,6 +127,7 @@ elif st.session_state.page == "attendance":
                     st.session_state.logged_in = True
                     st.session_state.teacher_name = res.data[0].get('name_tech', 'المعلم')
                     st.rerun()
+                else: st.error("السجل غير صحيح")
         else:
             st.success(f"مرحباً: {st.session_state.teacher_name}")
             t_date = st.date_input("التاريخ", datetime.now())
@@ -133,7 +147,6 @@ elif st.session_state.page == "attendance":
                     supabase.table('attendance').insert(results).execute()
                     st.success("تم الحفظ!"); time.sleep(1); st.session_state.page = "home"; st.rerun()
 
-# --- 6. صفحة الإدارة والتقارير ---
 elif st.session_state.page == "admin":
     if st.button("⬅️ العودة"): st.session_state.page = "home"; st.rerun()
     pw = st.text_input("كلمة المرور", type="password")
@@ -151,19 +164,22 @@ elif st.session_state.page == "admin":
             
             st.table(final)
 
-            # زر الواتساب (متوافق مع ويب والأعمال)
-            msg = f"*تقرير الغياب - {rep_date}*\n\n"
+            # واتساب
+            msg = f"*تقرير الغياب - مدرسة القطيف الثانوية*\n*التاريخ:* {rep_date}\n\n"
             for _, r in final.iterrows():
                 msg += f"👤 {r['الاسم']} | {r['الحالة']}\n"
             
             whatsapp_url = f"https://api.whatsapp.com/send?text={urllib.parse.quote(msg)}"
-            st.link_button("📱 إرسال عبر الواتساب (Web/Business)", whatsapp_url)
+            st.link_button("📱 إرسال عبر الواتساب", whatsapp_url)
 
-            # زر PDF
-            if st.button("📄 عرض وتحميل PDF"):
-                pdf_data = create_pdf(final, rep_date)
-                b64 = base64.b64encode(pdf_data).decode('latin-1')
-                href = f'<a href="data:application/octet-stream;base64,{b64}" download="attendance_{rep_date}.pdf">اضغط هنا لتحميل ملف PDF</a>'
-                st.markdown(href, unsafe_allow_html=True)
+            # PDF المطور
+            pdf_output = create_pdf(final, rep_date)
+            st.download_button(
+                label="📄 تحميل تقرير الغياب PDF",
+                data=pdf_output,
+                file_name=f"غياب_{rep_date}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
         else:
             st.info("لا توجد بيانات لهذا التاريخ.")
