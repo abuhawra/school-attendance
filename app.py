@@ -13,7 +13,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. إعدادات الواجهة والتنسيق
+# 2. إعدادات الواجهة والتنسيق (CSS)
 st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
 st.markdown("""
     <style>
@@ -28,7 +28,7 @@ st.markdown("""
 
 if 'page' not in st.session_state: st.session_state.page = "home"
 
-# --- 🏠 الصفحة الرئيسية ---
+# --- 🏠 1. الصفحة الرئيسية ---
 if st.session_state.page == "home":
     st.markdown('<p class="main-title">التحضير التقني لمدرسة القطيف الثانوية</p>', unsafe_allow_html=True)
     st.markdown('<p style="text-align:center; font-size:18px;">مدير المدرسة: أ. فراس آل عبدالمحسن | إشراف: أ. عارف الحداد</p><hr>', unsafe_allow_html=True)
@@ -37,7 +37,7 @@ if st.session_state.page == "home":
         if st.button("📝 دخول المعلمين للرصد", type="primary"): st.session_state.page = "att_login"; st.rerun()
         if st.button("⚙️ لوحة الإدارة والتقارير"): st.session_state.page = "admin_login"; st.rerun()
 
-# --- 📝 نظام رصد المعلمين ---
+# --- 📝 2. نظام رصد المعلمين ---
 elif st.session_state.page == "att_login":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     t_id = st.text_input("أدخل رقم السجل المدني:", type="password")
@@ -65,7 +65,7 @@ elif st.session_state.page == "taking_attendance":
             supabase.table('attendance').insert(results).execute()
             st.success("✅ تم الحفظ بنجاح"); time.sleep(1); st.session_state.page = "home"; st.rerun()
 
-# --- ⚙️ لوحة الإدارة والتقارير ---
+# --- ⚙️ 3. لوحة الإدارة (التقارير) ---
 elif st.session_state.page == "admin_login":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("رمز دخول المسؤول:", type="password") == "1234": st.session_state.page = "admin_panel"; st.rerun()
@@ -75,27 +75,36 @@ elif st.session_state.page == "admin_panel":
     tab1, tab2, tab3 = st.tabs(["📊 التقارير الموحدة", "🏘️ متابعة اللجان", "💾 إدارة البيانات"])
     
     with tab1:
-        d = st.date_input("اختر التاريخ", datetime.now())
+        d = st.date_input("اختر تاريخ التقرير", datetime.now())
+        # جلب بيانات الحضور أولاً (الاستعلام المستقر)
         res_att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
+        
         if res_att.data:
             df_att = pd.DataFrame(res_att.data)
             df_abs = df_att[df_att['status'].isin(['غائب', 'متأخر'])].copy()
             
             if not df_abs.empty:
-                # حل "الشعبة" - جلب أسماء الطلاب وشعبهم برمجياً لتجنب خطأ API
-                res_std = supabase.table("students").select("student_name, class_name").execute()
-                df_std_info = pd.DataFrame(res_std.data)
-                
-                # دمج الشعبة بناءً على الاسم
-                df_final = pd.merge(df_abs, df_std_info, on="student_name", how="left")
+                # حل مشكلة الشعبة: جلب بيانات الطلاب الأساسية فقط
+                try:
+                    res_std = supabase.table("students").select("student_name", "class_name").execute()
+                    df_std_info = pd.DataFrame(res_std.data)
+                    # دمج البيانات برمجياً (أكثر استقراراً)
+                    df_final = pd.merge(df_abs, df_std_info, on="student_name", how="left")
+                except:
+                    # في حال فشل الاستعلام، يستمر البرنامج بدون الشعبة بدلاً من الانهيار
+                    df_final = df_abs
+                    df_final['class_name'] = "---"
+
+                # تنسيق الجدول النهائي
+                df_final['committee_num'] = pd.to_numeric(df_final['committee'], errors='coerce')
+                df_final = df_final.sort_values(by='committee_num')
                 
                 st.subheader(f"📋 كشف الحالات ليوم {d}")
-                # عرض الجدول بالترتيب المطلوب
-                view = df_final[['committee', 'student_name', 'class_name', 'status', 'teacher_name']].copy()
-                view.columns = ['رقم اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة', 'المعلم']
-                st.table(view)
+                view_table = df_final[['committee', 'student_name', 'class_name', 'status', 'teacher_name']].copy()
+                view_table.columns = ['رقم اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة', 'المعلم']
+                st.table(view_table)
                 
-                # رسالة واتساب الموحدة
+                # رسالة واتساب
                 msg = f"🗓️ *تقرير مدرسة القطيف*%0A📅 *التاريخ:* {d}%0A"
                 for _, r in df_final.iterrows():
                     msg += f"📦 *لجنة:* {r['committee']} | 🏫 *شعبة:* {r['class_name']}%0A👤 *الاسم:* {r['student_name']} ({r['status']})%0A"
@@ -104,11 +113,26 @@ elif st.session_state.page == "admin_panel":
         else: st.info("لا توجد بيانات لهذا التاريخ")
 
     with tab2:
-        # كود متابعة اللجان المستقر كما هو
-        st.write("🏘️ متابعة حالة رصد اللجان")
-        # ... (بقية كود المتابعة المستقر)
+        st.subheader(f"🏘️ حالة اللجان: {str(datetime.now().date())}")
+        # كود متابعة اللجان المستقر
+        all_s = supabase.table('students').select("committee").execute()
+        total_coms = sorted(list(set([str(i['committee']) for i in all_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
+        done_res = supabase.table('attendance').select("committee", "teacher_name").eq("date", str(datetime.now().date())).execute()
+        done_coms = {str(i['committee']): i['teacher_name'] for i in done_res.data}
+        col_x, col_y = st.columns(2)
+        with col_x:
+            st.success("✅ رصدت")
+            for c in total_coms:
+                if c in done_coms: st.write(f"📍 لجنة {c} ({done_coms[c]})")
+        with col_y:
+            st.error("❌ لم ترصد")
+            for c in total_coms:
+                if c not in done_coms: st.write(f"⚠️ لجنة {c}")
 
     with tab3:
-        if st.text_input("الرقم السري للإدارة:", type="password") == "4321":
-            st.success("تم تفعيل صلاحيات الإدارة")
-            # ... (بقية أدوات المسح والاستعادة المستقرة)
+        if st.text_input("الرقم السري للإدارة (4321):", type="password") == "4321":
+            st.success("صلاحية كاملة")
+            # أدوات التحكم بالبيانات المستقرة
+            if st.button("🗑️ مسح كافة بيانات الطلاب"):
+                supabase.table('students').delete().neq('student_name', 'none').execute()
+                st.success("تم المسح"); st.rerun()
