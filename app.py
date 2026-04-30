@@ -18,7 +18,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. تنسيق الواجهة (مدرسة القطيف الثانوية)
+# 2. تنسيق الواجهة
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="wide")
 
 st.markdown("""
@@ -43,7 +43,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. الدوال المساعدة للترتيب ومعالجة اللغة العربية
+# 3. الدوال المساعدة
 def smart_sort(x):
     try: return int(x)
     except: return str(x)
@@ -54,11 +54,11 @@ def fix_arabic(text):
         return get_display(reshaped)
     except: return str(text)
 
-# 4. إدارة الصفحات والتنقل
+# 4. إدارة التنقل
 if 'page' not in st.session_state: st.session_state.page = "home"
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
-# --- الصفحة الرئيسية ---
+# الصفحة الرئيسية
 if st.session_state.page == "home":
     st.write("<br><br>", unsafe_allow_html=True)
     st.markdown("""
@@ -79,7 +79,7 @@ if st.session_state.page == "home":
         if st.button("⚙️ لوحة تحكم الإدارة", use_container_width=True, type="secondary"):
             st.session_state.page = "admin"; st.rerun()
 
-# --- صفحة التحضير ---
+# صفحة التحضير
 elif st.session_state.page == "attendance":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if not st.session_state.logged_in:
@@ -113,7 +113,7 @@ elif st.session_state.page == "attendance":
                 st.success("✅ تم حفظ البيانات بنجاح!"); time.sleep(1)
                 st.session_state.page = "home"; st.session_state.logged_in = False; st.rerun()
 
-# --- صفحة الإدارة ---
+# صفحة الإدارة
 elif st.session_state.page == "admin":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     pw = st.text_input("كلمة مرور الإدارة:", type="password")
@@ -129,25 +129,29 @@ elif st.session_state.page == "admin":
                 df_att = pd.DataFrame(att.data)
                 std = supabase.table('students').select("student_name, section, committee").execute()
                 df_s = pd.DataFrame(std.data)
-                final = pd.merge(df_att, df_s, on='student_name', how='left')
-                final = final[final['status'].isin(['غائب', 'متأخر'])]
                 
-                display_df = final[['student_name', 'section', 'committee_y', 'status']]
-                display_df.columns = ['الاسم', 'الشعبة', 'اللجنة', 'الحالة']
-                st.table(display_df)
-                
-                msg = f"*تقرير غياب مدرسة القطيف الثانوية*\n*التاريخ:* {rep_date}\n"
-                for _, r in display_df.iterrows():
-                    msg += f"--------------------------\n👤 *الاسم:* {r['الاسم']}\n🏫 *الشعبة:* {r['الشعبة']}\n📦 *اللجنة:* {r['اللجنة']}\n📍 *الحالة:* {r['الحالة']}\n"
-                
-                encoded_msg = urllib.parse.quote(msg)
-                st.markdown(f'<a href="https://wa.me/?text={encoded_msg}" target="_blank"><div style="background-color: #25D366; color: white; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; cursor: pointer;">📱 إرسال التقرير عبر الواتساب</div></a>', unsafe_allow_html=True)
-            else: st.warning("لا توجد سجلات لهذا التاريخ.")
+                # حل مشكلة KeyError عبر التأكد من وجود العمود
+                if 'student_name' in df_att.columns and 'student_name' in df_s.columns:
+                    final = pd.merge(df_att, df_s, on='student_name', how='left')
+                    final = final[final['status'].isin(['غائب', 'متأخر'])]
+                    
+                    display_df = final[['student_name', 'section', 'committee_y', 'status']]
+                    display_df.columns = ['الاسم', 'الشعبة', 'اللجنة', 'الحالة']
+                    st.table(display_df)
+                    
+                    msg = f"*تقرير غياب مدرسة القطيف الثانوية*\n*التاريخ:* {rep_date}\n"
+                    for _, r in display_df.iterrows():
+                        msg += f"--------------------------\n👤 *الاسم:* {r['الاسم']}\n🏫 *الشعبة:* {r['الشعبة']}\n📦 *اللجنة:* {r['اللجنة']}\n📍 *الحالة:* {r['الحالة']}\n"
+                    
+                    encoded_msg = urllib.parse.quote(msg)
+                    st.markdown(f'<a href="https://wa.me/?text={encoded_msg}" target="_blank"><div style="background-color: #25D366; color: white; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; cursor: pointer;">📱 إرسال عبر الواتساب</div></a>', unsafe_allow_html=True)
+                else:
+                    st.error("خطأ في بنية البيانات: عمود student_name غير موجود.")
 
         with tab2:
             st.subheader("إدارة قاعدة بيانات الطلاب")
             
-            # --- ميزة النسخة الاحتياطية (تم تحديث المحرك هنا) ---
+            # قسم النسخة الاحتياطية المطور
             st.info("💾 النسخ الاحتياطي والاستعادة")
             col_bk1, col_bk2 = st.columns(2)
             
@@ -157,8 +161,9 @@ elif st.session_state.page == "admin":
                         all_students = supabase.table('students').select("student_name, section, committee").execute()
                         if all_students.data:
                             df_backup = pd.DataFrame(all_students.data)
+                            # تغيير المسميات في الملف المحمل لسهولة القراءة
+                            df_backup.columns = ['student_name', 'section', 'committee']
                             output = io.BytesIO()
-                            # استخدام engine='openpyxl' لضمان التوافق
                             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                                 df_backup.to_excel(writer, index=False, sheet_name='Students')
                             
@@ -178,31 +183,35 @@ elif st.session_state.page == "admin":
                     if st.button("🔄 تأكيد استرجاع البيانات"):
                         try:
                             df_restore = pd.read_excel(restore_file)
-                            supabase.table('students').delete().neq('id', 0).execute() 
-                            supabase.table('students').insert(df_restore.to_dict(orient='records')).execute()
-                            st.success("تم استرجاع النسخة الاحتياطية بنجاح.")
+                            
+                            # توحيد مسميات الأعمدة تلقائياً لتجنب KeyError
+                            mapping = {
+                                'الاسم': 'student_name', 
+                                'اسم الطالب': 'student_name',
+                                'الشعبة': 'section',
+                                'اللجنة': 'committee'
+                            }
+                            df_restore.rename(columns=mapping, inplace=True)
+                            
+                            # التأكد من وجود الأعمدة الأساسية بعد التحويل
+                            required = ['student_name', 'section', 'committee']
+                            if all(col in df_restore.columns for col in required):
+                                supabase.table('students').delete().neq('id', 0).execute() 
+                                supabase.table('students').insert(df_restore[required].to_dict(orient='records')).execute()
+                                st.success("تم استرجاع النسخة الاحتياطية بنجاح.")
+                            else:
+                                st.error(f"الملف لا يحتوي على الأعمدة المطلوبة: {required}")
                         except Exception as e:
                             st.error(f"خطأ في الاسترجاع: {e}")
 
             st.divider()
-            
-            if st.button("🗑️ حذف جميع أسماء الطلاب من النظام", type="secondary"):
+            if st.button("🗑️ حذف جميع أسماء الطلاب", type="secondary"):
                 supabase.table('students').delete().neq('id', 0).execute()
-                st.success("تم حذف جميع الأسماء بنجاح.")
-            
-            st.divider()
-            
-            st.subheader("📤 رفع بيانات الطلاب (ملف جديد)")
-            up_file = st.file_uploader("اختر ملف Excel", type=['xlsx'], key="file_up")
-            if up_file:
-                df_up = pd.read_excel(up_file)
-                if st.button("✅ تأكيد الرفع"):
-                    supabase.table('students').insert(df_up.to_dict(orient='records')).execute()
-                    st.success("تم الرفع بنجاح.")
+                st.success("تم الحذف بنجاح.")
 
         with tab3:
             st.subheader("تنظيف سجلات الغياب")
-            del_date = st.date_input("اختر التاريخ المراد حذف سجلاته:", datetime.now(), key="del_date")
-            if st.button("❌ حذف غياب هذا اليوم نهائياً"):
+            del_date = st.date_input("اختر التاريخ المراد حذفه:", datetime.now(), key="del_date")
+            if st.button("❌ حذف غياب هذا اليوم"):
                 supabase.table('attendance').delete().eq('date', str(del_date)).execute()
                 st.success(f"تم حذف سجلات {del_date}")
