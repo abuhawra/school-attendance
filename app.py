@@ -72,24 +72,21 @@ def create_pdf(df, report_date):
         pdf.set_font("ArabicFont", size=16)
         pdf.cell(200, 10, txt=fix_arabic(f"تقرير الغياب ليوم {report_date}"), ln=True, align='C')
         pdf.ln(10)
-        pdf.cell(40, 10, fix_arabic("الحالة"), 1, align='C')
-        pdf.cell(150, 10, fix_arabic("الاسم"), 1, align='C')
+        pdf.cell(30, 10, fix_arabic("الحالة"), 1, align='C')
+        pdf.cell(30, 10, fix_arabic("الشعبة"), 1, align='C')
+        pdf.cell(130, 10, fix_arabic("الاسم"), 1, align='C')
         pdf.ln()
         for _, row in df.iterrows():
-            pdf.cell(40, 10, fix_arabic(row['الحالة']), 1, align='C')
-            pdf.cell(150, 10, fix_arabic(row['الاسم']), 1, align='R')
+            pdf.cell(30, 10, fix_arabic(row['الحالة']), 1, align='C')
+            pdf.cell(30, 10, fix_arabic(row['الشعبة']), 1, align='C')
+            pdf.cell(130, 10, fix_arabic(row['الاسم']), 1, align='R')
             pdf.ln()
     else:
         pdf.set_font("Arial", size=14)
         pdf.cell(200, 10, txt=f"Attendance Report - {report_date}", ln=True, align='C')
         pdf.ln(10)
         pdf.set_font("Arial", size=10)
-        pdf.cell(190, 10, txt="Note: Text rendered in English format due to missing font file.", ln=True, align='C')
-        pdf.ln(5)
-        for _, row in df.iterrows():
-            pdf.cell(40, 10, "Absent/Late", 1)
-            pdf.cell(150, 10, "Check App for Name", 1)
-            pdf.ln()
+        pdf.cell(190, 10, txt="Font Error: Arabic names display in App only.", ln=True, align='C')
             
     return pdf.output()
 
@@ -163,29 +160,38 @@ elif st.session_state.page == "admin":
         att = supabase.table('attendance').select("*").eq('date', str(rep_date)).execute()
         
         if att.data:
-            df = pd.DataFrame(att.data)
-            std = supabase.table('students').select("student_name, section").execute()
+            df_att = pd.DataFrame(att.data)
+            std = supabase.table('students').select("student_name, section, committee").execute()
             df_s = pd.DataFrame(std.data)
             
-            final = pd.merge(df, df_s, on='student_name', how='left')
-            final = final[final['status'].isin(['غائب', 'متأخر'])][['student_name', 'section', 'status']]
-            final.columns = ['الاسم', 'الشعبة', 'الحالة']
+            final = pd.merge(df_att, df_s, on='student_name', how='left')
+            # فلترة الغائبين والمتأخرين فقط
+            final = final[final['status'].isin(['غائب', 'متأخر'])]
             
-            st.table(final)
+            display_df = final[['student_name', 'section', 'committee_y', 'status']]
+            display_df.columns = ['الاسم', 'الشعبة', 'اللجنة', 'الحالة']
             
-            # تحسين رابط الواتساب ليفتح التطبيق المثبت (عادي أو أعمال)
-            msg = f"*تقرير غياب مدرسة القطيف الثانوية*\n*التاريخ:* {rep_date}\n\n"
-            for _, r in final.iterrows():
-                msg += f"• {r['الاسم']} ({r['الحالة']})\n"
+            st.table(display_df)
             
-            # الرابط العالمي wa.me يخير المستخدم بين التطبيقات المتاحة
+            # صياغة رسالة الواتساب المطلوبة
+            msg = f"*تقرير غياب مدرسة القطيف الثانوية*\n"
+            msg += f"*التاريخ:* {rep_date}\n"
+            msg += "--------------------------\n"
+            
+            for _, r in display_df.iterrows():
+                msg += f"👤 *الاسم:* {r['الاسم']}\n"
+                msg += f"🏫 *الشعبة:* {r['الشعبة']}\n"
+                msg += f"📦 *اللجنة:* {r['اللجنة']}\n"
+                msg += f"📍 *الحالة:* {r['الحالة']}\n"
+                msg += "--------------------------\n"
+            
             encoded_msg = urllib.parse.quote(msg)
             wa_link = f"https://wa.me/?text={encoded_msg}"
             
             st.markdown(f"""
                 <a href="{wa_link}" target="_blank" style="text-decoration: none;">
-                    <div style="background-color: #25D366; color: white; padding: 10px; border-radius: 10px; text-align: center; font-weight: bold; cursor: pointer;">
-                        📱 إرسال للوكيل (واتساب عادي أو أعمال)
+                    <div style="background-color: #25D366; color: white; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; cursor: pointer; font-size: 18px;">
+                        📱 إرسال التقرير عبر الواتساب (عادي / أعمال)
                     </div>
                 </a>
             """, unsafe_allow_html=True)
@@ -194,14 +200,14 @@ elif st.session_state.page == "admin":
             
             if st.button("📄 إصدار تقرير PDF للتحميل", use_container_width=True):
                 try:
-                    pdf_output = create_pdf(final, rep_date)
+                    pdf_output = create_pdf(display_df, rep_date)
                     st.download_button(
-                        label="⬇️ تحميل الملف الآن",
+                        label="⬇️ تحميل ملف PDF",
                         data=bytes(pdf_output),
                         file_name=f"تقرير_غياب_{rep_date}.pdf",
                         mime="application/pdf"
                     )
                 except Exception as e:
-                    st.error(f"حدث خطأ فني: {e}")
+                    st.error(f"حدث خطأ في الـ PDF: {e}")
         else:
             st.warning("لا توجد سجلات غياب لهذا التاريخ.")
