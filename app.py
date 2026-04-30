@@ -13,7 +13,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. إخفاء عناصر Streamlit غير المرغوبة
+# 2. إخفاء عناصر Streamlit وإضافة تنسيق الأزرار المخصص
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="wide")
 hide_st_style = """
             <style>
@@ -21,11 +21,25 @@ hide_st_style = """
             header {visibility: hidden;}
             footer {visibility: hidden;}
             .stAppDeployButton {display:none;}
+            
+            /* تنسيق زر تحضير الطلاب - أزرق فاتح */
+            div.stButton > button:first-child[data-testid="baseButton-primary"] {
+                background-color: #add8e6;
+                color: #000000;
+                border: none;
+            }
+            
+            /* تنسيق زر إدارة التطبيق - برتقالي */
+            div.stButton > button:first-child[data-testid="baseButton-secondary"] {
+                background-color: #ffa500;
+                color: #ffffff;
+                border: none;
+            }
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# 3. الدوال الأساسية وتهيئة الحالة
+# 3. الدوال الأساسية
 def smart_sort(x):
     try: return int(x)
     except: return str(x)
@@ -62,10 +76,12 @@ if st.session_state.page == "home":
     st.write("<br>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
+        # زر تحضير الطلاب باللون الأزرق الفاتح (Primary)
         if st.button("📝 تحضير الطلاب", use_container_width=True, type="primary"):
             st.session_state.page = "attendance"; st.rerun()
     with col2:
-        if st.button("⚙️ إدارة التطبيق", use_container_width=True):
+        # زر إدارة التطبيق باللون البرتقالي (Secondary)
+        if st.button("⚙️ إدارة التطبيق", use_container_width=True, type="secondary"):
             st.session_state.page = "admin"; st.rerun()
 
 # --- 5. صفحة تحضير الطلاب ---
@@ -113,7 +129,6 @@ elif st.session_state.page == "admin":
     st.header("📊 لوحة الإدارة والتقارير")
     pw = st.text_input("كلمة المرور", type="password")
     if pw == "1234":
-        # زر التنقل الجديد لصفحة البيانات
         if st.button("🗂️ إدارة بيانات الطلاب (Excel)", use_container_width=True):
             st.session_state.page = "data_management"; st.rerun()
         st.divider()
@@ -161,33 +176,24 @@ elif st.session_state.page == "admin":
             c_not.error(f"❌ لم ترصد ({len(not_done)}):\n\n" + ", ".join(not_done))
     else: st.info("🔓 أدخل كلمة المرور")
 
-# --- 7. صفحة إدارة البيانات (New Page) ---
+# --- 7. صفحة إدارة البيانات ---
 elif st.session_state.page == "data_management":
     if st.button("⬅️ العودة للإدارة"): st.session_state.page = "admin"; st.rerun()
     st.header("🗂️ إدارة بيانات الطلاب")
-    
     tab_upload, tab_edit = st.tabs(["📤 رفع وحذف البيانات", "✏️ تعديل بيانات طالب"])
-    
     with tab_upload:
-        st.subheader("1. حذف جميع الطلاب")
-        st.warning("⚠️ تحذير: هذا الإجراء سيقوم بمسح كافة أسماء الطلاب من النظام.")
-        if st.button("❌ حذف جميع الأسماء"):
+        st.warning("⚠️ حذف جميع الأسماء")
+        if st.button("❌ مسح قاعدة البيانات"):
             supabase.table('students').delete().neq('id', 0).execute()
-            st.success("تم مسح قاعدة البيانات بنجاح.")
-            
+            st.success("تم الحذف.")
         st.divider()
-        st.subheader("2. رفع ملف Excel جديد")
-        st.info("يجب أن يحتوي الملف على الأعمدة التالية: student_name, section, committee")
-        uploaded_file = st.file_uploader("اختر ملف Excel", type=['xlsx'])
+        uploaded_file = st.file_uploader("رفع ملف Excel جديد", type=['xlsx'])
         if uploaded_file:
             df = pd.read_excel(uploaded_file)
             if st.button("🚀 بدء الرفع"):
-                data_to_insert = df.to_dict(orient='records')
-                supabase.table('students').insert(data_to_insert).execute()
-                st.success(f"تم رفع {len(data_to_insert)} طالب بنجاح!")
-
+                supabase.table('students').insert(df.to_dict(orient='records')).execute()
+                st.success("تم الرفع بنجاح!")
     with tab_edit:
-        st.subheader("3. تعديل بيانات طالب محدد")
         search_name = st.text_input("ابحث عن اسم الطالب للتعديل:")
         if search_name:
             res = supabase.table('students').select("*").ilike('student_name', f'%{search_name}%').execute()
@@ -200,4 +206,3 @@ elif st.session_state.page == "data_management":
                         if st.button("💾 حفظ التعديل", key=f"b_{student['id']}"):
                             supabase.table('students').update({"student_name": new_name, "section": new_sec, "committee": new_comm}).eq('id', student['id']).execute()
                             st.success("تم التحديث!"); time.sleep(0.5); st.rerun()
-            else: st.warning("لم يتم العثور على طالب بهذا الاسم.")
