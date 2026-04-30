@@ -14,7 +14,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. تحسين مظهر الصفحة بالكامل وتكبير الخطوط
+# 2. هندسة التنسيق (توسيط كامل وتكبير الخطوط)
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="centered")
 
 st.markdown("""
@@ -24,60 +24,79 @@ st.markdown("""
     header {visibility: hidden;}
     footer {visibility: hidden;}
     
-    /* جعل جميع النصوص في المنتصف وخط واضح */
-    .stMarkdown, div[data-testid="stText"], h1, h2, h3, p, span {
+    /* تنسيق الخلفية والجسم العام */
+    .stApp {
+        background-color: #f4f7f9;
+    }
+
+    /* حاوية النصوص لضمان التوسيط الكامل */
+    .center-text {
         text-align: center !important;
+        width: 100%;
+        display: block;
         direction: rtl;
     }
+
+    /* تكبير العناوين الرئيسية */
+    .main-title {
+        font-size: 38px !important;
+        font-weight: 800;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
     
-    /* تنسيق الحاوية الرئيسية */
-    .stApp {
-        background-color: #f0f2f6;
+    .school-name {
+        font-size: 26px !important;
+        color: #34495e;
+        margin-bottom: 30px;
     }
 
-    /* تكبير حجم الخط للعناوين الفرعية (فكرة وتنفيذ / مدير المدرسة) */
-    .stCaption {
-        font-size: 20px !important;
-        color: #555 !important;
-        font-weight: bold !important;
+    /* تكبير خط "فكرة وتنفيذ" و "مدير المدرسة" */
+    .label-style {
+        font-size: 24px !important;
+        color: #7f8c8d !important;
+        font-weight: bold;
+        margin-top: 25px;
     }
 
-    /* تكبير حجم الخط للأسماء */
-    h3 {
-        font-size: 28px !important;
+    /* تكبير خط الأسماء */
+    .name-style {
+        font-size: 32px !important;
         color: #1f77b4 !important;
-        margin-top: 5px !important;
-        margin-bottom: 20px !important;
+        font-weight: 900;
+        margin-bottom: 20px;
     }
-    
-    /* تنسيق الأزرار وتوسيطها */
+
+    /* توسيط الأزرار وتكبير الأيقونات */
     div.stButton {
         display: flex;
         justify-content: center;
+        align-items: center;
+        width: 100%;
     }
 
     div.stButton > button {
-        width: 100%;
-        max-width: 380px; /* تحديد عرض أقصى للزر ليكون متناسقاً */
-        height: 65px;
-        border-radius: 15px;
-        font-size: 22px !important;
-        font-weight: bold;
-        margin: 10px auto;
+        width: 100% !important;
+        max-width: 400px !important;
+        height: 75px !important;
+        border-radius: 20px !important;
+        font-size: 24px !important; /* حجم خط الزر */
+        font-weight: bold !important;
+        border: none !important;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        margin: 15px auto !important;
     }
-    
-    /* لون زر التحضير */
-    button[kind="primary"] {
-        background-color: #4A90E2 !important;
-        color: white !important;
-        border: none;
-    }
-    
-    /* لون زر الإدارة */
-    button[kind="secondary"] {
-        background-color: #7B8D9E !important;
-        color: white !important;
-        border: none;
+
+    /* ألوان الأزرار */
+    button[kind="primary"] { background-color: #4A90E2 !important; color: white !important; }
+    button[kind="secondary"] { background-color: #95a5a6 !important; color: white !important; }
+
+    /* تحسين شكل الفواصل */
+    hr {
+        border: 0;
+        height: 2px;
+        background-image: linear-gradient(to right, rgba(0,0,0,0), rgba(31,119,180,0.75), rgba(0,0,0,0));
+        margin: 30px 0;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -86,25 +105,25 @@ st.markdown("""
 if 'page' not in st.session_state: st.session_state.page = "home"
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
-# --- الصفحة الرئيسية (توسيط وتكبير الخطوط) ---
+# --- الصفحة الرئيسية (التصميم المطور) ---
 if st.session_state.page == "home":
+    # استخدام حاوية CSS مخصصة لضمان التوسيط
+    st.markdown('<div class="center-text main-title">برنامج التحضير الرقمي</div>', unsafe_allow_html=True)
+    st.markdown('<div class="center-text school-name">مدرسة القطيف الثانوية</div>', unsafe_allow_html=True)
+    
+    st.markdown("<hr>", unsafe_allow_html=True)
+    
+    # قسم الأسماء
+    st.markdown('<div class="center-text label-style">فكرة وتنفيذ</div>', unsafe_allow_html=True)
+    st.markdown('<div class="center-text name-style">أ. عارف أحمد الحداد</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div class="center-text label-style">مدير المدرسة</div>', unsafe_allow_html=True)
+    st.markdown('<div class="center-text name-style">أ. فراس عبدالله آل عبدالمحسن</div>', unsafe_allow_html=True)
+    
+    st.markdown("<hr>", unsafe_allow_html=True)
     st.write("<br>", unsafe_allow_html=True)
-    st.title("برنامج التحضير الرقمي")
-    st.header("مدرسة القطيف الثانوية")
     
-    st.divider() 
-    
-    # عرض الأسماء بخط عريض وواضح
-    st.caption("فكرة وتنفيذ")
-    st.subheader("أ. عارف أحمد الحداد")
-    
-    st.caption("مدير المدرسة")
-    st.subheader("أ. فراس عبدالله آل عبدالمحسن")
-    
-    st.divider()
-    st.write("<br>", unsafe_allow_html=True)
-    
-    # الأزرار الرئيسية موسطة تلقائياً عبر CSS
+    # الأزرار موسطة بالكامل
     if st.button("📝 ابدأ تحضير الطلاب", type="primary"):
         st.session_state.page = "attendance"; st.rerun()
     
@@ -117,8 +136,8 @@ elif st.session_state.page == "attendance":
         st.session_state.page = "home"; st.rerun()
         
     if not st.session_state.logged_in:
-        st.info("الرجاء تسجيل الدخول للمتابعة")
-        nid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
+        st.markdown('<div class="center-text school-name">تسجيل دخول المعلم</div>', unsafe_allow_html=True)
+        nid = st.text_input("أدخل السجل المدني:", type="password")
         if st.button("دخول"):
             res = supabase.table("teachers").select("*").eq("national_id", nid.strip()).execute()
             if res.data:
@@ -126,34 +145,28 @@ elif st.session_state.page == "attendance":
                 st.session_state.teacher_name = res.data[0].get('name_tech', 'المعلم')
                 st.rerun()
             else:
-                st.error("السجل المدني غير مسجل في النظام")
+                st.error("السجل المدني غير مسجل")
     else:
-        st.write(f"المعلم المسؤول: **{st.session_state.teacher_name}**")
+        st.markdown(f'<div class="center-text label-style">المعلم: {st.session_state.teacher_name}</div>', unsafe_allow_html=True)
         t_date = st.date_input("تاريخ اليوم", datetime.now())
         
         s_data = supabase.table('students').select("committee").execute()
         coms = sorted(list(set([str(i['committee']) for i in s_data.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else x)
-        sel_c = st.selectbox("اختر اللجنة المراد تحضيرها:", ["---"] + coms)
+        sel_c = st.selectbox("اختر اللجنة:", ["---"] + coms)
         
         if sel_c != "---":
             students = supabase.table('students').select("*").eq('committee', sel_c).execute()
             results = []
             
             for s in students.data:
-                st.markdown(f"**{s['student_name']}**")
+                st.markdown(f'<div class="center-text label-style">👤 {s["student_name"]}</div>', unsafe_allow_html=True)
                 stat = st.radio("الحالة", ["حاضر", "غائب", "متأخر"], key=f"st_{s['id']}", horizontal=True)
-                results.append({
-                    "student_name": s['student_name'], 
-                    "committee": sel_c, 
-                    "status": stat, 
-                    "date": str(t_date), 
-                    "teacher_name": st.session_state.teacher_name
-                })
+                results.append({"student_name": s['student_name'], "committee": sel_c, "status": stat, "date": str(t_date), "teacher_name": st.session_state.teacher_name})
             
-            if st.button("💾 حفظ وإرسال البيانات"):
+            if st.button("💾 حفظ البيانات"):
                 supabase.table('attendance').delete().eq('committee', sel_c).eq('date', str(t_date)).execute()
                 supabase.table('attendance').insert(results).execute()
-                st.success("تم حفظ كشف الغياب بنجاح!")
+                st.success("تم الحفظ بنجاح!")
                 time.sleep(2)
                 st.session_state.page = "home"; st.session_state.logged_in = False; st.rerun()
 
@@ -161,19 +174,6 @@ elif st.session_state.page == "attendance":
 elif st.session_state.page == "admin":
     if st.button("⬅️ عودة"):
         st.session_state.page = "home"; st.rerun()
-        
-    pw = st.text_input("كلمة مرور الإدارة:", type="password")
+    pw = st.text_input("كلمة المرور:", type="password")
     if pw == "1234":
-        tab1, tab2 = st.tabs(["📊 التقارير", "🗂️ إدارة البيانات"])
-        
-        with tab1:
-            rep_date = st.date_input("عرض تقرير يوم:", datetime.now())
-            att_data = supabase.table('attendance').select("*").eq('date', str(rep_date)).execute()
-            if att_data.data:
-                df = pd.DataFrame(att_data.data)
-                st.dataframe(df[['student_name', 'status', 'committee']], use_container_width=True)
-            else:
-                st.warning("لا توجد بيانات غياب لهذا اليوم.")
-
-        with tab2:
-            st.write("إدارة قاعدة بيانات المعلمين والطلاب")
+        st.write("لوحة التحكم")
