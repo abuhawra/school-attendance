@@ -17,7 +17,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. تنسيق الواجهة (الألوان المطلوبة: أزرق فاتح وبرتقالي)
+# 2. تنسيق الواجهة (ألوان مدرسة القطيف الثانوية)
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="wide")
 
 st.markdown("""
@@ -44,7 +44,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. الدوال المساعدة
+# 3. الدوال المساعدة لمعالجة النصوص والملفات
 def smart_sort(x):
     try: return int(x)
     except: return str(x)
@@ -60,29 +60,27 @@ def create_pdf(df, report_date):
     pdf.add_page()
     
     font_path = "arial.ttf"
-    has_font = False
+    has_font = os.path.exists(font_path)
     
-    if os.path.exists(font_path):
+    if has_font:
         try:
             pdf.add_font("ArabicFont", "", font_path)
             pdf.set_font("ArabicFont", size=12)
-            has_font = True
         except: has_font = False
     
     if not has_font:
         pdf.set_font("Arial", size=12)
         pdf.cell(200, 10, txt=f"Attendance Report - {report_date}", ln=True, align='C')
         pdf.ln(10)
-        pdf.cell(190, 10, txt="NOTICE: Upload 'arial.ttf' to GitHub for Arabic names support.", ln=True, align='C')
+        pdf.cell(190, 10, txt="NOTICE: Please upload 'arial.ttf' to GitHub for Arabic support", ln=True, align='C')
         pdf.ln(5)
-        # جدول بسيط بالإنجليزية لتجنب الخطأ
         pdf.cell(40, 10, "Status", 1)
-        pdf.cell(150, 10, "Student Name (Font Missing)", 1)
+        pdf.cell(150, 10, "Student Name", 1)
         pdf.ln()
         for _, row in df.iterrows():
             st_en = "Absent" if row['الحالة'] == "غائب" else "Late"
             pdf.cell(40, 10, st_en, 1)
-            pdf.cell(150, 10, "Arabic Text Hidden", 1)
+            pdf.cell(150, 10, "Check App for Arabic Names", 1)
             pdf.ln()
     else:
         pdf.cell(200, 10, txt=f"Attendance Report - {report_date}", ln=True, align='C')
@@ -184,11 +182,19 @@ elif st.session_state.page == "admin":
             wa_link = f"https://api.whatsapp.com/send?text={urllib.parse.quote(msg)}"
             st.link_button("📱 إرسال للوكيل عبر الواتساب", wa_link, use_container_width=True)
             
-            # PDF
+            # PDF (تم إصلاح نوع البيانات هنا)
             if st.button("📄 إصدار تقرير PDF للتحميل", use_container_width=True):
                 try:
-                    pdf_data = create_pdf(final, rep_date)
-                    st.download_button("⬇️ تحميل الملف الآن", data=pdf_data, file_name=f"غياب_{rep_date}.pdf", mime="application/pdf")
+                    pdf_output = create_pdf(final, rep_date)
+                    # تحويل المخرجات إلى bytes لضمان التوافق مع Streamlit
+                    pdf_bytes = bytes(pdf_output)
+                    
+                    st.download_button(
+                        label="⬇️ تحميل الملف الآن",
+                        data=pdf_bytes,
+                        file_name=f"تقرير_غياب_{rep_date}.pdf",
+                        mime="application/pdf"
+                    )
                 except Exception as e:
                     st.error(f"حدث خطأ فني: {e}")
         else:
