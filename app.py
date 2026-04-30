@@ -21,7 +21,7 @@ st.markdown("""
     .main-title { font-size: 32px; font-weight: 800; color: #1a237e; text-align: center; margin-bottom: 20px; }
     .whatsapp-btn { background-color: #25D366; color: white; padding: 18px; border-radius: 15px; text-align: center; text-decoration: none; display: block; font-weight: bold; margin: 20px auto; max-width: 600px; font-size: 20px; border: 1px solid #128C7E; }
     div.stButton > button { width: 100%; border-radius: 12px; font-weight: bold; height: 50px; }
-    .delete-btn button { background-color: #ff4b4b !important; color: white !important; }
+    .delete-section { background-color: #fff1f1; padding: 20px; border-radius: 15px; border: 1px solid #ffcccc; margin-top: 20px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -64,7 +64,7 @@ elif st.session_state.page == "taking_attendance":
             supabase.table('attendance').insert(results).execute()
             st.success("✅ تم الحفظ بنجاح"); time.sleep(1); st.session_state.page = "home"; st.rerun()
 
-# --- ⚙️ 3. لوحة الإدارة (النسخة الشاملة) ---
+# --- ⚙️ 3. لوحة الإدارة (تقارير + متابعة + بيانات) ---
 elif st.session_state.page == "admin_login":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("رمز دخول المسؤول:", type="password") == "1234": st.session_state.page = "admin_panel"; st.rerun()
@@ -75,15 +75,18 @@ elif st.session_state.page == "admin_panel":
     today_date = str(datetime.now().date())
 
     with tab1:
-        d = st.date_input("تاريخ التقرير", datetime.now())
-        res = supabase.table("attendance").select("*").eq("date", str(d)).execute()
+        d = st.date_input("اختر تاريخ التقرير لعرضه أو حذفه", datetime.now())
+        date_str = str(d)
+        res = supabase.table("attendance").select("*").eq("date", date_str).execute()
+        
         if res.data:
             df = pd.DataFrame(res.data)
             df_abs = df[df['status'].isin(['غائب', 'متأخر'])].copy()
+            
+            # عرض التقرير إذا وُجدت بيانات
             if not df_abs.empty:
                 df_abs['committee_num'] = pd.to_numeric(df_abs['committee'], errors='coerce')
                 df_abs = df_abs.sort_values(by='committee_num')
-                # جلب الشعبة
                 classes = []
                 for n in df_abs['student_name']:
                     try:
@@ -91,12 +94,39 @@ elif st.session_state.page == "admin_panel":
                         classes.append(si.data[0]['class_name'] if si.data else "---")
                     except: classes.append("---")
                 df_abs['الشعبة'] = classes
+                st.subheader(f"📋 كشف حالات الغياب ليوم {date_str}")
                 st.table(df_abs[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']])
-                msg = f"🗓️ *تقرير مدرسة القطيف*%0A📅 *التاريخ:* {d}%0A"
+                
+                msg = f"🗓️ *تقرير مدرسة القطيف*%0A📅 *التاريخ:* {date_str}%0A"
                 for _, r in df_abs.iterrows():
                     msg += f"📦 *لجنة:* {r['committee']} | 🏫 *شعبة:* {r['الشعبة']}%0A👤 *الاسم:* {r['student_name']} ({r['status']})%0A"
                 st.markdown(f'<a href="https://wa.me/?text={msg}" target="_blank" class="whatsapp-btn">إرسال التقرير عبر واتساب 📲</a>', unsafe_allow_html=True)
-            else: st.success("لا يوجد غياب")
+            else:
+                st.info("توجد بيانات تحضير (الكل حاضر) ولا توجد حالات غياب لعرضها.")
+
+            # زر حذف تقرير التاريخ المحدد
+            st.markdown('<div class="delete-section">', unsafe_allow_html=True)
+            st.warning(f"⚠️ منطقة خطرة: حذف بيانات اليوم {date_str}")
+            if st.button(f"🗑️ حذف كافة رصد تاريخ {date_str}", key="del_report_btn"):
+                st.session_state.confirm_report_del = True
+            
+            if st.session_state.get('confirm_report_del'):
+                st.error(f"هل أنت متأكد من حذف تقرير يوم {date_str} بالكامل؟ لا يمكن التراجع!")
+                c1, c2 = st.columns(2)
+                with c1:
+                    if st.button("نعم، احذف التقرير"):
+                        supabase.table('attendance').delete().eq('date', date_str).execute()
+                        st.success(f"✅ تم حذف تقرير يوم {date_str} بنجاح")
+                        st.session_state.confirm_report_del = False
+                        time.sleep(1)
+                        st.rerun()
+                with c2:
+                    if st.button("إلغاء الحذف"):
+                        st.session_state.confirm_report_del = False
+                        st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.write("لا توجد بيانات رصد مسجلة لهذا التاريخ.")
 
     with tab2:
         st.subheader(f"🏘️ حالة اللجان اليوم: {today_date}")
@@ -115,67 +145,40 @@ elif st.session_state.page == "admin_panel":
                 if c not in done_coms: st.write(f"⚠️ لجنة {c}")
 
     with tab3:
-        st.subheader("⚙️ أدوات إدارة البيانات")
-        
-        # --- الجزء الأول: النسخ والحذف ---
+        st.subheader("⚙️ إدارة بيانات الطلاب")
         col_act1, col_act2 = st.columns(2)
-        
         with col_act1:
-            st.markdown("### 📥 تصدير البيانات (نسخ)")
+            st.markdown("### 📥 تصدير")
             std_res = supabase.table('students').select("*").execute()
             if std_res.data:
                 df_backup = pd.DataFrame(std_res.data)
-                # تحميل CSV
-                st.download_button("تحميل نسخة CSV", data=df_backup.to_csv(index=False).encode('utf-8-sig'), file_name=f"backup_{today_date}.csv")
-                # تحميل Excel
+                st.download_button("تحميل CSV", data=df_backup.to_csv(index=False).encode('utf-8-sig'), file_name=f"backup_{today_date}.csv")
                 out = io.BytesIO()
                 with pd.ExcelWriter(out, engine='xlsxwriter') as writer:
                     df_backup.to_excel(writer, index=False)
-                st.download_button("تحميل نسخة Excel (XLSX)", data=out.getvalue(), file_name=f"backup_{today_date}.xlsx")
-
+                st.download_button("تحميل Excel (XLSX)", data=out.getvalue(), file_name=f"backup_{today_date}.xlsx")
+        
         with col_act2:
-            st.markdown("### 🗑️ منطقة الحذف")
-            st.write("حذف كافة الطلاب من النظام (تفريغ الجدول)")
-            if st.button("❌ حذف كافة بيانات الطلاب", key="del_all_btn"):
-                st.session_state.confirm_delete = True
-            
-            if st.session_state.get('confirm_delete'):
-                st.warning("❗ هل أنت متأكد تماماً من حذف جميع البيانات؟")
-                col_y, col_n = st.columns(2)
-                with col_y:
-                    if st.button("نعم، احذف الآن"):
-                        supabase.table('students').delete().neq('student_name', 'none').execute()
-                        st.success("✅ تم مسح البيانات بنجاح")
-                        st.session_state.confirm_delete = False
-                        time.sleep(1)
-                        st.rerun()
-                with col_n:
-                    if st.button("إلغاء"):
-                        st.session_state.confirm_delete = False
-                        st.rerun()
+            st.markdown("### 🗑️ مسح الجدول")
+            if st.button("❌ حذف كافة بيانات الطلاب", key="del_students"):
+                st.session_state.confirm_std_del = True
+            if st.session_state.get('confirm_std_del'):
+                if st.button("تأكيد الحذف النهائي"):
+                    supabase.table('students').delete().neq('student_name', 'none').execute()
+                    st.success("تم مسح الطلاب")
+                    st.session_state.confirm_std_del = False
+                    st.rerun()
 
         st.divider()
-
-        # --- الجزء الثاني: الاستعادة ---
-        st.markdown("### 🔄 إرجاع نسخة احتياطية (استعادة)")
-        up_file = st.file_uploader("ارفع ملف النسخة (CSV أو XLSX):", type=["csv", "xlsx"])
-        
+        st.markdown("### 🔄 استعادة من ملف")
+        up_file = st.file_uploader("ارفع ملف (CSV أو XLSX):", type=["csv", "xlsx"])
         if up_file:
-            try:
-                df_new = pd.read_csv(up_file) if up_file.name.endswith('.csv') else pd.read_excel(up_file)
-                st.write("معاينة البيانات:")
-                st.dataframe(df_new.head(3))
-                
-                if st.button("🚀 تنفيذ استعادة البيانات"):
-                    with st.spinner("جاري الرفع..."):
-                        # تفريغ الجدول أولاً
-                        supabase.table('students').delete().neq('student_name', 'none').execute()
-                        # الرفع
-                        recs = df_new.to_dict('records')
-                        for r in recs: r.pop('id', None) # إزالة الآيدي التلقائي
-                        supabase.table('students').insert(recs).execute()
-                        st.success("✅ تمت الاستعادة بنجاح!")
-                        time.sleep(1)
-                        st.rerun()
-            except Exception as e:
-                st.error(f"حدث خطأ: {e}")
+            df_new = pd.read_csv(up_file) if up_file.name.endswith('.csv') else pd.read_excel(up_file)
+            if st.button("🚀 استعادة البيانات الآن"):
+                supabase.table('students').delete().neq('student_name', 'none').execute()
+                recs = df_new.to_dict('records')
+                for r in recs: r.pop('id', None)
+                supabase.table('students').insert(recs).execute()
+                st.success("تمت الاستعادة!")
+                time.sleep(1)
+                st.rerun()
