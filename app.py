@@ -13,35 +13,48 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. إخفاء عناصر Streamlit وتنسيق الواجهة
+# 2. إخفاء عناصر Streamlit وتنسيق الواجهة (تحديث شامل للCSS)
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="wide")
 
 hide_st_style = """
             <style>
-            /* إخفاء القائمة العلوية والتذييل */
+            /* 1. إخفاء القائمة العلوية والتذييل والأيقونات الجانبية تماماً */
             #MainMenu {visibility: hidden;}
             header {visibility: hidden;}
             footer {visibility: hidden;}
             
-            /* إخفاء زر Deploy الأحمر */
-            .stAppDeployButton {display:none !important;}
-            
-            /* إخفاء أيقونة المستخدم والحالة (التي تظهر في الزاوية) */
-            [data-testid="stStatusWidget"] {display:none !important;}
-            .st-emotion-cache-zq5wmm {display:none !important;}
-            
-            /* تنسيق زر تحضير الطلاب - أزرق فاتح */
-            div.stButton > button:first-child[data-testid="baseButton-primary"] {
-                background-color: #add8e6;
-                color: #000000;
-                border: none;
+            /* إخفاء زر Deploy الأحمر وأي أيقونات حالة في الزاوية اليمنى */
+            .stAppDeployButton, 
+            [data-testid="stStatusWidget"],
+            .st-emotion-cache-zq5wmm,
+            .st-emotion-cache-15ec6h0,
+            .st-emotion-cache-1rs6os {
+                display: none !important;
             }
-            
-            /* تنسيق زر إدارة التطبيق - برتقالي */
-            div.stButton > button:first-child[data-testid="baseButton-secondary"] {
-                background-color: #ffa500;
-                color: #ffffff;
-                border: none;
+
+            /* 2. تنسيق زر (تحضير الطلاب) - أزرق فاتح */
+            /* نستهدف الزر عبر النص الموجود داخله لضمان الدقة */
+            button[kind="primary"] {
+                background-color: #ADD8E6 !important;
+                color: #000000 !important;
+                border: 2px solid #ADD8E6 !important;
+                font-weight: bold !important;
+            }
+            button[kind="primary"]:hover {
+                background-color: #87CEEB !important; /* لون أغمق قليلاً عند التمرير */
+                border-color: #87CEEB !important;
+            }
+
+            /* 3. تنسيق زر (إدارة التطبيق) - برتقالي */
+            button[kind="secondary"] {
+                background-color: #FFA500 !important;
+                color: #FFFFFF !important;
+                border: 2px solid #FFA500 !important;
+                font-weight: bold !important;
+            }
+            button[kind="secondary"]:hover {
+                background-color: #FF8C00 !important; /* لون أغمق قليلاً عند التمرير */
+                border-color: #FF8C00 !important;
             }
             </style>
             """
@@ -84,9 +97,11 @@ if st.session_state.page == "home":
     st.write("<br>", unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
+        # زر تحضير الطلاب تم تعريفه كـ primary ليأخذ اللون الأزرق الفاتح
         if st.button("📝 تحضير الطلاب", use_container_width=True, type="primary"):
             st.session_state.page = "attendance"; st.rerun()
     with col2:
+        # زر إدارة التطبيق تم تعريفه كـ secondary ليأخذ اللون البرتقالي
         if st.button("⚙️ إدارة التطبيق", use_container_width=True, type="secondary"):
             st.session_state.page = "admin"; st.rerun()
 
@@ -182,7 +197,7 @@ elif st.session_state.page == "admin":
             c_not.error(f"❌ لم ترصد ({len(not_done)}):\n\n" + ", ".join(not_done))
     else: st.info("🔓 أدخل كلمة المرور")
 
-# --- 7. صفحة إدارة البيانات (New Page) ---
+# --- 7. صفحة إدارة البيانات ---
 elif st.session_state.page == "data_management":
     if st.button("⬅️ العودة للإدارة"): st.session_state.page = "admin"; st.rerun()
     st.header("🗂️ إدارة بيانات الطلاب")
@@ -190,14 +205,13 @@ elif st.session_state.page == "data_management":
     
     with tab_upload:
         st.subheader("1. حذف جميع الطلاب")
-        st.warning("⚠️ تحذير: هذا الإجراء سيقوم بمسح كافة أسماء الطلاب من النظام.")
         if st.button("❌ مسح قاعدة البيانات"):
             supabase.table('students').delete().neq('id', 0).execute()
-            st.success("تم مسح الأسماء بنجاح.")
+            st.success("تم المسح.")
             
         st.divider()
         st.subheader("2. رفع ملف Excel جديد")
-        uploaded_file = st.file_uploader("اختر ملف Excel (يجب أن يحتوي على الأعمدة: student_name, section, committee)", type=['xlsx'])
+        uploaded_file = st.file_uploader("رفع ملف Excel", type=['xlsx'])
         if uploaded_file:
             df = pd.read_excel(uploaded_file)
             if st.button("🚀 بدء الرفع"):
