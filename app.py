@@ -37,7 +37,7 @@ if st.session_state.page == "home":
         if st.button("📝 دخول المعلمين للرصد", type="primary"): st.session_state.page = "att_login"; st.rerun()
         if st.button("⚙️ لوحة الإدارة والتقارير"): st.session_state.page = "admin_login"; st.rerun()
 
-# --- 📝 2. نظام الرصد (المعلمين) ---
+# --- 📝 2. نظام رصد المعلمين ---
 elif st.session_state.page == "att_login":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     t_id = st.text_input("أدخل رقم السجل المدني:", type="password")
@@ -51,24 +51,15 @@ elif st.session_state.page == "att_login":
 elif st.session_state.page == "taking_attendance":
     today = str(datetime.now().date())
     st.info(f"المعلم: {st.session_state.teacher_name} | التاريخ: {today}")
-    # جلب اللجان المتاحة
     s_data = supabase.table('students').select("committee").execute()
     coms = sorted(list(set([str(i['committee']) for i in s_data.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
     sel_c = st.selectbox("اختر اللجنة:", ["---"] + coms)
-    
     if sel_c != "---":
         students = supabase.table('students').select("*").eq('committee', sel_c).execute()
         results = []
         for s in students.data:
-            stat = st.radio(f"👤 {s['student_name']} (شعبة: {s.get('class_name', '---')})", ["حاضر", "غائب", "متأخر"], key=f"s_{s['id']}", horizontal=True)
-            results.append({
-                "student_name": s['student_name'], 
-                "committee": str(sel_c), 
-                "status": stat, 
-                "date": today, 
-                "teacher_name": st.session_state.teacher_name
-            })
-        
+            stat = st.radio(f"👤 {s['student_name']}", ["حاضر", "غائب", "متأخر"], key=f"s_{s['id']}", horizontal=True)
+            results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": stat, "date": today, "teacher_name": st.session_state.teacher_name})
         if st.button("💾 حفظ الرصد"):
             supabase.table('attendance').delete().eq('committee', sel_c).eq('date', today).execute()
             supabase.table('attendance').insert(results).execute()
@@ -85,50 +76,47 @@ elif st.session_state.page == "admin_panel":
     today_date = str(datetime.now().date())
 
     with tab1:
-        d = st.date_input("اختر تاريخ التقرير", datetime.now())
-        date_str = str(d)
-        
-        # جلب بيانات الغياب وجدول الطلاب في خطوتين لضمان الاستقرار
-        att_res = supabase.table("attendance").select("*").eq("date", date_str).execute()
-        std_res = supabase.table("students").select("student_name, class_name").execute()
-        
-        if att_res.data:
-            df_att = pd.DataFrame(att_res.data)
-            df_std = pd.DataFrame(std_res.data)
-            
-            # دمج البيانات لإظهار الشعبة تلقائياً
-            df_merged = pd.merge(df_att, df_std, on="student_name", how="left")
-            df_abs = df_merged[df_merged['status'].isin(['غائب', 'متأخر'])].copy()
+        d = st.date_input("تاريخ التقرير", datetime.now())
+        res_att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
+        if res_att.data:
+            df_att = pd.DataFrame(res_att.data)
+            df_abs = df_att[df_att['status'].isin(['غائب', 'متأخر'])].copy()
             
             if not df_abs.empty:
-                df_abs['committee_num'] = pd.to_numeric(df_abs['committee'], errors='coerce')
-                df_abs = df_abs.sort_values(by='committee_num')
+                # حل مشكلة الشعبة: جلب بيانات الطلاب مرة واحدة فقط للربط
+                res_std = supabase.table("students").select("student_name, class_name").execute()
+                df_std_info = pd.DataFrame(res_std.data)
                 
-                st.subheader(f"📋 كشف الحالات ليوم {date_str}")
-                # التنسيق المطلوب
-                final_view = df_abs[['committee', 'student_name', 'class_name', 'status', 'teacher_name']].copy()
-                final_view.columns = ['رقم اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة', 'المعلم الراصد']
-                st.table(final_view)
+                # ربط البيانات للحصول على الشعبة
+                df_final = pd.merge(df_abs, df_std_info, on="student_name", how="left")
+                
+                # ترتيب وتنظيم الجدول
+                df_final['committee_num'] = pd.to_numeric(df_final['committee'], errors='coerce')
+                df_final = df_final.sort_values(by='committee_num')
+                
+                # عرض الجدول بالرؤوس المطلوبة
+                view_table = df_final[['committee', 'student_name', 'class_name', 'status', 'teacher_name']].copy()
+                view_table.columns = ['رقم اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة', 'المعلم']
+                st.table(view_table)
                 
                 # رسالة واتساب
-                msg = f"🗓️ *تقرير مدرسة القطيف*%0A📅 *التاريخ:* {date_str}%0A"
-                for _, r in df_abs.iterrows():
-                    msg += f"📦 *لجنة:* {r['committee']} | 🏫 *شعبة:* {r['class_name']}%0A👤 *الاسم:* {r['student_name']} ({r['status']})%0A---%0A"
+                msg = f"🗓️ *تقرير مدرسة القطيف*%0A📅 *التاريخ:* {d}%0A"
+                for _, r in df_final.iterrows():
+                    msg += f"📦 *لجنة:* {r['committee']} | 🏫 *شعبة:* {r['class_name']}%0A👤 *الاسم:* {r['student_name']} ({r['status']})%0A"
                 st.markdown(f'<a href="https://wa.me/?text={msg}" target="_blank" class="whatsapp-btn">إرسال التقرير عبر واتساب 📲</a>', unsafe_allow_html=True)
                 
-                if st.button(f"🗑️ حذف تقرير يوم {date_str}"):
-                    supabase.table('attendance').delete().eq('date', date_str).execute()
-                    st.success("تم الحذف"); time.sleep(1); st.rerun()
-            else: st.success("لا توجد حالات غياب")
-        else: st.info("لا توجد بيانات لهذا التاريخ")
+                if st.button(f"🗑️ حذف تقرير يوم {d}"):
+                    supabase.table('attendance').delete().eq('date', str(d)).execute()
+                    st.success("تم الحذف"); st.rerun()
+            else: st.success("لا يوجد غياب")
+        else: st.info("لا توجد بيانات رصد لهذا التاريخ")
 
     with tab2:
         st.subheader(f"🏘️ حالة اللجان: {today_date}")
-        all_students = supabase.table('students').select("committee").execute()
-        total_coms = sorted(list(set([str(i['committee']) for i in all_students.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
+        all_s = supabase.table('students').select("committee").execute()
+        total_coms = sorted(list(set([str(i['committee']) for i in all_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
         done_res = supabase.table('attendance').select("committee, teacher_name").eq("date", today_date).execute()
         done_coms = {str(i['committee']): i['teacher_name'] for i in done_res.data}
-        
         c1, c2 = st.columns(2)
         with c1:
             st.success("✅ رصدت")
@@ -141,26 +129,26 @@ elif st.session_state.page == "admin_panel":
 
     with tab3:
         st.subheader("🔐 حماية إدارة البيانات")
-        if st.text_input("الرقم السري (إدارة البيانات):", type="password") == "4321":
-            st.success("صلاحية كاملة")
-            col_x, col_y = st.columns(2)
-            with col_x:
-                st.markdown("### 📥 تصدير")
+        if st.text_input("الرقم السري (4321):", type="password") == "4321":
+            st.success("تم تفعيل أدوات التحكم")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown("### 📥 تصدير البيانات")
                 res_all = supabase.table('students').select("*").execute()
                 if res_all.data:
                     df_all = pd.DataFrame(res_all.data)
                     st.download_button("Excel (XLSX)", data=io.BytesIO(), file_name="students.xlsx") # مجهز للتحميل
                     st.download_button("CSV", data=df_all.to_csv(index=False).encode('utf-8-sig'), file_name="backup.csv")
             
-            with col_y:
-                st.markdown("### 🗑️ مسح")
+            with col_b:
+                st.markdown("### 🗑️ مسح الجدول")
                 if st.button("❌ حذف كافة الطلاب"):
                     supabase.table('students').delete().neq('student_name', 'none').execute()
                     st.success("تم المسح"); st.rerun()
             
             st.divider()
             st.markdown("### 🔄 استعادة")
-            up = st.file_uploader("ارفع ملف (CSV/XLSX):", type=["csv", "xlsx"])
+            up = st.file_uploader("ارفع ملف النسخة:", type=["csv", "xlsx"])
             if up and st.button("🚀 استعادة"):
                 df_new = pd.read_csv(up) if up.name.endswith('.csv') else pd.read_excel(up)
                 supabase.table('students').delete().neq('student_name', 'none').execute()
@@ -169,4 +157,4 @@ elif st.session_state.page == "admin_panel":
                 supabase.table('students').insert(recs).execute()
                 st.success("تمت الاستعادة!"); time.sleep(1); st.rerun()
         else:
-            st.warning("أدخل الرقم السري (4321) لإدارة الملفات")
+            st.warning("أدخل الرقم السري الصحيح لإظهار خيارات التحكم بالبيانات.")
