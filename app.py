@@ -18,7 +18,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. تنسيق الواجهة والستايل
+# 2. تنسيق الواجهة والستايل العام
 st.set_page_config(page_title="نظام غياب مدرسة القطيف الثانوية", layout="wide")
 
 st.markdown("""
@@ -28,26 +28,20 @@ st.markdown("""
     footer {visibility: hidden;}
     .stAppDeployButton {display: none !important;}
     
-    .main-header {
-        text-align: center; 
-        border: 2px solid #1f77b4; 
-        padding: 30px; 
-        border-radius: 15px; 
-        background-color: #f8f9fa;
-        margin-bottom: 20px;
-    }
-    
+    /* تنسيق الأزرار */
     button[kind="primary"] {
         background-color: #ADD8E6 !important;
         color: #000 !important;
         border: 2px solid #ADD8E6 !important;
         font-weight: bold;
+        height: 50px;
     }
     button[kind="secondary"] {
         background-color: #FFA500 !important;
         color: #fff !important;
         border: 2px solid #FFA500 !important;
         font-weight: bold;
+        height: 50px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -57,40 +51,40 @@ def smart_sort(x):
     try: return int(x)
     except: return str(x)
 
-# 4. إدارة التنقل
+# 4. إدارة التنقل بين الصفحات
 if 'page' not in st.session_state: st.session_state.page = "home"
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
-# --- الصفحة الرئيسية المحدثة ---
+# --- الصفحة الرئيسية (الغلاف المنسق للجوال) ---
 if st.session_state.page == "home":
     st.write("<br>", unsafe_allow_html=True)
     st.markdown("""
-        <div class="main-header">
-            <h1 style="color: #1f77b4; font-size: 45px;">برنامج التحضير الرقمي</h1>
-            <h2 style="color: #333;">مدرسة القطيف الثانوية</h2>
-            <hr style="width: 50%; margin: 20px auto;">
-            <div style="display: flex; justify-content: space-around; align-items: center;">
-                <div>
-                    <p style="font-size: 18px; margin-bottom: 5px;">فكرة وتنفيذ</p>
-                    <b style="font-size: 22px; color: #1f77b4;">أ. عارف أحمد الحداد</b>
-                </div>
-                <div style="border-left: 2px solid #ddd; height: 60px;"></div>
-                <div>
-                    <p style="font-size: 18px; margin-bottom: 5px;">مدير المدرسة</p>
-                    <b style="font-size: 22px; color: #1f77b4;">أ. فراس عبدالله آل عبدالمحسن</b>
-                </div>
+        <div style="text-align: center; border: 2px solid #1f77b4; padding: 20px; border-radius: 15px; background-color: #f8f9fa; margin-bottom: 20px;">
+            <h1 style="color: #1f77b4; font-size: 32px; margin-bottom: 0px;">برنامج التحضير الرقمي</h1>
+            <h2 style="color: #333; font-size: 24px; margin-top: 10px;">مدرسة القطيف الثانوية</h2>
+            <hr style="width: 60%; margin: 15px auto; border: 1px solid #1f77b4;">
+            
+            <div style="margin-bottom: 20px;">
+                <p style="font-size: 16px; margin-bottom: 2px; color: #666;">فكرة وتنفيذ</p>
+                <b style="font-size: 20px; color: #1f77b4;">أ. عارف أحمد الحداد</b>
+            </div>
+            
+            <div style="margin-bottom: 10px;">
+                <p style="font-size: 16px; margin-bottom: 2px; color: #666;">مدير المدرسة</p>
+                <b style="font-size: 20px; color: #1f77b4;">أ. فراس عبدالله آل عبدالمحسن</b>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
     st.write("<br>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("📝 تحضير الطلاب اليومي", use_container_width=True, type="primary"):
-            st.session_state.page = "attendance"; st.rerun()
-    with col2:
-        if st.button("⚙️ لوحة تحكم الإدارة", use_container_width=True, type="secondary"):
-            st.session_state.page = "admin"; st.rerun()
+    # أزرار كبيرة وسهلة الضغط في الجوال
+    if st.button("📝 تحضير الطلاب اليومي", use_container_width=True, type="primary"):
+        st.session_state.page = "attendance"; st.rerun()
+    
+    st.write("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+    
+    if st.button("⚙️ لوحة تحكم الإدارة", use_container_width=True, type="secondary"):
+        st.session_state.page = "admin"; st.rerun()
 
 # --- صفحة التحضير ---
 elif st.session_state.page == "attendance":
@@ -164,6 +158,7 @@ elif st.session_state.page == "admin":
             col_bk1, col_bk2 = st.columns(2)
             
             with col_bk1:
+                # إنشاء نسخة احتياطية بمحرك openpyxl لضمان التوافق
                 if st.button("📥 إنشاء نسخة احتياطية (Excel)"):
                     try:
                         all_students = supabase.table('students').select("student_name, section, committee").execute()
@@ -176,6 +171,7 @@ elif st.session_state.page == "admin":
                     except Exception as e: st.error(f"خطأ: {e}")
             
             with col_bk2:
+                # استرجاع النسخة مع معالجة مسميات الأعمدة
                 restore_file = st.file_uploader("📂 استرجاع النسخة", type=['xlsx'])
                 if restore_file and st.button("🔄 تأكيد الاسترجاع"):
                     try:
