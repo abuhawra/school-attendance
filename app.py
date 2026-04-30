@@ -13,7 +13,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. إعدادات الواجهة
+# 2. إعدادات الواجهة والتنسيق
 st.set_page_config(page_title="نظام مدرسة القطيف - النسخة الشاملة", layout="wide")
 st.markdown("""
     <style>
@@ -21,7 +21,6 @@ st.markdown("""
     .main-title { font-size: 32px; font-weight: 800; color: #1a237e; text-align: center; margin-bottom: 20px; }
     .whatsapp-btn { background-color: #25D366; color: white; padding: 18px; border-radius: 15px; text-align: center; text-decoration: none; display: block; font-weight: bold; margin: 20px auto; max-width: 600px; font-size: 20px; border: 1px solid #128C7E; }
     div.stButton > button { width: 100%; border-radius: 12px; font-weight: bold; height: 55px; font-size: 18px; }
-    .status-card { padding: 15px; border-radius: 10px; border: 1px solid #ddd; background-color: white; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -62,9 +61,9 @@ elif st.session_state.page == "taking_attendance":
         if st.button("💾 حفظ الرصد"):
             supabase.table('attendance').delete().eq('committee', sel_c).eq('date', today).execute()
             supabase.table('attendance').insert(results).execute()
-            st.success("✅ تم الحفظ"); time.sleep(1); st.session_state.page = "home"; st.rerun()
+            st.success("✅ تم الحفظ بنجاح"); time.sleep(1); st.session_state.page = "home"; st.rerun()
 
-# --- ⚙️ 3. لوحة الإدارة (المطورة) ---
+# --- ⚙️ 3. لوحة الإدارة (النسخة الكاملة) ---
 elif st.session_state.page == "admin_login":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("رمز دخول المسؤول:", type="password") == "1234": st.session_state.page = "admin_panel"; st.rerun()
@@ -116,7 +115,7 @@ elif st.session_state.page == "admin_panel":
     with tab3:
         st.subheader("💾 إدارة النسخ الاحتياطية")
         
-        # --- الجزء الأول: تصدير (تحميل) ---
+        # --- 1. التصدير (تحميل) ---
         st.markdown("### 1. تحميل نسخة احتياطية (تصدير)")
         std_res = supabase.table('students').select("*").execute()
         if std_res.data:
@@ -127,33 +126,40 @@ elif st.session_state.page == "admin_panel":
             with col_b2:
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    df_backup.to_excel(writer, index=False)
-                st.download_button("📥 تحميل بصيغة Excel", data=output.getvalue(), file_name=f"students_{today_date}.xlsx")
+                    df_backup.to_excel(writer, index=False, sheet_name='Students')
+                st.download_button("📥 تحميل بصيغة Excel (XLSX)", data=output.getvalue(), file_name=f"students_{today_date}.xlsx")
 
         st.divider()
 
-        # --- الجزء الثاني: استعادة (رفع) ---
+        # --- 2. الاستعادة (رفع إما CSV أو XLSX) ---
         st.markdown("### 2. إرجاع نسخة احتياطية (استعادة)")
-        st.warning("⚠️ تنبيه: استعادة النسخة سيقوم بحذف بيانات الطلاب الحالية واستبدالها بالملف المرفوع.")
-        uploaded_file = st.file_uploader("اختر ملف النسخة الاحتياطية (CSV فقط):", type=["csv"])
+        st.warning("⚠️ تنبيه: الاستعادة ستحذف بيانات الطلاب الحالية وتستبدلها بالملف المرفوع.")
+        uploaded_file = st.file_uploader("اختر ملف النسخة الاحتياطية (CSV أو XLSX):", type=["csv", "xlsx"])
         
         if uploaded_file is not None:
             try:
-                new_data = pd.read_csv(uploaded_file)
-                st.write("معاينة البيانات المرفوعة:")
+                # قراءة الملف بناءً على صيغته
+                if uploaded_file.name.endswith('.csv'):
+                    new_data = pd.read_csv(uploaded_file)
+                else:
+                    new_data = pd.read_excel(uploaded_file)
+                
+                st.write("معاينة البيانات المراد استعادتها:")
                 st.dataframe(new_data.head())
                 
                 if st.button("🚀 تنفيذ استعادة النسخة الآن"):
-                    with st.spinner("جاري استعادة البيانات..."):
-                        # 1. حذف القديم
+                    with st.spinner("جاري استبدال البيانات..."):
+                        # حذف البيانات القديمة
                         supabase.table('students').delete().neq('student_name', 'none').execute()
-                        # 2. تحويل البيانات لقاموس ورفعها
+                        
+                        # تجهيز البيانات الجديدة للرفع
                         records = new_data.to_dict('records')
-                        # إزالة عمود 'id' إذا وجد لتجنب تكرار المفاتيح
+                        # إزالة عمود 'id' إن وجد لتجنب تكرار المفاتيح الأساسية
                         for r in records: r.pop('id', None)
                         
+                        # رفع البيانات
                         supabase.table('students').insert(records).execute()
-                        st.success("✅ تم إرجاع النسخة الاحتياطية بنجاح!")
+                        st.success("✅ تمت استعادة النسخة بنجاح!")
                         time.sleep(2)
                         st.rerun()
             except Exception as e:
