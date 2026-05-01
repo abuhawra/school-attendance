@@ -14,77 +14,70 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# --- 🎨 منطقة التنسيق المرئي ---
-STYLE_CSS = '''
+# --- 🎨 التنسيق المرئي للواجهة ---
+st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
+st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
-    .stButton>button { border-radius: 10px; font-weight: bold; height: 50px; width: 100%; font-size: 18px; }
     .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; }
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
-    th { background-color: #1a237e !important; color: white !important; text-align: center !important; }
-    td { text-align: center !important; }
+    .main-header { background-color: #1a237e; padding: 30px; text-align: center; color: white; border-radius: 15px; margin-bottom: 25px; border-bottom: 5px solid #ffd700; }
     </style>
-'''
-
-HEADER_HTML = f'''
-    <div style="background-color: #1a237e; padding: 40px 20px; text-align: center; color: white; border-bottom: 8px solid #ffd700; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 30px;">
-        <div style="font-size: 38px; font-weight: 800; margin-bottom: 5px;">التحضير التقني</div>
-        <div style="font-size: 34px; font-weight: 700; margin-bottom: 20px;">مدرسة القطيف الثانوية</div>
-        <div style="margin: 25px 0; border-top: 1px solid rgba(255,255,255,0.2); width: 50%; margin-left: auto; margin-right: auto;"></div> 
-        <div style="font-size: 22px; font-weight: 500; color: #cfd8dc; margin-bottom: 5px;">فكرة وبرمجة</div>
-        <div style="font-size: 32px; font-weight: 700; color: #ffd700; margin-bottom: 25px;">أ. عارف أحمد الحداد</div>
-        <div style="font-size: 20px; font-weight: 500; color: #cfd8dc; margin-bottom: 5px;">مدير المدرسة</div>
-        <div style="font-size: 26px; font-weight: 600; color: #ffffff;">أ. فراس آل عبدالمحسن</div>
-    </div>
-'''
-
-st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
-st.markdown(STYLE_CSS, unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
 if 'page' not in st.session_state:
     st.session_state.page = "home"
 
-# --- 🛠️ دالة بناء روابط الواتساب المحدثة (التنسيق النهائي) ---
+# --- 🛠️ دالة بناء الرسالة بالتنسيق الجديد المطلوب ---
 def get_wa_link(df, status_type, d):
     if df.empty: return None
+    
     header_emoji = "🚫" if "غائب" in status_type else "⏳"
     
-    # رأس الرسالة
+    # بداية الرسالة
     msg = f"{header_emoji} *قائمة {status_type}*\\n"
     msg += f"📅 *التاريخ:* {d}\\n"
-    msg += "──────────────\\n" # خط فاصل في سطر جديد
+    msg += "-----------------\\n"
     
     for _, r in df.iterrows():
-        msg += f"📦 *اللجنة:* {r['committee']}\\n"
-        msg += f"👤 *الاسم:* {r['student_name']}\\n"
-        msg += f"🏫 *الشعبة:* {r.get('الشعبة','--')}\\n"
-        msg += f"⚠️ *الحالة:* {r['status']}\\n"
-        msg += "──────────────\\n" # خط فاصل في سطر جديد
+        # التنسيق المطلوب: سطر لكل بيان
+        msg += f"اللجنة : {r['committee']}\\n"
+        msg += f"الأسم: {r['student_name']}\\n"
+        msg += f"الشعبة: {r.get('الشعبة','--')}\\n"
+        msg += f"الحالة: {r['status']}\\n"
+        msg += "-----------------\\n" # خط فاصل في سطر جديد
         
     return f"https://wa.me/?text={urllib.parse.quote(msg)}"
 
-# --- نظام التنقل والواجهات ---
+# --- نظام الصفحات ---
 if st.session_state.page == "home":
-    st.markdown(HEADER_HTML, unsafe_allow_html=True)
-    col_a, col_b, col_c = st.columns([1, 1.5, 1])
+    st.markdown(f'''
+        <div class="main-header">
+            <h1 style="margin:0;">التحضير التقني</h1>
+            <h2 style="margin:0;">مدرسة القطيف الثانوية</h2>
+            <p style="color:#ffd700; font-size:20px; margin-top:10px;">برمجة: أ. عارف أحمد الحداد</p>
+        </div>
+    ''', unsafe_allow_html=True)
+    
+    col_b = st.columns([1, 2, 1])[1]
     with col_b:
-        if st.button("📝 رصد غياب الطلاب اليومي", type="primary", use_container_width=True): 
+        if st.button("📝 رصد غياب الطلاب", use_container_width=True, type="primary"):
             st.session_state.page = "t_log"; st.rerun()
         st.write("")
-        if st.button("⚙️ لوحة الإدارة والتقارير الموحدة", use_container_width=True): 
+        if st.button("⚙️ لوحة الإدارة والتقارير", use_container_width=True):
             st.session_state.page = "a_log"; st.rerun()
 
 elif st.session_state.page == "t_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    tid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
+    tid = st.text_input("أدخل السجل المدني:", type="password")
     if st.button("دخول"):
         res = supabase.table("teachers").select("*").eq("national_id", tid.strip()).execute()
         if res.data:
             st.session_state.teacher = res.data[0]['name_tech']
             st.session_state.page = "mark"; st.rerun()
-        else: st.error("السجل المدني غير مسجل.")
+        else: st.error("السجل غير مسجل.")
 
 elif st.session_state.page == "mark":
     today = str(datetime.now().date())
@@ -102,7 +95,7 @@ elif st.session_state.page == "mark":
                 prev = old_map.get(s['student_name'], "حاضر")
                 choice = st.radio(f"👤 {s['student_name']}", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True)
                 results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": st.session_state.teacher})
-            if st.button("💾 حفظ الرصد"):
+            if st.button("💾 حفظ الرصد", use_container_width=True):
                 supabase.table('attendance').delete().eq("committee", sel_c).eq("date", today).execute()
                 supabase.table('attendance').insert(results).execute()
                 st.success("تم الحفظ!"); time.sleep(1); st.session_state.page = "home"; st.rerun()
@@ -114,10 +107,10 @@ elif st.session_state.page == "a_log":
 
 elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
-    tab1, tab2, tab3 = st.tabs(["📊 التقارير وواتساب", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
+    tab1, tab2, tab3 = st.tabs(["📊 التقارير وواتساب", "🏘️ حالة اللجان", "💾 البيانات"])
     
     with tab1:
-        d = st.date_input("اختر تاريخ التقرير:", datetime.now())
+        d = st.date_input("تاريخ التقرير:", datetime.now())
         res_att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
         if res_att.data:
             df_all = pd.DataFrame(res_att.data)
@@ -134,41 +127,35 @@ elif st.session_state.page == "admin":
             with c2:
                 link_late = get_wa_link(df_all[df_all['status'] == "متأخر"], "المتأخرين", d)
                 if link_late: st.markdown(f'<a href="{link_late}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
+        else:
+            st.info("لا توجد بيانات لهذا التاريخ.")
 
     with tab2:
-        st.subheader("🏘️ حالة رصد اللجان اليوم")
-        att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
-        done_dict = {str(i['committee']): i['teacher_name'] for i in att_today.data}
+        # (قسم حالة اللجان المعتاد...)
+        st.subheader("حالة الرصد اليوم")
+        att_today = supabase.table('attendance').select("committee").eq("date", str(datetime.now().date())).execute()
+        done = [str(i['committee']) for i in att_today.data]
         res_s = supabase.table('students').select("committee").execute()
         all_c = sorted(list(set([str(i['committee']) for i in res_s.data])), key=lambda x: int(x) if x.isdigit() else 0)
-        col1, col2 = st.columns(2)
-        with col1:
-            st.success("✅ رُصدت")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.success("✅ تم الرصد")
             for c in all_c:
-                if c in done_dict: st.write(f"📍 لجنة {c} ({done_dict[c]})")
-        with col2:
-            st.error("❌ لم تُرصد")
+                if c in done: st.write(f"لجنة {c}")
+        with c2:
+            st.error("❌ لم يتم")
             for c in all_c:
-                if c not in done_dict: st.write(f"⚠️ لجنة {c}")
+                if c not in done: st.write(f"لجنة {c}")
 
     with tab3:
         if st.text_input("رمز البيانات (4321):", type="password") == "4321":
-            st.subheader("💾 النسخة الاحتياطية")
             res_backup = supabase.table('students').select("*").execute()
             if res_backup.data:
                 df_bk = pd.DataFrame(res_backup.data)
                 col_csv, col_xlsx = st.columns(2)
                 with col_csv:
-                    st.download_button("📥 تحميل CSV", df_bk.to_csv(index=False).encode('utf-8-sig'), "students.csv", "text/csv", use_container_width=True)
+                    st.download_button("📥 تحميل CSV", df_bk.to_csv(index=False).encode('utf-8-sig'), "students.csv", use_container_width=True)
                 with col_xlsx:
                     out = io.BytesIO()
                     with pd.ExcelWriter(out, engine='openpyxl') as wr: df_bk.to_excel(wr, index=False)
                     st.download_button("📊 تحميل Excel", out.getvalue(), "students.xlsx", use_container_width=True)
-            
-            st.divider()
-            up = st.file_uploader("تحديث بيانات الطلاب (Excel/CSV):")
-            if up and st.button("تحديث الآن"):
-                df_new = pd.read_csv(up) if up.name.endswith('.csv') else pd.read_excel(up)
-                supabase.table('students').delete().neq('committee', '0').execute()
-                supabase.table('students').insert(df_new.to_dict('records')).execute()
-                st.success("تم التحديث!")
