@@ -46,13 +46,15 @@ st.markdown(STYLE_CSS, unsafe_allow_html=True)
 if 'page' not in st.session_state:
     st.session_state.page = "home"
 
-# --- دالة روابط الواتساب ---
+# --- 🛠️ دالة بناء روابط الواتساب المحدثة ---
 def get_wa_link(df, status_type, d):
     if df.empty: return None
-    emoji = "🔴" if status_type == "غائبين" else "⏳"
-    msg = f"*{emoji} قائمة {status_type}*\\n📅 *التاريخ:* {d}\\n" + "---------------------------\\n"
+    emoji = "🔴" if status_type == "الغائبين" else "⏳"
+    msg = f"*{emoji} قائمة {status_type}*\\n📅 *التاريخ:* {d}\\n" + "──────────────\\n" # خط فاصل أصغر
     for _, r in df.iterrows():
-        msg += f"📦 لجنة: {r['committee']}\\n👤 الطالب: {r['student_name']}\\n🏫 الشعبة: {r.get('الشعبة','--')}\\n" + "---------------------------\\n"
+        # التأكد من كتابة الحالة بشكل واضح
+        student_status = r['status']
+        msg += f"📦 لجنة: {r['committee']}\\n👤 الطالب: {r['student_name']}\\n🏫 الشعبة: {r.get('الشعبة','--')}\\n⚠️ الحالة: *{student_status}*\\n" + "──────────────\\n"
     return f"https://wa.me/?text={urllib.parse.quote(msg)}"
 
 # --- التنقل بين الصفحات ---
@@ -114,13 +116,17 @@ elif st.session_state.page == "admin":
             res_std = supabase.table("students").select("student_name, class_name").execute()
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
-            st.dataframe(df_all[df_all['status'].isin(['غائب', 'متأخر'])][['committee', 'student_name', 'الشعبة', 'status']], use_container_width=True)
+            
+            # عرض الطلاب الغائبين والمتأخرين فقط في الجدول
+            df_filtered = df_all[df_all['status'].isin(['غائب', 'متأخر'])]
+            st.dataframe(df_filtered[['committee', 'student_name', 'الشعبة', 'status']], use_container_width=True)
+            
             c1, c2 = st.columns(2)
             with c1:
-                link_abs = get_wa_link(df_all[df_all['status'] == "غائب"], "غائبين", d)
+                link_abs = get_wa_link(df_all[df_all['status'] == "غائب"], "الغائبين", d)
                 if link_abs: st.markdown(f'<a href="{link_abs}" target="_blank" class="wa-link wa-absent">🚫 إرسال الغائبين</a>', unsafe_allow_html=True)
             with c2:
-                link_late = get_wa_link(df_all[df_all['status'] == "متأخر"], "متأخرين", d)
+                link_late = get_wa_link(df_all[df_all['status'] == "متأخر"], "المتأخرين", d)
                 if link_late: st.markdown(f'<a href="{link_late}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
 
     with tab2:
@@ -140,7 +146,6 @@ elif st.session_state.page == "admin":
                 if c not in done_dict: st.write(f"⚠️ لجنة {c}")
 
     with tab3:
-        # إعادة خانة الرقم السري هنا
         admin_pass = st.text_input("أدخل رمز إدارة البيانات (4321):", type="password")
         if admin_pass == "4321":
             st.subheader("💾 النسخة الاحتياطية")
