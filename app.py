@@ -13,16 +13,17 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. إعدادات الواجهة والتنسيق
+# 2. إعدادات الواجهة والتنسيق (CSS)
 st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
     .main-header { background-color: #1a237e; color: white; padding: 30px; border-radius: 15px; text-align: center; border-bottom: 5px solid #ffd700; margin-bottom: 20px; }
-    .wa-button { color: white !important; padding: 15px; border-radius: 10px; text-align: center; display: block; text-decoration: none; font-weight: bold; margin-top: 10px; font-size: 18px; transition: 0.3s; }
-    .wa-all { background-color: #28a745; } .wa-all:hover { background-color: #218838; }
-    .wa-absent { background-color: #dc3545; } .wa-absent:hover { background-color: #c82333; }
+    .wa-button { color: white !important; padding: 12px; border-radius: 10px; text-align: center; display: block; text-decoration: none; font-weight: bold; margin-top: 10px; font-size: 16px; transition: 0.3s; }
+    .wa-all { background-color: #28a745; }
+    .wa-absent { background-color: #dc3545; }
+    .wa-late { background-color: #fd7e14; }
     th { background-color: #1a237e !important; color: white !important; text-align: center !important; }
     td { text-align: center !important; }
     </style>
@@ -32,7 +33,7 @@ if 'page' not in st.session_state: st.session_state.page = "home"
 
 # --- الصفحة الرئيسية ---
 if st.session_state.page == "home":
-    st.markdown("""
+    st.markdown(f"""
         <div class="main-header">
             <div style="font-size:32px; font-weight:800;">التحضير التقني لـ مدرسة القطيف الثانوية</div>
             <div style="font-size:20px; color:#ffd700; margin-top:10px;">فكرة وبرمجة: أ. عارف أحمد الحداد</div>
@@ -48,26 +49,26 @@ if st.session_state.page == "home":
         if st.button("⚙️ لوحة الإدارة والتقارير", use_container_width=True): 
             st.session_state.page = "a_log"; st.rerun()
 
-# --- قسم التحقق (المعلم) ---
+# --- قسم المعلم (تسجيل الدخول) ---
 elif st.session_state.page == "t_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    tid = st.text_input("أدخل رقم السجل المدني الخاص بك:", type="password")
-    if st.button("دخول للنظام"):
+    tid = st.text_input("أدخل رقم السجل المدني:", type="password")
+    if st.button("دخول"):
         res = supabase.table("teachers").select("*").eq("national_id", tid.strip()).execute()
         if res.data:
             st.session_state.teacher = res.data[0]['name_tech']
             st.session_state.page = "mark"; st.rerun()
-        else: st.error("عذراً، السجل المدني غير مسجل في قاعدة البيانات.")
+        else: st.error("السجل غير مسجل.")
 
-# --- قسم رصد الحضور ---
+# --- قسم رصد الغياب ---
 elif st.session_state.page == "mark":
     today = str(datetime.now().date())
-    st.info(f"المعلم المسجل: {st.session_state.teacher} | التاريخ: {today}")
+    st.info(f"المعلم: {st.session_state.teacher} | التاريخ: {today}")
     
     res_s = supabase.table('students').select("committee").execute()
     if res_s.data:
         coms = sorted(list(set([str(i['committee']) for i in res_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
-        sel_c = st.selectbox("اختر رقم اللجنة:", ["---"] + coms)
+        sel_c = st.selectbox("اختر اللجنة:", ["---"] + coms)
         
         if sel_c != "---":
             students = supabase.table('students').select("*").eq("committee", sel_c).execute()
@@ -76,92 +77,102 @@ elif st.session_state.page == "mark":
             
             results = []
             for s in students.data:
-                prev_status = old_map.get(s['student_name'], "حاضر")
+                prev = old_map.get(s['student_name'], "حاضر")
                 choice = st.radio(f"👤 {s['student_name']}", ["حاضر", "غائب", "متأخر"], 
-                                  index=["حاضر", "غائب", "متأخر"].index(prev_status), key=s['student_name'], horizontal=True)
+                                  index=["حاضر", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True)
                 results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": st.session_state.teacher})
             
-            if st.button("💾 حفظ بيانات اللجنة", use_container_width=True):
+            if st.button("💾 حفظ الرصد", use_container_width=True):
                 supabase.table('attendance').delete().eq("committee", sel_c).eq("date", today).execute()
                 supabase.table('attendance').insert(results).execute()
-                st.success("تم حفظ البيانات بنجاح!"); time.sleep(1); st.session_state.page = "home"; st.rerun()
+                st.success("تم الحفظ!"); time.sleep(1); st.session_state.page = "home"; st.rerun()
 
-# --- قسم الإدارة والتقارير ---
+# --- لوحة الإدارة ---
 elif st.session_state.page == "a_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": 
         st.session_state.page = "admin"; st.rerun()
 
 elif st.session_state.page == "admin":
-    if st.button("⬅️ تسجيل الخروج"): st.session_state.page = "home"; st.rerun()
+    if st.button("⬅️ خروج"): st.session_state.page = "home"; st.rerun()
     
     tab1, tab2, tab3 = st.tabs(["📊 التقارير الموحدة", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
     
     with tab1:
-        d = st.date_input("اختر تاريخ التقرير المُراد عرضه:", datetime.now())
+        d = st.date_input("تاريخ التقرير:", datetime.now())
         res_att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
         
         if res_att.data:
-            df_full = pd.DataFrame(res_att.data)
-            # التعديل المطلوب: إظهار الغائب والمتأخر فقط في التقرير
-            df_report = df_full[df_full['status'].isin(['غائب', 'متأخر'])].copy()
+            df_all = pd.DataFrame(res_att.data)
+            # عرض الغائب والمتأخر فقط في الجدول
+            df_report = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
             
             if not df_report.empty:
-                # ربط الشعبة بشكل آلي لتفادي KeyError
+                # ربط الشعبة آلياً لتجنب الأخطاء
                 res_std = supabase.table("students").select("*").execute()
-                df_std_map = pd.DataFrame(res_std.data)
+                df_std = pd.DataFrame(res_std.data)
                 
-                # البحث عن اسم عمود الشعبة واسم الطالب آلياً
-                name_col = 'student_name' if 'student_name' in df_std_map.columns else df_std_map.columns[1]
-                class_col = 'class_name' if 'class_name' in df_std_map.columns else ('الشعبة' if 'الشعبة' in df_std_map.columns else df_std_map.columns[2])
+                # كشف الأعمدة آلياً
+                name_col = 'student_name' if 'student_name' in df_std.columns else df_std.columns[1]
+                class_col = 'class_name' if 'class_name' in df_std.columns else ('الشعبة' if 'الشعبة' in df_std.columns else df_std.columns[2])
                 
-                s_map = dict(zip(df_std_map[name_col], df_std_map[class_col]))
+                s_map = dict(zip(df_std[name_col], df_std[class_col]))
                 df_report['الشعبة'] = df_report['student_name'].map(s_map).fillna("---")
                 
-                st.table(df_report[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'اسم الطالب'}))
+                st.table(df_report[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب'}))
                 
-                # --- أزرار الواتساب المعدلة ---
-                # 1. زر إرسال (الكل الموجود في التقرير: غائب + متأخر)
-                wa_all_msg = f"🗓️ *تقرير الغياب والتأخر - مدرسة القطيف*%0A📅 *التاريخ:* {d}%0A-----------------------%0A"
-                for _, r in df_report.iterrows():
-                    wa_all_msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']}%0A🏫 *الشعبة:* {r['الشعبة']}%0A⚠️ *الحالة:* {r['status']}%0A-----------------------%0A"
-                
-                st.markdown(f'<a href="https://wa.me/?text={wa_all_msg}" target="_blank" class="wa-button wa-all">📲 إرسال تقرير (الغائبين والمتأخرين) عبر واتساب</a>', unsafe_allow_html=True)
+                # --- وظيفة بناء الرسالة ---
+                def build_wa_msg(df, title):
+                    msg = f"🗓️ *{title}*%0A📅 *التاريخ:* {d}%0A-----------------------%0A"
+                    for _, r in df.iterrows():
+                        msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']}%0A🏫 *الشعبة:* {r['الشعبة']}%0A⚠️ *الحالة:* {r['status']}%0A-----------------------%0A"
+                    return msg
 
-                # 2. زر إرسال (الغائبين فقط)
-                df_only_absent = df_report[df_report['status'] == 'غائب']
-                if not df_only_absent.empty:
-                    wa_abs_msg = f"🗓️ *تقرير الغائبين فقط - مدرسة القطيف*%0A📅 *التاريخ:* {d}%0A-----------------------%0A"
-                    for _, r in df_only_absent.iterrows():
-                        wa_abs_msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']}%0A🏫 *الشعبة:* {r['الشعبة']}%0A🔴 *الحالة:* غائب%0A-----------------------%0A"
-                    st.markdown(f'<a href="https://wa.me/?text={wa_abs_msg}" target="_blank" class="wa-button wa-absent">🚫 إرسال تقرير (الغائبين فقط) عبر واتساب</a>', unsafe_allow_html=True)
+                # --- عرض الأزرار الثلاثة ---
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    wa_all = build_wa_msg(df_report, "تقرير الغياب والتأخر")
+                    st.markdown(f'<a href="https://wa.me/?text={wa_all}" target="_blank" class="wa-button wa-all">📲 إرسال (الكل)</a>', unsafe_allow_html=True)
+                
+                with col2:
+                    df_abs = df_report[df_report['status'] == 'غائب']
+                    if not df_abs.empty:
+                        wa_abs = build_wa_msg(df_abs, "تقرير الغائبين فقط")
+                        st.markdown(f'<a href="https://wa.me/?text={wa_abs}" target="_blank" class="wa-button wa-absent">🚫 إرسال (الغائبين)</a>', unsafe_allow_html=True)
+                
+                with col3:
+                    df_late = df_report[df_report['status'] == 'متأخر']
+                    if not df_late.empty:
+                        wa_late = build_wa_msg(df_late, "تقرير المتأخرين فقط")
+                        st.markdown(f'<a href="https://wa.me/?text={wa_late}" target="_blank" class="wa-button wa-late">⏳ إرسال (المتأخرين)</a>', unsafe_allow_html=True)
             else:
-                st.success("الحمد لله، لا يوجد غياب أو تأخر في هذا التاريخ.")
-        else: st.info("لا توجد سجلات حضور لهذا اليوم.")
+                st.success("لا يوجد غياب أو تأخر لهذا اليوم.")
+        else: st.info("لا توجد بيانات لهذا التاريخ.")
 
     with tab2:
-        st.subheader("🏘️ متابعة رصد لجان اليوم")
+        st.subheader("🏘️ حالة اللجان اليوم")
         res_all_s = supabase.table('students').select("committee").execute()
         if res_all_s.data:
             all_coms = sorted(list(set([str(i['committee']) for i in res_all_s.data])), key=lambda x: int(x) if x.isdigit() else 0)
-            done_res = supabase.table('attendance').select("committee", "teacher_name").eq("date", str(datetime.now().date())).execute()
-            done_map = {str(i['committee']): i['teacher_name'] for i in done_res.data}
+            done_res = supabase.table('attendance').select("committee").eq("date", str(datetime.now().date())).execute()
+            done_list = [str(i['committee']) for i in done_res.data]
             
             c1, c2 = st.columns(2)
             with c1:
-                st.success("✅ لجان تم رصدها")
+                st.success("✅ رُصدت")
                 for c in all_coms:
-                    if c in done_map: st.write(f"📍 لجنة {c} (بواسطة: {done_map[c]})")
+                    if c in done_list: st.write(f"📍 لجنة {c}")
             with c2:
-                st.error("❌ لجان لم تُرصد")
+                st.error("❌ لم تُرصد")
                 for c in all_coms:
-                    if c not in done_map: st.write(f"⚠️ لجنة {c}")
+                    if c not in done_list: st.write(f"⚠️ لجنة {c}")
 
     with tab3:
-        if st.text_input("رمز إدارة البيانات:", type="password") == "4321":
-            up = st.file_uploader("تحديث قاعدة بيانات الطلاب (CSV/Excel):")
-            if up and st.button("🚀 بدء التحديث"):
+        if st.text_input("رمز البيانات:", type="password") == "4321":
+            up = st.file_uploader("رفع ملف الطلاب:")
+            if up and st.button("🚀 تحديث الآن"):
                 df_new = pd.read_csv(up) if up.name.endswith('.csv') else pd.read_excel(up)
                 supabase.table('students').delete().neq('committee', '0').execute()
                 supabase.table('students').insert(df_new.to_dict('records')).execute()
-                st.success("تم تحديث البيانات بنجاح!")
+                st.success("تم التحديث!")
