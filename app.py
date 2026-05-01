@@ -5,7 +5,7 @@ from datetime import datetime
 import time
 import io
 
-# 1. إعدادات الاتصال
+# 1. الاتصال بقاعدة البيانات
 url = "https://lsmevvsogsqqqjyuqzbx.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzbWV2dnNvZ3NxcXFqeXVxemJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDMyOTgsImV4cCI6MjA5Mjk3OTI5OH0.ecqJS75fPbKqwSAiBzP6Qonn4cuymgwjB96tIGek8j0"
 
@@ -13,143 +13,151 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. التنسيق الجمالي الكلاسيكي
-st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
+# 2. الواجهة الكلاسيكية المحسنة
+st.set_page_config(page_title="التحضير التقني - مدرسة القطيف", layout="wide")
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
-    html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; background-color: #f4f7f9; }
-    .classic-header {
-        background-color: #1a237e; padding: 35px; border-radius: 15px; color: white; text-align: center;
-        margin-bottom: 30px; border-bottom: 5px solid #ffd700; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; background-color: #f8f9fa; }
+    .header-box {
+        background-color: #1a237e; color: white; padding: 40px; border-radius: 15px;
+        text-align: center; border-bottom: 6px solid #ffd700; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
-    .centered-hr { border: 0; height: 1px; background: rgba(255, 255, 255, 0.3); width: 40%; margin: 20px auto; }
-    .stTextInput > div > div > input { background-color: #ffffff !important; border: 1px solid #1a237e !important; color: #1a237e !important; font-weight: bold !important;}
-    div.stButton > button { border-radius: 12px; font-weight: bold; height: 55px; }
-    .whatsapp-btn { background-color: #25D366; color: white; padding: 15px; border-radius: 10px; text-align: center; text-decoration: none; display: block; font-weight: bold; margin: 15px auto; max-width: 500px; }
-    th { background-color: #1a237e !important; color: white !important; text-align: center !important; }
-    td { text-align: center !important; }
+    .hr-center { border: 0; height: 1px; background: rgba(255,255,255,0.3); width: 35%; margin: 25px auto; }
+    .stButton>button { border-radius: 10px; font-weight: bold; height: 50px; width: 100%; }
+    .whatsapp-btn { background-color: #25D366; color: white; padding: 12px; border-radius: 8px; text-align: center; display: block; text-decoration: none; font-weight: bold; }
+    th { background-color: #1a237e !important; color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
 if 'page' not in st.session_state: st.session_state.page = "home"
 
-# --- الصفحة الرئيسية ---
+# --- 🏠 الصفحة الرئيسية ---
 if st.session_state.page == "home":
     st.markdown("""
-        <div class="classic-header">
-            <div style="font-size:34px; font-weight:800;">التحضير التقني</div>
-            <div style="font-size:28px; font-weight:700;">مدرسة القطيف الثانوية</div>
-            <div class="centered-hr"></div>
-            <div style="font-size:18px; color:#ffd700;">فكرة وبرمجة</div>
-            <div style="font-size:24px; font-weight:bold;">أ. عارف أحمد الحداد</div>
-            <div style="font-size:18px; color:#cfd8dc;">مدير المدرسة</div>
-            <div style="font-size:22px; font-weight:bold;">أ. فراس عبدالله آل عبد المحسن</div>
+        <div class="header-box">
+            <h1 style="margin:0; font-size:36px;">التحضير التقني</h1>
+            <h2 style="margin:5px 0 0 0; font-size:28px; opacity:0.9;">مدرسة القطيف الثانوية</h2>
+            <div class="hr-center"></div>
+            <p style="margin:0; color:#ffd700; font-size:18px;">فكرة وبرمجة</p>
+            <p style="margin:0 0 20px 0; font-size:24px; font-weight:bold;">أ. عارف أحمد الحداد</p>
+            <p style="margin:0; color:#cfd8dc; font-size:18px;">مدير المدرسة</p>
+            <p style="margin:0; font-size:22px; font-weight:bold;">أ. فراس عبدالله آل عبد المحسن</p>
         </div>
     """, unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 1.5, 1])
-    with col2:
-        if st.button("📝 دخول المعلمين للرصد", type="primary"): st.session_state.page = "att_login"; st.rerun()
-        st.write(" ")
-        if st.button("⚙️ لوحة الإدارة والتقارير"): st.session_state.page = "admin_login"; st.rerun()
+    
+    st.write(" ")
+    c1, c2, c3 = st.columns([1, 1.2, 1])
+    with c2:
+        if st.button("📝 رصد غياب الطلاب", type="primary"): st.session_state.page = "login_t"; st.rerun()
+        if st.button("⚙️ لوحة الإدارة والتقارير"): st.session_state.page = "login_a"; st.rerun()
 
-# --- نظام رصد المعلمين ---
-elif st.session_state.page == "att_login":
+# --- 🔐 دخول المعلمين ---
+elif st.session_state.page == "login_t":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    t_id = st.text_input("أدخل السجل المدني للمعلم:", type="password")
+    tid = st.text_input("أدخل رقم السجل المدني:", type="password")
     if st.button("دخول"):
-        res = supabase.table("teachers").select("*").eq("national_id", t_id.strip()).execute()
+        res = supabase.table("teachers").select("*").eq("national_id", tid.strip()).execute()
         if res.data:
-            st.session_state.teacher_name = res.data[0]['name_tech']
-            st.session_state.page = "taking_attendance"; st.rerun()
-        else: st.error("السجل غير موجود")
+            st.session_state.t_name = res.data[0]['name_tech']
+            st.session_state.page = "marking"; st.rerun()
+        else: st.error("السجل غير مسجل")
 
-elif st.session_state.page == "taking_attendance":
+elif st.session_state.page == "marking":
     today = str(datetime.now().date())
-    st.info(f"المعلم: {st.session_state.teacher_name} | التاريخ: {today}")
-    s_data = supabase.table('students').select("committee").execute()
-    coms = sorted(list(set([str(i['committee']) for i in s_data.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
+    st.info(f"المعلم: {st.session_state.t_name} | التاريخ: {today}")
+    
+    # جلب اللجان
+    all_s = supabase.table('students').select("committee").execute()
+    coms = sorted(list(set([str(i['committee']) for i in all_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
+    
     sel_c = st.selectbox("اختر اللجنة:", ["---"] + coms)
     if sel_c != "---":
-        students = supabase.table('students').select("*").eq('committee', sel_c).execute()
-        old_att = supabase.table('attendance').select("student_name, status").eq('committee', sel_c).eq('date', today).execute()
-        old_map = {item['student_name']: item['status'] for item in old_att.data}
+        st.subheader(f"رصد اللجنة {sel_c}")
+        st_list = supabase.table('students').select("*").eq("committee", sel_c).execute()
+        
+        # جلب الحالات السابقة لتثبيتها
+        old = supabase.table('attendance').select("student_name, status").eq("committee", sel_c).eq("date", today).execute()
+        old_m = {i['student_name']: i['status'] for i in old.data}
+        
         results = []
-        for s in students.data:
-            prev = old_map.get(s['student_name'], "حاضر")
-            stat = st.radio(f"👤 {s['student_name']}", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=f"s_{s['id']}", horizontal=True)
-            results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": stat, "date": today, "teacher_name": st.session_state.teacher_name})
-        if st.button("💾 حفظ الرصد"):
-            supabase.table('attendance').delete().eq('committee', sel_c).eq('date', today).execute()
+        for s in st_list.data:
+            prev = old_m.get(s['student_name'], "حاضر")
+            choice = st.radio(f"👤 {s['student_name']}", ["حاضر", "غائب", "متأخر"], 
+                              index=["حاضر", "غائب", "متأخر"].index(prev), key=s['id'], horizontal=True)
+            results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": st.session_state.t_name})
+        
+        if st.button("💾 حفظ البيانات"):
+            supabase.table('attendance').delete().eq("committee", sel_c).eq("date", today).execute()
             supabase.table('attendance').insert(results).execute()
-            st.success("تم الحفظ"); time.sleep(1); st.session_state.page = "home"; st.rerun()
+            st.success("تم الحفظ بنجاح"); time.sleep(1); st.session_state.page = "home"; st.rerun()
 
-# --- لوحة الإدارة ---
-elif st.session_state.page == "admin_login":
+# --- ⚙️ لوحة الإدارة ---
+elif st.session_state.page == "login_a":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    if st.text_input("رمز الدخول:", type="password") == "1234": st.session_state.page = "admin_panel"; st.rerun()
+    if st.text_input("رمز الإدارة:", type="password") == "1234": st.session_state.page = "admin"; st.rerun()
 
-elif st.session_state.page == "admin_panel":
-    if st.button("⬅️ خروج"): st.session_state.page = "home"; st.rerun()
-    tab1, tab2, tab3 = st.tabs(["📊 التقارير", "🏘️ حالة اللجان", "💾 البيانات"])
+elif st.session_state.page == "admin":
+    if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
+    t1, t2, t3 = st.tabs(["📊 التقارير الموحدة", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
     
-    with tab1:
-        rep_date = st.date_input("اختر التاريخ:", datetime.now())
-        # حل مشكلة APIError: جلب البيانات مرة واحدة ودمجها برمجياً
-        att_res = supabase.table("attendance").select("*").eq("date", str(rep_date)).execute()
-        if att_res.data:
-            df_att = pd.DataFrame(att_res.data)
-            df_abs = df_att[df_att['status'].isin(['غائب', 'متأخر'])].copy()
-            if st.button(f"🗑️ حذف سجلات {rep_date}"):
-                supabase.table('attendance').delete().eq('date', str(rep_date)).execute(); st.rerun()
+    with t1:
+        d = st.date_input("اختر التاريخ:", datetime.now())
+        att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
+        if att.data:
+            df = pd.DataFrame(att.data)
+            df_abs = df[df['status'].isin(['غائب', 'متأخر'])].copy()
+            if st.button(f"🗑️ حذف سجلات يوم {d}"):
+                supabase.table('attendance').delete().eq("date", str(d)).execute(); st.rerun()
+            
             if not df_abs.empty:
-                # جلب بيانات الطلاب لمرة واحدة لدمج "الشعبة"
-                std_all = supabase.table('students').select("student_name, class_name").execute()
-                std_map = {i['student_name']: i['class_name'] for i in std_all.data}
-                df_abs['الشعبة'] = df_abs['student_name'].map(std_map).fillna("---")
+                # دمج الشعبة برمجياً لتجنب APIError
+                st_data = supabase.table('students').select("student_name, class_name").execute()
+                s_map = {i['student_name']: i['class_name'] for i in st_data.data}
+                df_abs['الشعبة'] = df_abs['student_name'].map(s_map).fillna("---")
                 
-                df_abs['committee_num'] = pd.to_numeric(df_abs['committee'], errors='coerce')
-                df_abs = df_abs.sort_values(by='committee_num')
-                st.table(df_abs[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة'}))
+                # عرض الجدول المرتب
+                st.table(df_abs[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب'}))
                 
-                msg = f"🗓️ *تقرير مدرسة القطيف التقني*%0A📅 *التاريخ:* {rep_date}%0A---------------------------------------%0A"
+                wa_msg = f"🗓️ *تقرير غياب يوم {d}*%0A"
                 for _, r in df_abs.iterrows():
-                    msg += f"📦 *لجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']} ({r['status']})%0A%0A"
-                st.markdown(f'<a href="https://wa.me/?text={msg}" target="_blank" class="whatsapp-btn">إرسال واتساب 📲</a>', unsafe_allow_html=True)
-        else: st.info("لا توجد بيانات")
+                    wa_msg += f"📍 لجنة {r['committee']} | {r['student_name']} ({r['status']})%0A"
+                st.markdown(f'<a href="https://wa.me/?text={wa_msg}" target="_blank" class="whatsapp-btn">📲 إرسال عبر واتساب</a>', unsafe_allow_html=True)
+        else: st.info("لا توجد سجلات")
 
-    with tab2:
-        st.subheader("🏘️ متابعة حالة الرصد اليوم")
-        all_s = supabase.table('students').select("committee").execute()
-        all_coms = sorted(list(set([str(i['committee']) for i in all_s.data])), key=lambda x: int(x) if x.isdigit() else 0)
-        done_att = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
-        done_map = {str(i['committee']): i['teacher_name'] for i in done_att.data}
-        c1, c2 = st.columns(2)
-        with c1:
-            st.success("✅ رُصدت")
-            for c in all_coms:
-                if c in done_map: st.write(f"📍 لجنة {c} ({done_map[c]})")
-        with c2:
-            st.error("❌ لم تُرصد")
-            for c in all_coms:
-                if c not in done_map: st.write(f"⚠️ لجنة {c}")
+    with t2:
+        st.subheader("تحضير اللجان لليوم")
+        all_c = supabase.table('students').select("committee").execute()
+        all_set = sorted(list(set([str(i['committee']) for i in all_c.data])), key=lambda x: int(x) if x.isdigit() else 0)
+        done = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
+        done_m = {str(i['committee']): i['teacher_name'] for i in done.data}
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.success("✅ لجان اكتملت")
+            for c in all_set:
+                if c in done_m: st.write(f"لجنة {c} (بواسطة: {done_m[c]})")
+        with col2:
+            st.error("❌ لجان متبقية")
+            for c in all_set:
+                if c not in done_m: st.write(f"لجنة {c}")
 
-    with tab3:
-        if st.text_input("كلمة السر (4321):", type="password") == "4321":
-            std_q = supabase.table('students').select("*").execute()
-            if std_q.data:
-                df_bk = pd.DataFrame(std_q.data)
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.download_button("💾 نسخة CSV", data=df_bk.to_csv(index=False).encode('utf-8-sig'), file_name="data.csv")
-                    out = io.BytesIO()
-                    with pd.ExcelWriter(out, engine='xlsxwriter') as wr: df_bk.to_excel(wr, index=False)
-                    st.download_button("📊 نسخة XLSX", data=out.getvalue(), file_name="data.xlsx")
-                with col2:
-                    f = st.file_uploader("استعادة:")
-                    if f and st.button("🚀 استعادة"):
-                        df_new = pd.read_csv(f) if f.name.endswith('.csv') else pd.read_excel(f)
-                        supabase.table('students').delete().neq('student_name', 'none').execute()
-                        recs = df_new.to_dict('records')
-                        for r in recs: r.pop('id', None)
-                        supabase.table('students').insert(recs).execute(); st.success("تم")
+    with t3:
+        if st.text_input("كلمة سر البيانات:", type="password") == "4321":
+            sd = supabase.table('students').select("*").execute()
+            if sd.data:
+                df_all = pd.DataFrame(sd.data)
+                st.download_button("💾 تحميل نسخة CSV", df_all.to_csv(index=False).encode('utf-8-sig'), "students.csv")
+                # نسخة Excel
+                out = io.BytesIO()
+                with pd.ExcelWriter(out, engine='xlsxwriter') as wr: df_all.to_excel(wr, index=False)
+                st.download_button("📊 تحميل نسخة XLSX", out.getvalue(), "students.xlsx")
+            
+            up = st.file_uploader("رفع ملف بيانات جديد:")
+            if up and st.button("🚀 تحديث قاعدة البيانات"):
+                df_up = pd.read_csv(up) if up.name.endswith('.csv') else pd.read_excel(up)
+                supabase.table('students').delete().neq('id', 0).execute()
+                recs = df_up.to_dict('records')
+                for r in recs: r.pop('id', None)
+                supabase.table('students').insert(recs).execute()
+                st.success("تم التحديث")
