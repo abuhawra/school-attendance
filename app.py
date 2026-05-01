@@ -13,29 +13,13 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# 2. إعدادات الواجهة والتنسيق (CSS) - التنسيق الأخير
+# 2. إعدادات الواجهة والتنسيق (CSS)
 st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
 st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
     
-    /* تنسيق الغلاف (Header) الجديد تماماً */
-    .classic-header {
-        background-color: #1a237e; 
-        padding: 50px 20px; 
-        border-radius: 0px; 
-        text-align: center; 
-        color: white; 
-        border-bottom: 8px solid #ffd700; 
-        margin-bottom: 30px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    }
-    .header-title { font-size: 42px; font-weight: 800; margin-bottom: 15px; color: #ffffff; }
-    .header-sub-yellow { font-size: 26px; font-weight: 700; color: #ffd700; margin-bottom: 5px; }
-    .header-sub-white { font-size: 24px; font-weight: 600; color: #ffffff; }
-
-    /* تنسيق الأزرار والتقرير */
     .stButton>button { border-radius: 10px; font-weight: bold; height: 50px; width: 100%; font-size: 18px; }
     .wa-button { color: white !important; padding: 12px; border-radius: 10px; text-align: center; display: block; text-decoration: none; font-weight: bold; margin-top: 10px; font-size: 16px; }
     .wa-all { background-color: #28a745; }
@@ -49,13 +33,18 @@ st.markdown('''
 
 if 'page' not in st.session_state: st.session_state.page = "home"
 
-# --- 🏠 الصفحة الرئيسية (تطبيق الغلاف الأخير) ---
+# --- 🏠 الصفحة الرئيسية (الغلاف المنسق حسب الطلب) ---
 if st.session_state.page == "home":
     st.markdown('''
-        <div class="classic-header">
-            <div class="header-title">التحضير التقني لـ مدرسة القطيف الثانوية</div>
-            <div class="header-sub-yellow">فكرة وبرمجة: أ. عارف أحمد الحداد</div>
-            <div class="header-sub-white">إشراف مدير المدرسة: أ. فراس عبدالله آل عبد المحسن</div>
+        <div style="background-color: #1a237e; padding: 40px 20px; text-align: center; color: white; border-bottom: 8px solid #ffd700; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 30px;">
+            <div style="font-size: 38px; font-weight: 800; margin-bottom: 5px;">التحضير التقني</div>
+            <div style="font-size: 34px; font-weight: 700; margin-bottom: 20px;">مدرسة القطيف الثانوية</div>
+            
+            <div style="margin: 25px 0;"></div> <div style="font-size: 24px; font-weight: 500; color: #cfd8dc; margin-bottom: 5px;">فكرة وبرمجة</div>
+            <div style="font-size: 30px; font-weight: 700; color: #ffd700; margin-bottom: 25px;">أ. عارف أحمد الحداد</div>
+            
+            <div style="margin: 25px 0;"></div> <div style="font-size: 22px; font-weight: 500; color: #cfd8dc; margin-bottom: 5px;">مدير المدرسة</div>
+            <div style="font-size: 28px; font-weight: 600; color: #ffffff;">أ. فراس آل عبدالمحسن</div>
         </div>
     ''', unsafe_allow_html=True)
     
@@ -115,7 +104,6 @@ elif st.session_state.page == "admin":
         res_att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
         if res_att.data:
             df_all = pd.DataFrame(res_att.data)
-            # إظهار الغائب والمتأخر فقط في التقرير
             df_report = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
             if not df_report.empty:
                 res_std = supabase.table("students").select("*").execute()
@@ -127,10 +115,9 @@ elif st.session_state.page == "admin":
                 
                 st.table(df_report[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب'}))
                 
-                # أزرار الواتساب الثلاثة بالترتيب والرموز
                 col1, col2, col3 = st.columns(3)
                 def build_wa(df, title, emoji):
-                    msg = f"🗓️ *{title} - مدرسة القطيف*%0A📅 *التاريخ:* {d}%0A-----------------------%0A"
+                    msg = f"🗓️ *{title}*%0A📅 *التاريخ:* {d}%0A-----------------------%0A"
                     for _, r in df.iterrows():
                         msg += f"📦 اللجنة: {r['committee']}%0A👤 الطالب: {r['student_name']}%0A🏫 الشعبة: {r['الشعبة']}%0A{emoji} الحالة: {r['status']}%0A-----------------------%0A"
                     return msg
@@ -150,21 +137,29 @@ elif st.session_state.page == "admin":
         res_s = supabase.table('students').select("committee").execute()
         if res_s.data:
             all_c = sorted(list(set([str(i['committee']) for i in res_s.data])), key=lambda x: int(x) if x.isdigit() else 0)
-            done = [str(i['committee']) for i in supabase.table('attendance').select("committee").eq("date", str(datetime.now().date())).execute().data]
+            
+            # جلب رصد اليوم لمعرفة من المعلم الذي حضّر اللجنة
+            today_date = str(datetime.now().date())
+            att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", today_date).execute()
+            
+            # خريطة: رقم اللجنة -> اسم المعلم (نستخدم set لإزالة التكرار لكل لجنة)
+            done_map = {str(i['committee']): i['teacher_name'] for i in att_today.data}
+            
             c1, c2 = st.columns(2)
             with c1:
-                st.success("✅ رُصدت")
+                st.success("✅ لجان رُصدت")
                 for c in all_c:
-                    if c in done: st.write(f"📍 لجنة {c}")
+                    if c in done_map:
+                        st.write(f"📍 لجنة {c} - (المعلم: {done_map[c]})")
             with c2:
-                st.error("❌ لم تُرصد")
+                st.error("❌ لجان لم تُرصد")
                 for c in all_c:
-                    if c not in done: st.write(f"⚠️ لجنة {c}")
+                    if c not in done_map:
+                        st.write(f"⚠️ لجنة {c}")
 
     with tab3:
         if st.text_input("رمز إدارة البيانات:", type="password") == "4321":
-            # النسخة الاحتياطية (CSV و XLSX)
-            st.subheader("💾 النسخة الاحتياطية للبيانات")
+            st.subheader("💾 النسخة الاحتياطية")
             res_backup = supabase.table('students').select("*").execute()
             if res_backup.data:
                 df_bk = pd.DataFrame(res_backup.data)
@@ -177,18 +172,16 @@ elif st.session_state.page == "admin":
                     st.download_button("📊 تحميل نسخة XLSX (Excel)", output.getvalue(), f"backup_{datetime.now().date()}.xlsx", use_container_width=True)
             
             st.divider()
-            # حذف تاريخ محدد
             st.subheader("🗑️ حذف سجلات رصد قديمة")
-            del_d = st.date_input("اختر التاريخ المراد مسح سجلاته:", datetime.now())
+            del_d = st.date_input("اختر التاريخ المراد مسح سجلاته نهائياً:", datetime.now())
             if st.button("⚠️ تنفيذ الحذف النهائي لهذا التاريخ"):
                 supabase.table('attendance').delete().eq("date", str(del_d)).execute()
-                st.warning(f"تم حذف سجلات يوم {del_d}")
+                st.warning(f"تم حذف سجلات يوم {del_d} بنجاح.")
 
             st.divider()
-            # استيراد بيانات جديدة
             st.subheader("🚀 استيراد بيانات طلاب جديدة")
             up = st.file_uploader("ارفع ملف الطلاب الجديد:")
-            if up and st.button("بدء عملية التحديث"):
+            if up and st.button("بدء التحديث"):
                 df_new = pd.read_csv(up) if up.name.endswith('.csv') else pd.read_excel(up)
                 supabase.table('students').delete().neq('committee', '0').execute()
                 supabase.table('students').insert(df_new.to_dict('records')).execute()
