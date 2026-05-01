@@ -3,6 +3,7 @@ from supabase import create_client
 import pandas as pd
 from datetime import datetime
 import time
+import io
 
 # 1. إعدادات الاتصال بقاعدة البيانات
 url = "https://lsmevvsogsqqqjyuqzbx.supabase.co"
@@ -14,7 +15,7 @@ supabase = st.session_state.supabase
 
 # 2. إعدادات الواجهة والتنسيق (CSS)
 st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
-st.markdown("""
+st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
@@ -26,19 +27,19 @@ st.markdown("""
     th { background-color: #1a237e !important; color: white !important; text-align: center !important; }
     td { text-align: center !important; }
     </style>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
 if 'page' not in st.session_state: st.session_state.page = "home"
 
 # --- الصفحة الرئيسية ---
 if st.session_state.page == "home":
-    st.markdown(f"""
+    st.markdown(f'''
         <div class="main-header">
             <div style="font-size:32px; font-weight:800;">التحضير التقني لـ مدرسة القطيف الثانوية</div>
             <div style="font-size:20px; color:#ffd700; margin-top:10px;">فكرة وبرمجة: أ. عارف أحمد الحداد</div>
             <div style="font-size:18px; color:#cfd8dc;">إشراف مدير المدرسة: أ. فراس عبدالله آل عبد المحسن</div>
         </div>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
     
     col_a, col_b, col_c = st.columns([1, 1.5, 1])
     with col_b:
@@ -140,18 +141,40 @@ elif st.session_state.page == "admin":
 
     with tab3:
         if st.text_input("رمز البيانات:", type="password") == "4321":
-            # --- إعادة زر النسخة الاحتياطية ---
+            # --- أزرار النسخة الاحتياطية ---
             st.subheader("💾 النسخة الاحتياطية")
             res_backup = supabase.table('students').select("*").execute()
             if res_backup.data:
                 df_backup = pd.DataFrame(res_backup.data)
-                csv_data = df_backup.to_csv(index=False).encode('utf-8-sig')
-                st.download_button(label="📥 تحميل بيانات الطلاب الحالية (CSV/Excel)", data=csv_data, file_name=f"students_backup_{datetime.now().strftime('%Y-%m-%d')}.csv", mime="text/csv")
+                col_csv, col_xlsx = st.columns(2)
+                with col_csv:
+                    csv_data = df_backup.to_csv(index=False).encode('utf-8-sig')
+                    st.download_button(label="📥 تحميل CSV", data=csv_data, file_name=f"students_backup_{datetime.now().strftime('%Y-%m-%d')}.csv", mime="text/csv", use_container_width=True)
+                with col_xlsx:
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df_backup.to_excel(writer, index=False, sheet_name='Students')
+                    st.download_button(label="📥 تحميل XLSX (Excel)", data=output.getvalue(), file_name=f"students_backup_{datetime.now().strftime('%Y-%m-%d')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
             
             st.divider()
-            up = st.file_uploader("تحديث قاعدة البيانات (رفع ملف جديد):")
-            if up and st.button("🚀 بدء التحديث"):
+
+            # --- زر حذف سجلات تاريخ محدد (المطلوب) ---
+            st.subheader("🗑️ حذف سجلات رصد قديمة")
+            del_date = st.date_input("اختر التاريخ المراد حذفه نهائياً:", datetime.now())
+            if st.button("⚠️ حذف سجلات هذا التاريخ نهائياً", type="secondary"):
+                check_res = supabase.table('attendance').select("id").eq("date", str(del_date)).execute()
+                if check_res.data:
+                    supabase.table('attendance').delete().eq("date", str(del_date)).execute()
+                    st.warning(f"تم حذف جميع سجلات تاريخ {del_date} بنجاح.")
+                else:
+                    st.info("لا توجد سجلات لهذا التاريخ لحذفها.")
+
+            st.divider()
+            
+            st.subheader("🚀 تحديث قاعدة البيانات (رفع ملف جديد)")
+            up = st.file_uploader("ارفع ملف الطلاب الجديد:")
+            if up and st.button("ابدأ التحديث"):
                 df_new = pd.read_csv(up) if up.name.endswith('.csv') else pd.read_excel(up)
                 supabase.table('students').delete().neq('committee', '0').execute()
                 supabase.table('students').insert(df_new.to_dict('records')).execute()
-                st.success("تم التحديث!")
+                st.success("تم تحديث البيانات بنجاح!")
