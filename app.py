@@ -29,7 +29,7 @@ st.markdown('''
 if 'page' not in st.session_state:
     st.session_state.page = "home"
 
-# --- 🛠️ دالة بناء الرسالة مع الرموز التعبيرية المضافة ---
+# --- 🛠️ دالة بناء الرسالة بالتعديلات المطلوبة (الاسم - Bold) ---
 def get_wa_link(df, status_type, d):
     if df.empty: return None
     
@@ -41,11 +41,11 @@ def get_wa_link(df, status_type, d):
     msg += "-----------------%0A"
     
     for _, r in df.iterrows():
-        # إضافة الرموز التعبيرية لكل سطر (📦، 👤، 🏫، ⚠️)
-        msg += f"📦 اللجنة : {r['committee']}%0A"
-        msg += f"👤 الأسم: {r['student_name']}%0A"
-        msg += f"🏫 الشعبة: {r.get('الشعبة','--')}%0A"
-        msg += f"⚠️ الحالة: {r['status']}%0A"
+        # تعديل الكلمة وجعلها Bold باستخدام النجوم *
+        msg += f"📦 *اللجنة :* {r['committee']}%0A"
+        msg += f"👤 *الاسم:* {r['student_name']}%0A"
+        msg += f"🏫 *الشعبة:* {r.get('الشعبة','--')}%0A"
+        msg += f"⚠️ *الحالة:* {r['status']}%0A"
         msg += "-----------------%0A" 
         
     return f"https://wa.me/?text={msg}"
@@ -65,13 +65,13 @@ if st.session_state.page == "home":
         if st.button("📝 رصد غياب الطلاب اليومي", use_container_width=True, type="primary"):
             st.session_state.page = "t_log"; st.rerun()
         st.write("")
-        if st.button("⚙️ لوحة الإدارة والتقارير", use_container_width=True):
+        if st.button("⚙️ لوحة الإدارة والتقارير الموحدة", use_container_width=True):
             st.session_state.page = "a_log"; st.rerun()
 
-# --- قسم الدخول للمعلم ---
+# --- بقية أقسام النظام (المعلم / الإدارة / الحفظ) ---
 elif st.session_state.page == "t_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    tid = st.text_input("أدخل السجل المدني:", type="password")
+    tid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
     if st.button("دخول"):
         res = supabase.table("teachers").select("*").eq("national_id", tid.strip()).execute()
         if res.data:
@@ -79,7 +79,6 @@ elif st.session_state.page == "t_log":
             st.session_state.page = "mark"; st.rerun()
         else: st.error("السجل غير مسجل.")
 
-# --- واجهة رصد الحضور ---
 elif st.session_state.page == "mark":
     today = str(datetime.now().date())
     st.info(f"المعلم: {st.session_state.teacher} | التاريخ: {today}")
@@ -101,7 +100,6 @@ elif st.session_state.page == "mark":
                 supabase.table('attendance').insert(results).execute()
                 st.success("تم الحفظ بنجاح!"); time.sleep(1); st.session_state.page = "home"; st.rerun()
 
-# --- لوحة الإدارة والتقارير ---
 elif st.session_state.page == "a_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": 
@@ -130,13 +128,4 @@ elif st.session_state.page == "admin":
                 link_late = get_wa_link(df_all[df_all['status'] == "متأخر"], "المتأخرين", d)
                 if link_late: st.markdown(f'<a href="{link_late}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
         else:
-            st.info("لا توجد بيانات لهذا اليوم.")
-
-    with tab2:
-        st.subheader("حالة رصد اللجان")
-        # (بقية الكود المعتاد لحالة اللجان...)
-        st.write("يمكنك هنا متابعة اللجان المكتملة.")
-
-    with tab3:
-        if st.text_input("رمز البيانات (4321):", type="password") == "4321":
-            st.write("إدارة قاعدة البيانات متاحة هنا.")
+            st.info("لا توجد بيانات لهذا التاريخ.")
