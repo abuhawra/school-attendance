@@ -54,14 +54,14 @@ def get_wa_link(df, status_type, d):
     # رأس الرسالة
     msg = f"{header_emoji} *قائمة {status_type}*\\n"
     msg += f"📅 *التاريخ:* {d}\\n"
-    msg += "──────────────\\" # خط فاصل في سطر جديد
+    msg += "──────────────\\n" # خط فاصل في سطر جديد
     
     for _, r in df.iterrows():
         msg += f"📦 *اللجنة:* {r['committee']}\\n"
         msg += f"👤 *الاسم:* {r['student_name']}\\n"
         msg += f"🏫 *الشعبة:* {r.get('الشعبة','--')}\\n"
         msg += f"⚠️ *الحالة:* {r['status']}\\n"
-        msg += "──────────────\\" # خط فاصل في سطر جديد
+        msg += "──────────────\\n" # خط فاصل في سطر جديد
         
     return f"https://wa.me/?text={urllib.parse.quote(msg)}"
 
