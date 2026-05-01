@@ -46,18 +46,21 @@ st.markdown(STYLE_CSS, unsafe_allow_html=True)
 if 'page' not in st.session_state:
     st.session_state.page = "home"
 
-# --- 🛠️ دالة بناء روابط الواتساب المحدثة ---
+# --- 🛠️ دالة بناء روابط الواتساب بالتنسيق الجديد ---
 def get_wa_link(df, status_type, d):
     if df.empty: return None
-    emoji = "🔴" if status_type == "الغائبين" else "⏳"
-    msg = f"*{emoji} قائمة {status_type}*\\n📅 *التاريخ:* {d}\\n" + "──────────────\\n" # خط فاصل أصغر
+    emoji_header = "🚫" if "غائب" in status_type else "⏳"
+    msg = f"*{emoji_header} قائمة {status_type}*\\n📅 *التاريخ:* {d}\\n" + "──────────────\\n"
     for _, r in df.iterrows():
-        # التأكد من كتابة الحالة بشكل واضح
-        student_status = r['status']
-        msg += f"📦 لجنة: {r['committee']}\\n👤 الطالب: {r['student_name']}\\n🏫 الشعبة: {r.get('الشعبة','--')}\\n⚠️ الحالة: *{student_status}*\\n" + "──────────────\\n"
+        # التنسيق المطلوب: كل معلومة في سطر مع رمزها
+        msg += f"📦 *اللجنة:* {r['committee']}\\n"
+        msg += f"👤 *الاسم:* {r['student_name']}\\n"
+        msg += f"🏫 *الشعبة:* {r.get('الشعبة','--')}\\n"
+        msg += f"⚠️ *الحالة:* {r['status']}\\n"
+        msg += "──────────────\\n"
     return f"https://wa.me/?text={urllib.parse.quote(msg)}"
 
-# --- التنقل بين الصفحات ---
+# --- نظام التنقل ---
 if st.session_state.page == "home":
     st.markdown(HEADER_HTML, unsafe_allow_html=True)
     col_a, col_b, col_c = st.columns([1, 1.5, 1])
@@ -71,7 +74,7 @@ if st.session_state.page == "home":
 elif st.session_state.page == "t_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     tid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
-    if st.button("دخول للنظام"):
+    if st.button("دخول"):
         res = supabase.table("teachers").select("*").eq("national_id", tid.strip()).execute()
         if res.data:
             st.session_state.teacher = res.data[0]['name_tech']
@@ -97,7 +100,7 @@ elif st.session_state.page == "mark":
             if st.button("💾 حفظ البيانات"):
                 supabase.table('attendance').delete().eq("committee", sel_c).eq("date", today).execute()
                 supabase.table('attendance').insert(results).execute()
-                st.success("تم الحفظ!"); time.sleep(1); st.session_state.page = "home"; st.rerun()
+                st.success("تم الحفظ بنجاح!"); time.sleep(1); st.session_state.page = "home"; st.rerun()
 
 elif st.session_state.page == "a_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
@@ -117,9 +120,7 @@ elif st.session_state.page == "admin":
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
             
-            # عرض الطلاب الغائبين والمتأخرين فقط في الجدول
-            df_filtered = df_all[df_all['status'].isin(['غائب', 'متأخر'])]
-            st.dataframe(df_filtered[['committee', 'student_name', 'الشعبة', 'status']], use_container_width=True)
+            st.dataframe(df_all[df_all['status'].isin(['غائب', 'متأخر'])][['committee', 'student_name', 'الشعبة', 'status']], use_container_width=True)
             
             c1, c2 = st.columns(2)
             with c1:
@@ -130,7 +131,7 @@ elif st.session_state.page == "admin":
                 if link_late: st.markdown(f'<a href="{link_late}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
 
     with tab2:
-        st.subheader("🏘️ حالة اللجان")
+        st.subheader("🏘️ متابعة رصد اللجان")
         att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
         done_dict = {str(i['committee']): i['teacher_name'] for i in att_today.data}
         res_s = supabase.table('students').select("committee").execute()
