@@ -13,7 +13,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# --- 🎨 التنسيق المرئي ---
+# --- 🎨 التنسيق المرئي الكامل ---
 st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
 st.markdown('''
     <style>
@@ -22,7 +22,20 @@ st.markdown('''
     .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 18px; }
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
-    .main-header { background-color: #1a237e; padding: 30px; text-align: center; color: white; border-radius: 15px; margin-bottom: 25px; border-bottom: 5px solid #ffd700; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+    .main-header { 
+        background-color: #1a237e; 
+        padding: 40px 20px; 
+        text-align: center; 
+        color: white; 
+        border-radius: 20px; 
+        margin-bottom: 30px; 
+        border-bottom: 8px solid #ffd700; 
+        box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    }
+    .header-title { font-size: 42px; font-weight: 800; margin: 0; }
+    .header-subtitle { font-size: 32px; font-weight: 700; margin: 5px 0 20px 0; color: #ffffff; }
+    .header-info { font-size: 22px; color: #ffd700; font-weight: bold; margin: 5px 0; }
+    .header-manager { font-size: 24px; color: #ffffff; font-weight: 700; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px; }
     </style>
 ''', unsafe_allow_html=True)
 
@@ -44,17 +57,21 @@ def get_wa_link(df, status_type, d):
         msg += "-----------------%0A" 
     return f"https://wa.me/?text={msg}"
 
-# --- الصفحة الرئيسية ---
+# --- الصفحة الرئيسية (الغلاف المحدث) ---
 if st.session_state.page == "home":
     st.markdown(f'''
         <div class="main-header">
-            <h1 style="margin:0; font-size: 35px;">التحضير التقني</h1>
-            <h2 style="margin:0; font-size: 28px;">مدرسة القطيف الثانوية</h2>
-            <p style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">برمجة: أ. عارف أحمد الحداد</p>
+            <div class="header-title">التحضير التقني</div>
+            <div class="header-subtitle">مدرسة القطيف الثانوية</div>
+            <div class="header-info">برمجة: أ. عارف أحمد الحداد</div>
+            <div class="header-manager">
+                <span style="color: #cfd8dc; font-weight: 400; font-size: 20px;">مدير المدرسة</span><br>
+                أ. فراس آل عبدالمحسن
+            </div>
         </div>
     ''', unsafe_allow_html=True)
     
-    col_b = st.columns([1, 2, 1])[1]
+    col_b = st.columns([1, 1.8, 1])[1]
     with col_b:
         if st.button("📝 رصد غياب الطلاب اليومي", use_container_width=True, type="primary"):
             st.session_state.page = "t_log"; st.rerun()
@@ -123,30 +140,24 @@ elif st.session_state.page == "admin":
 
     with tab2:
         st.subheader("🏘️ حالة رصد اللجان اليوم")
-        # جلب البيانات المرصودة اليوم
         att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
         done_dict = {str(i['committee']): i['teacher_name'] for i in att_today.data}
-        # جلب جميع اللجان المسجلة
         res_s = supabase.table('students').select("committee").execute()
         all_c = sorted(list(set([str(i['committee']) for i in res_s.data])), key=lambda x: int(x) if x.isdigit() else 0)
-        
         c1, c2 = st.columns(2)
         with c1:
             st.success("✅ لجان تم رصدها")
             for c in all_c:
-                if c in done_dict:
-                    st.write(f"📍 **لجنة {c}** - (المعلم: {done_dict[c]})")
+                if c in done_dict: st.write(f"📍 **لجنة {c}** - (المعلم: {done_dict[c]})")
         with c2:
             st.error("❌ لجان لم تُرصد بعد")
             for c in all_c:
-                if c not in done_dict:
-                    st.write(f"⚠️ **لجنة {c}**")
+                if c not in done_dict: st.write(f"⚠️ **لجنة {c}**")
 
     with tab3:
-        # استعادة خانة الدخول بالرقم السري
         pwd = st.text_input("أدخل رمز إدارة البيانات للوصول:", type="password")
         if pwd == "4321":
-            st.success("تم تأكيد الرمز. يمكنك الآن إدارة البيانات.")
+            st.success("تم تأكيد الرمز.")
             res_bk = supabase.table('students').select("*").execute()
             if res_bk.data:
                 df_bk = pd.DataFrame(res_bk.data)
@@ -164,5 +175,3 @@ elif st.session_state.page == "admin":
                 supabase.table('students').delete().neq('committee', '0').execute()
                 supabase.table('students').insert(df_new.to_dict('records')).execute()
                 st.success("تم التحديث بنجاح!")
-        elif pwd != "":
-            st.error("رمز البيانات غير صحيح.")
