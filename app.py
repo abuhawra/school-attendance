@@ -20,6 +20,7 @@ st.markdown('''
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
     
+    /* تنسيق الحاويات والأزرار */
     .stButton>button { border-radius: 10px; font-weight: bold; height: 50px; width: 100%; font-size: 18px; }
     .wa-button { color: white !important; padding: 12px; border-radius: 10px; text-align: center; display: block; text-decoration: none; font-weight: bold; margin-top: 10px; font-size: 16px; }
     .wa-all { background-color: #28a745; }
@@ -33,7 +34,7 @@ st.markdown('''
 
 if 'page' not in st.session_state: st.session_state.page = "home"
 
-# --- 🏠 الصفحة الرئيسية (الغلاف المنسق حسب الطلب) ---
+# --- 🏠 الصفحة الرئيسية (الغلاف المنسق حسب طلبك الأخير) ---
 if st.session_state.page == "home":
     st.markdown('''
         <div style="background-color: #1a237e; padding: 40px 20px; text-align: center; color: white; border-bottom: 8px solid #ffd700; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 30px;">
@@ -137,28 +138,20 @@ elif st.session_state.page == "admin":
         res_s = supabase.table('students').select("committee").execute()
         if res_s.data:
             all_c = sorted(list(set([str(i['committee']) for i in res_s.data])), key=lambda x: int(x) if x.isdigit() else 0)
-            
-            # جلب رصد اليوم لمعرفة من المعلم الذي حضّر اللجنة
-            today_date = str(datetime.now().date())
-            att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", today_date).execute()
-            
-            # خريطة: رقم اللجنة -> اسم المعلم (نستخدم set لإزالة التكرار لكل لجنة)
-            done_map = {str(i['committee']): i['teacher_name'] for i in att_today.data}
-            
+            done = [str(i['committee']) for i in supabase.table('attendance').select("committee").eq("date", str(datetime.now().date())).execute().data]
             c1, c2 = st.columns(2)
             with c1:
-                st.success("✅ لجان رُصدت")
+                st.success("✅ رُصدت")
                 for c in all_c:
-                    if c in done_map:
-                        st.write(f"📍 لجنة {c} - (المعلم: {done_map[c]})")
+                    if c in done: st.write(f"📍 لجنة {c}")
             with c2:
-                st.error("❌ لجان لم تُرصد")
+                st.error("❌ لم تُرصد")
                 for c in all_c:
-                    if c not in done_map:
-                        st.write(f"⚠️ لجنة {c}")
+                    if c not in done: st.write(f"⚠️ لجنة {c}")
 
     with tab3:
         if st.text_input("رمز إدارة البيانات:", type="password") == "4321":
+            # --- أزرار النسخة الاحتياطية ---
             st.subheader("💾 النسخة الاحتياطية")
             res_backup = supabase.table('students').select("*").execute()
             if res_backup.data:
@@ -172,6 +165,7 @@ elif st.session_state.page == "admin":
                     st.download_button("📊 تحميل نسخة XLSX (Excel)", output.getvalue(), f"backup_{datetime.now().date()}.xlsx", use_container_width=True)
             
             st.divider()
+            # --- حذف سجلات تاريخ محدد ---
             st.subheader("🗑️ حذف سجلات رصد قديمة")
             del_d = st.date_input("اختر التاريخ المراد مسح سجلاته نهائياً:", datetime.now())
             if st.button("⚠️ تنفيذ الحذف النهائي لهذا التاريخ"):
@@ -179,6 +173,7 @@ elif st.session_state.page == "admin":
                 st.warning(f"تم حذف سجلات يوم {del_d} بنجاح.")
 
             st.divider()
+            # --- استيراد بيانات جديدة ---
             st.subheader("🚀 استيراد بيانات طلاب جديدة")
             up = st.file_uploader("ارفع ملف الطلاب الجديد:")
             if up and st.button("بدء التحديث"):
