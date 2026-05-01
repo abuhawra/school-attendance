@@ -25,7 +25,7 @@ st.markdown("""
     }
     .hr-style { border: 0; height: 1px; background: rgba(255,255,255,0.3); width: 40%; margin: 20px auto; }
     .stButton>button { border-radius: 10px; font-weight: bold; height: 50px; width: 100%; }
-    .whatsapp-link { background-color: #25D366; color: white; padding: 12px; border-radius: 8px; text-align: center; display: block; text-decoration: none; font-weight: bold; margin-top:10px; }
+    .whatsapp-link { background-color: #25D366; color: white; padding: 15px; border-radius: 12px; text-align: center; display: block; text-decoration: none; font-weight: bold; margin-top:15px; font-size:18px; }
     th { background-color: #1a237e !important; color: white !important; text-align: center !important; }
     td { text-align: center !important; }
     </style>
@@ -68,23 +68,18 @@ elif st.session_state.page == "t_log":
 elif st.session_state.page == "mark":
     today = str(datetime.now().date())
     st.info(f"المعلم: {st.session_state.teacher} | التاريخ: {today}")
-    
     s_data = supabase.table('students').select("committee").execute()
     coms = sorted(list(set([str(i['committee']) for i in s_data.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
-    
     sel_c = st.selectbox("اختر اللجنة:", ["---"] + coms)
     if sel_c != "---":
         students = supabase.table('students').select("*").eq("committee", sel_c).execute()
         old = supabase.table('attendance').select("*").eq("committee", sel_c).eq("date", today).execute()
         old_map = {i['student_name']: i['status'] for i in old.data}
-        
         results = []
         for s in students.data:
             prev = old_map.get(s['student_name'], "حاضر")
-            choice = st.radio(f"👤 {s['student_name']}", ["حاضر", "غائب", "متأخر"], 
-                              index=["حاضer", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True)
+            choice = st.radio(f"👤 {s['student_name']}", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True)
             results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": st.session_state.teacher})
-        
         if st.button("💾 حفظ البيانات"):
             supabase.table('attendance').delete().eq("committee", sel_c).eq("date", today).execute()
             supabase.table('attendance').insert(results).execute()
@@ -97,38 +92,31 @@ elif st.session_state.page == "a_log":
 
 elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
-    
-    # استرجاع الرموز مع كل تبويب
     tab1, tab2, tab3 = st.tabs(["📊 التقارير الموحدة", "🏘️ متابعة حالة اللجان", "💾 إدارة بيانات الطلاب"])
     
     with tab1:
-        d = st.date_input("اختر تاريخ التقرير:", datetime.now())
+        d = st.date_input("اختر التاريخ:", datetime.now())
         att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
         if att.data:
             df_att = pd.DataFrame(att.data)
             df_abs = df_att[df_att['status'].isin(['غائب', 'متأخر'])].copy()
-            
-            if st.button(f"🗑️ حذف كافة سجلات يوم {d}"):
+            if st.button(f"🗑️ حذف سجلات يوم {d}"):
                 supabase.table('attendance').delete().eq("date", str(d)).execute(); st.rerun()
             
             if not df_abs.empty:
-                # جلب بيانات الطلاب لربط الشعبة
                 std_all = supabase.table('students').select("student_name", "class_name").execute()
                 s_map = {i['student_name']: i['class_name'] for i in std_all.data}
                 df_abs['الشعبة'] = df_abs['student_name'].map(s_map).fillna("---")
-                
-                # ترتيب حسب اللجنة
                 df_abs['c_idx'] = pd.to_numeric(df_abs['committee'], errors='coerce')
                 df_abs = df_abs.sort_values(by='c_idx')
-                
                 st.table(df_abs[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب'}))
                 
-                # تعديل رسالة الواتساب لتشمل الشعبة
-                wa_msg = f"🗓️ *تقرير غياب مدرسة القطيف - يوم {d}*%0A%0A"
+                # --- تعديل رسالة الواتساب المطلوب ---
+                wa_msg = f"🗓️ *تقرير مدرسة القطيف التقني*%0A📅 *التاريخ:* {d}%0A---------------------------------------%0A"
                 for _, r in df_abs.iterrows():
-                    wa_msg += f"📍 لجنة: {r['committee']} | طالب: {r['student_name']} | شعبة: {r['الشعبة']} | الحالة: ({r['status']})%0A"
+                    wa_msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *اسم الطالب:* {r['student_name']}%0A🏫 *الشعبة:* {r['الشعبة']}%0A⚠️ *الحالة:* {r['status']}%0A-----------------------%0A"
                 
-                st.markdown(f'<a href="https://wa.me/?text={wa_msg}" target="_blank" class="whatsapp-link">📲 إرسال التقرير عبر واتساب</a>', unsafe_allow_html=True)
+                st.markdown(f'<a href="https://wa.me/?text={wa_msg}" target="_blank" class="whatsapp-link">📲 إرسال التقرير المرتب عبر واتساب</a>', unsafe_allow_html=True)
         else: st.info("لا توجد بيانات لهذا التاريخ")
 
     with tab2:
@@ -137,32 +125,29 @@ elif st.session_state.page == "admin":
         all_coms = sorted(list(set([str(i['committee']) for i in all_s.data])), key=lambda x: int(x) if x.isdigit() else 0)
         done = supabase.table('attendance').select("committee", "teacher_name").eq("date", str(datetime.now().date())).execute()
         done_map = {str(i['committee']): i['teacher_name'] for i in done.data}
-        
         c1, c2 = st.columns(2)
         with c1:
-            st.success("✅ لجان اكتمل رصدها")
+            st.success("✅ رُصدت")
             for c in all_coms:
-                if c in done_map: st.write(f"لجنة {c} (بواسطة: {done_map[c]})")
+                if c in done_map: st.write(f"📍 لجنة {c} ({done_map[c]})")
         with c2:
-            st.error("❌ لجان لم تُرصد بعد")
+            st.error("❌ متبقية")
             for c in all_coms:
-                if c not in done_map: st.write(f"لجنة {c}")
+                if c not in done_map: st.write(f"⚠️ لجنة {c}")
 
     with tab3:
         if st.text_input("كلمة مرور البيانات:", type="password") == "4321":
             sd = supabase.table('students').select("*").execute()
             if sd.data:
                 df_bk = pd.DataFrame(sd.data)
-                st.download_button("💾 تحميل نسخة CSV", df_bk.to_csv(index=False).encode('utf-8-sig'), "students.csv")
+                st.download_button("💾 تحميل CSV", df_bk.to_csv(index=False).encode('utf-8-sig'), "students.csv")
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as wr: df_bk.to_excel(wr, index=False)
-                st.download_button("📊 تحميل نسخة XLSX", output.getvalue(), "students.xlsx")
-            
-            up = st.file_uploader("رفع ملف بيانات جديد (تحديث كامل):")
+                st.download_button("📊 تحميل XLSX", output.getvalue(), "students.xlsx")
+            up = st.file_uploader("تحديث قاعدة البيانات:")
             if up and st.button("🚀 تحديث الآن"):
                 df_new = pd.read_csv(up) if up.name.endswith('.csv') else pd.read_excel(up)
                 supabase.table('students').delete().neq('student_name', 'none').execute()
                 recs = df_new.to_dict('records')
                 for r in recs: r.pop('id', None)
-                supabase.table('students').insert(recs).execute()
-                st.success("تم تحديث البيانات بنجاح")
+                supabase.table('students').insert(recs).execute(); st.success("تم التحديث")
