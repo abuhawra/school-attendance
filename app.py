@@ -69,6 +69,7 @@ if st.session_state.page == "home":
             <p style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">مدير المدرسة : أ. فراس آل عبدالمحسن</p>
             <div style="font-size: 20px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
             فكرة و برمجة : أ.عارف أحمد الحداد
+             <h3 style="margin:0; font-size: 10px;">2026</h3>
             </div>
         </div>
     ''', unsafe_allow_html=True)
