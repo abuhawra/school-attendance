@@ -20,7 +20,6 @@ st.markdown('''
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
     
-    /* ضبط عرض الجداول والبيانات للجوال */
     .stDataFrame { width: 100% !important; }
     
     .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 18px; }
@@ -41,14 +40,19 @@ st.markdown('''
 if 'page' not in st.session_state:
     st.session_state.page = "home"
 
-# --- 🛠️ دالة بناء رسالة الواتساب المنسقة ---
+# --- 🛠️ دالة بناء رسالة الواتساب ---
 def get_wa_link(df, status_type, d):
     if df.empty: return None
     header_emoji = "🚫" if "غائب" in status_type else "⏳"
     msg = f"{header_emoji} *قائمة {status_type}*%0A"
     msg += f"📅 *التاريخ:* {d}%0A"
     msg += "-----------------%0A"
-    for _, r in df.iterrows():
+    # ترتيب البيانات في الرسالة أيضاً حسب اللجنة
+    df_sorted = df.copy()
+    df_sorted['committee_int'] = pd.to_numeric(df_sorted['committee'], errors='coerce').fillna(0)
+    df_sorted = df_sorted.sort_values(by='committee_int')
+    
+    for _, r in df_sorted.iterrows():
         msg += f"📦 *اللجنة :* {r['committee']}%0A"
         msg += f"👤 *الاسم:* {r['student_name']}%0A"
         msg += f"🏫 *الشعبة:* {r.get('الشعبة','--')}%0A"
@@ -56,7 +60,7 @@ def get_wa_link(df, status_type, d):
         msg += "-----------------%0A" 
     return f"https://wa.me/?text={msg}"
 
-# --- 1. الصفحة الرئيسية (الغلاف) ---
+# --- 1. الصفحة الرئيسية ---
 if st.session_state.page == "home":
     st.markdown(f'''
         <div class="main-header">
@@ -77,7 +81,7 @@ if st.session_state.page == "home":
         if st.button("⚙️ لوحة الإدارة والتقارير الموحدة", use_container_width=True):
             st.session_state.page = "a_log"; st.rerun()
 
-# --- 2. تسجيل دخول المعلم بالرقم المدني ---
+# --- 2. تسجيل دخول المعلم ---
 elif st.session_state.page == "t_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     tid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
@@ -88,7 +92,7 @@ elif st.session_state.page == "t_log":
             st.session_state.page = "mark"; st.rerun()
         else: st.error("عذراً، السجل المدني غير مسجل.")
 
-# --- 3. واجهة رصد الطلاب وتأثير النجاح ---
+# --- 3. واجهة الرصد ---
 elif st.session_state.page == "mark":
     today = str(datetime.now().date())
     st.info(f"المعلم: {st.session_state.teacher} | التاريخ: {today}")
@@ -109,10 +113,10 @@ elif st.session_state.page == "mark":
             if st.button("💾 حفظ الرصد النهائي", use_container_width=True):
                 supabase.table('attendance').delete().eq("committee", sel_c).eq("date", today).execute()
                 supabase.table('attendance').insert(results).execute()
-                st.snow() # تأثير الاحتفال
+                st.snow()
                 st.session_state.page = "thank_you"; st.rerun()
 
-# --- 4. صفحة الشكر النهائية ---
+# --- 4. صفحة الشكر ---
 elif st.session_state.page == "thank_you":
     st.markdown(f'''
         <div class="thank-you-card">
@@ -125,7 +129,7 @@ elif st.session_state.page == "thank_you":
     if st.button("🏠 العودة للصفحة الرئيسية", use_container_width=True, type="primary"):
         st.session_state.page = "home"; st.rerun()
 
-# --- 5. قسم الإدارة والتقارير ---
+# --- 5. قسم الإدارة والتقارير المرتبة ---
 elif st.session_state.page == "a_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": 
@@ -144,10 +148,16 @@ elif st.session_state.page == "admin":
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
             
-            # عرض الجدول باللغة العربية
-            report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])][['committee', 'student_name', 'الشعبة', 'status']]
-            report_df.columns = ['اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة']
-            st.dataframe(report_df, use_container_width=True, hide_index=True)
+            # --- التعديل الجوهري: ترتيب الجداول حسب اللجنة من 1 إلى الآخر ---
+            report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
+            # تحويل عمود اللجنة لرقمي للفرز الصحيح (1 ثم 2 وليس 1 ثم 10)
+            report_df['committee_sort'] = pd.to_numeric(report_df['committee'], errors='coerce').fillna(0)
+            report_df = report_df.sort_values(by='committee_sort')
+            
+            # عرض الجدول النهائي المنسق
+            final_view = report_df[['committee', 'student_name', 'الشعبة', 'status']]
+            final_view.columns = ['اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة']
+            st.dataframe(final_view, use_container_width=True, hide_index=True)
             
             c1, c2 = st.columns(2)
             with c1:
@@ -175,16 +185,14 @@ elif st.session_state.page == "admin":
 
     with tab3:
         if st.text_input("رمز حماية البيانات:", type="password") == "4321":
-            # --- حذف التحضير لتاريخ محدد ---
             st.subheader("🗑️ تنظيف البيانات")
             del_date = st.date_input("اختر تاريخاً لحذف تحضيره:", datetime.now(), key="del_date")
             if st.button("❌ تأكيد حذف سجلات هذا اليوم"):
                 supabase.table('attendance').delete().eq("date", str(del_date)).execute()
-                st.warning(f"تم مسح كافة سجلات يوم {del_date}")
+                st.warning(f"تم مسح سجلات {del_date}")
             
             st.divider()
-
-            # --- إدارة الطلاب (نسخ احتياطي واسترجاع) ---
+            # إدارة الطلاب
             st.subheader("👨‍🎓 إدارة الطلاب")
             res_s = supabase.table('students').select("*").execute()
             if res_s.data:
@@ -196,16 +204,15 @@ elif st.session_state.page == "admin":
                     with pd.ExcelWriter(buf_s, engine='openpyxl') as wr: df_s.to_excel(wr, index=False)
                     st.download_button("📊 نسخة طلاب Excel", buf_s.getvalue(), "students.xlsx", use_container_width=True)
             
-            up_s = st.file_uploader("رفع ملف الطلاب الجديد:", key="up_s")
-            if up_s and st.button("🚀 تحديث قائمة الطلاب"):
+            up_s = st.file_uploader("رفع ملف الطلاب:", key="up_s")
+            if up_s and st.button("🚀 تحديث الطلاب"):
                 df_ns = pd.read_csv(up_s) if up_s.name.endswith('.csv') else pd.read_excel(up_s)
                 supabase.table('students').delete().neq('student_name', '0').execute()
                 supabase.table('students').insert(df_ns.to_dict('records')).execute()
-                st.success("تم تحديث بيانات الطلاب!")
+                st.success("تم التحديث!")
 
             st.divider()
-
-            # --- إدارة المعلمين (نسخ احتياطي واسترجاع) ---
+            # إدارة المعلمين
             st.subheader("👨‍🏫 إدارة المعلمين")
             res_t = supabase.table('teachers').select("*").execute()
             if res_t.data:
@@ -217,9 +224,9 @@ elif st.session_state.page == "admin":
                     with pd.ExcelWriter(buf_t, engine='openpyxl') as wr: df_t.to_excel(wr, index=False)
                     st.download_button("📊 نسخة معلمين Excel", buf_t.getvalue(), "teachers.xlsx", use_container_width=True)
             
-            up_t = st.file_uploader("رفع ملف المعلمين الجديد:", key="up_t")
+            up_t = st.file_uploader("رفع ملف المعلمين:", key="up_t")
             if up_t and st.button("🔄 استرجاع وتحديث المعلمين"):
                 df_nt = pd.read_csv(up_t) if up_t.name.endswith('.csv') else pd.read_excel(up_t)
                 supabase.table('teachers').delete().neq('name_tech', '0').execute()
                 supabase.table('teachers').insert(df_nt.to_dict('records')).execute()
-                st.success("تم تحديث بيانات المعلمين بنجاح!")
+                st.success("تم تحديث المعلمين!")
