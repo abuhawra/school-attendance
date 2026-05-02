@@ -29,18 +29,16 @@ st.markdown("""
 
 if 'page' not in st.session_state: st.session_state.page = "home"
 
-# --- 🛠️ دالة بناء رسالة الواتساب المحدثة مع الشعبة ---
+# --- دالة بناء رسالة الواتساب ---
 def get_wa_link(df, status_type, d):
     if df.empty: return None
     header_emoji = "🚫" if "غائب" in status_type else "⏳"
-    msg = f"{header_emoji} *قائمة {status_type}*%0A"
-    msg += f"📅 *التاريخ:* {d}%0A"
-    msg += "-----------------%0A"
+    msg = f"{header_emoji} *قائمة {status_type}*%0A📅 *التاريخ:* {d}%0A-----------------%0A"
     df_sorted = df.copy()
     df_sorted['committee_int'] = pd.to_numeric(df_sorted['committee'], errors='coerce').fillna(0)
     df_sorted = df_sorted.sort_values(by='committee_int')
     for _, r in df_sorted.iterrows():
-        shoba = r.get('الشعبة', 'غير محدد')
+        shoba = r.get('الشعبة', '---')
         msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']}%0A🏫 *الشعبة:* {shoba}%0A⚠️ *الحالة:* {r['status']}%0A-----------------%0A"
     return f"https://wa.me/?text={msg}"
 
@@ -110,27 +108,21 @@ elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
     tab1, tab2, tab3 = st.tabs(["📊 التقارير", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
     
-    with tab1: # --- جلب الشعبة وربطها بالجدول ---
+    with tab1: # التقارير والواتساب
         d = st.date_input("تاريخ التقرير:", datetime.now())
         res_att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
         if res_att.data:
             df_all = pd.DataFrame(res_att.data)
-            # جلب بيانات الطلاب لربط الشعبة
             res_std = supabase.table("students").select("student_name, class_name").execute()
             if res_std.data:
                 std_map = {i['student_name']: i['class_name'] for i in res_std.data}
                 df_all['الشعبة'] = df_all['student_name'].map(std_map).fillna("---")
-            
             df_report = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
-            
             if not df_report.empty:
                 df_report['committee_sort'] = pd.to_numeric(df_report['committee'], errors='coerce').fillna(0)
                 df_report = df_report.sort_values(by='committee_sort')
-                
-                # عرض الجدول مع عمود الشعبة
                 st.dataframe(df_report[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
-                
-                st.markdown("### 📲 إرسال التقارير عبر الواتساب")
+                st.markdown("### 📲 إرسال التقارير")
                 c1, c2 = st.columns(2)
                 with c1:
                     link_abs = get_wa_link(df_all[df_all['status'] == "غائب"], "الغائبين", d)
@@ -138,7 +130,7 @@ elif st.session_state.page == "admin":
                 with c2:
                     link_late = get_wa_link(df_all[df_all['status'] == "متأخر"], "المتأخرين", d)
                     if link_late: st.markdown(f'<a href="{link_late}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
-            else: st.success("لا يوجد غياب أو تأخر لهذا اليوم.")
+            else: st.success("لا يوجد غياب لهذا اليوم.")
         else: st.info("لا توجد سجلات لهذا التاريخ.")
 
     with tab2: # حالة اللجان
@@ -156,27 +148,37 @@ elif st.session_state.page == "admin":
             for c in all_c:
                 if c not in done_dict: st.write(f"⚠️ لجنة {c}")
 
-    with tab3: # إدارة البيانات (CSV و Excel)
+    with tab3: # إدارة البيانات (إعادة زر المسح)
         if st.text_input("رمز حماية البيانات:", type="password") == "4321":
-            st.markdown("### 👨‍🏫 إدارة المعلمين")
+            # --- 1. قسم مسح البيانات التاريخية ---
+            st.markdown("### 🗑️ تنظيف بيانات الغياب")
+            del_date = st.date_input("اختر التاريخ المراد حذفه:", datetime.now())
+            if st.button("❌ حذف سجلات هذا التاريخ نهائياً"):
+                supabase.table('attendance').delete().eq("date", str(del_date)).execute()
+                st.warning(f"تم مسح كافة سجلات تاريخ {del_date}")
+            st.divider()
+
+            # --- 2. إدارة المعلمين ---
+            st.markdown("### 👨‍🏫 المعلمين (تحميل وتحديث)")
             res_t = supabase.table('teachers').select("*").execute()
             if res_t.data:
                 df_t = pd.DataFrame(res_t.data)
                 tc1, tc2 = st.columns(2)
-                with tc1: st.download_button("📥 المعلمين CSV", df_t.to_csv(index=False).encode('utf-8-sig'), "teachers.csv", "text/csv", use_container_width=True)
+                with tc1: st.download_button("📥 المعلمين CSV", df_t.to_csv(index=False).encode('utf-8-sig'), "teachers.csv", use_container_width=True)
                 with tc2:
                     t_buf = io.BytesIO()
                     with pd.ExcelWriter(t_buf, engine='openpyxl') as wr: df_t.to_excel(wr, index=False)
-                    st.download_button("📊 المعلمين Excel", t_buf.getvalue(), "teachers.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+                    st.download_button("📊 المعلمين Excel", t_buf.getvalue(), "teachers.xlsx", use_container_width=True)
             
             st.divider()
-            st.markdown("### 👨‍🎓 إدارة الطلاب")
+            # --- 3. إدارة الطلاب ---
+            st.markdown("### 👨‍🎓 الطلاب (تحميل وتحديث)")
             res_s = supabase.table('students').select("*").execute()
             if res_s.data:
                 df_s = pd.DataFrame(res_s.data)
                 sc1, sc2 = st.columns(2)
-                with sc1: st.download_button("📥 الطلاب CSV", df_s.to_csv(index=False).encode('utf-8-sig'), "students.csv", "text/csv", use_container_width=True)
+                with sc1: st.download_button("📥 الطلاب CSV", df_s.to_csv(index=False).encode('utf-8-sig'), "students.csv", use_container_width=True)
                 with sc2:
                     s_buf = io.BytesIO()
                     with pd.ExcelWriter(s_buf, engine='openpyxl') as wr: df_s.to_excel(wr, index=False)
-                    st.download_button("📊 الطلاب Excel", s_buf.getvalue(), "students.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+                    st.download_button("📊 الطلاب Excel", s_buf.getvalue(), "students.xlsx", use_container_width=True)
