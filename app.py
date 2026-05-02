@@ -47,7 +47,6 @@ def get_wa_link(df, status_type, d):
     msg = f"{header_emoji} *قائمة {status_type}*%0A"
     msg += f"📅 *التاريخ:* {d}%0A"
     msg += "-----------------%0A"
-    # ترتيب البيانات في الرسالة أيضاً حسب اللجنة
     df_sorted = df.copy()
     df_sorted['committee_int'] = pd.to_numeric(df_sorted['committee'], errors='coerce').fillna(0)
     df_sorted = df_sorted.sort_values(by='committee_int')
@@ -60,15 +59,21 @@ def get_wa_link(df, status_type, d):
         msg += "-----------------%0A" 
     return f"https://wa.me/?text={msg}"
 
-# --- 1. الصفحة الرئيسية ---
+# --- 1. الصفحة الرئيسية (مع تعديل التنسيق المطلوب) ---
 if st.session_state.page == "home":
     st.markdown(f'''
         <div class="main-header">
             <h1 style="margin:0; font-size: 35px;">التحضير التقني</h1>
             <h2 style="margin:0; font-size: 28px;">مدرسة القطيف الثانوية</h2>
-            <p style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">مدير المدرسة : أ. فراس آل عبدالمحسن </p>
-            <div style="font-size: 20px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
-               فكرة و برمجة : أ. عارف أحمد الحداد
+            
+            <div style="margin-top:20px;">
+                <div style="font-size: 18px; color: #cfd8dc;">مدير المدرسة</div>
+                <div style="color:#ffd700; font-size:24px; font-weight: bold;">أ. فراس آل عبدالمحسن</div>
+            </div>
+
+            <div style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px;">
+                <div style="font-size: 16px; color: #cfd8dc;">فكرة و برمجة</div>
+                <div style="font-size: 22px; font-weight: bold;">أ. عارف أحمد الحداد</div>
             </div>
         </div>
     ''', unsafe_allow_html=True)
@@ -81,7 +86,7 @@ if st.session_state.page == "home":
         if st.button("⚙️ لوحة الإدارة والتقارير الموحدة", use_container_width=True):
             st.session_state.page = "a_log"; st.rerun()
 
-# --- 2. تسجيل دخول المعلم ---
+# --- بقية الكود (تسجيل الدخول، الرصد، الإدارة، إلخ) ---
 elif st.session_state.page == "t_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     tid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
@@ -92,7 +97,6 @@ elif st.session_state.page == "t_log":
             st.session_state.page = "mark"; st.rerun()
         else: st.error("عذراً، السجل المدني غير مسجل.")
 
-# --- 3. واجهة الرصد ---
 elif st.session_state.page == "mark":
     today = str(datetime.now().date())
     st.info(f"المعلم: {st.session_state.teacher} | التاريخ: {today}")
@@ -116,7 +120,6 @@ elif st.session_state.page == "mark":
                 st.snow()
                 st.session_state.page = "thank_you"; st.rerun()
 
-# --- 4. صفحة الشكر ---
 elif st.session_state.page == "thank_you":
     st.markdown(f'''
         <div class="thank-you-card">
@@ -129,7 +132,6 @@ elif st.session_state.page == "thank_you":
     if st.button("🏠 العودة للصفحة الرئيسية", use_container_width=True, type="primary"):
         st.session_state.page = "home"; st.rerun()
 
-# --- 5. قسم الإدارة والتقارير المرتبة ---
 elif st.session_state.page == "a_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": 
@@ -148,13 +150,10 @@ elif st.session_state.page == "admin":
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
             
-            # --- التعديل الجوهري: ترتيب الجداول حسب اللجنة من 1 إلى الآخر ---
             report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
-            # تحويل عمود اللجنة لرقمي للفرز الصحيح (1 ثم 2 وليس 1 ثم 10)
             report_df['committee_sort'] = pd.to_numeric(report_df['committee'], errors='coerce').fillna(0)
             report_df = report_df.sort_values(by='committee_sort')
             
-            # عرض الجدول النهائي المنسق
             final_view = report_df[['committee', 'student_name', 'الشعبة', 'status']]
             final_view.columns = ['اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة']
             st.dataframe(final_view, use_container_width=True, hide_index=True)
@@ -192,7 +191,6 @@ elif st.session_state.page == "admin":
                 st.warning(f"تم مسح سجلات {del_date}")
             
             st.divider()
-            # إدارة الطلاب
             st.subheader("👨‍🎓 إدارة الطلاب")
             res_s = supabase.table('students').select("*").execute()
             if res_s.data:
@@ -212,7 +210,6 @@ elif st.session_state.page == "admin":
                 st.success("تم التحديث!")
 
             st.divider()
-            # إدارة المعلمين
             st.subheader("👨‍🏫 إدارة المعلمين")
             res_t = supabase.table('teachers').select("*").execute()
             if res_t.data:
@@ -229,4 +226,4 @@ elif st.session_state.page == "admin":
                 df_nt = pd.read_csv(up_t) if up_t.name.endswith('.csv') else pd.read_excel(up_t)
                 supabase.table('teachers').delete().neq('name_tech', '0').execute()
                 supabase.table('teachers').insert(df_nt.to_dict('records')).execute()
-                st.success("تم تحديث المعلمين!")
+                st.success("تم التحديث!")
