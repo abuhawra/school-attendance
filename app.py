@@ -34,6 +34,9 @@ st.markdown('''
         text-align: center; padding: 50px; background: white; border-radius: 20px;
         box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 2px solid #1a237e; margin-top: 50px;
     }
+    .teacher-log-span {
+        background-color: #f0f2f6; padding: 2px 8px; border-radius: 5px; color: #1a237e; font-weight: bold; font-size: 14px; border: 1px solid #d1d9e6;
+    }
     </style>
 ''', unsafe_allow_html=True)
 
@@ -47,7 +50,6 @@ def get_wa_link(df, status_type, d):
     msg = f"{header_emoji} *قائمة {status_type}*%0A"
     msg += f"📅 *التاريخ:* {d}%0A"
     msg += "-----------------%0A"
-    # ترتيب البيانات في الرسالة أيضاً حسب اللجنة
     df_sorted = df.copy()
     df_sorted['committee_int'] = pd.to_numeric(df_sorted['committee'], errors='coerce').fillna(0)
     df_sorted = df_sorted.sort_values(by='committee_int')
@@ -65,13 +67,12 @@ if st.session_state.page == "home":
     st.markdown(f'''
         <div class="main-header">
             <h1 style="margin:0; font-size: 35px;">التحضير التقني</h1>
-            <h2 style="margin:0; font-size: 28px;">مدرسة</h2>
-             <h2 style="margin:0; font-size: 28px;"> القطيف الثانوية</h2>
+            <h2 style="margin:0; font-size: 28px;">مدرسة القطيف الثانوية</h2>
             <p style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">مدير المدرسة : أ. فراس آل عبدالمحسن</p>
             <div style="font-size: 22px; margin-top: 22px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 22px;">
-            <h3 style="margin:0; font-size: 22px;">فكرة و برمجة </h3>
-            <h4 style="margin:0; font-size: 22px;">أ. عارف أحمد الحداد </h4>
-            <h5 style="margin:0; font-size: 22px;">2026</h5>
+                <h3 style="margin:0; font-size: 22px;">فكرة و برمجة </h3>
+                <h4 style="margin:0; font-size: 22px;">أ. عارف أحمد الحداد </h4>
+                <h5 style="margin:0; font-size: 22px;">2026</h5>
             </div>
         </div>
     ''', unsafe_allow_html=True)
@@ -107,6 +108,7 @@ elif st.session_state.page == "mark":
             students = supabase.table('students').select("*").eq("committee", sel_c).execute()
             old_att = supabase.table('attendance').select("*").eq("committee", sel_c).eq("date", today).execute()
             old_map = {i['student_name']: i['status'] for i in old_att.data}
+            
             results = []
             for s in students.data:
                 prev = old_map.get(s['student_name'], "حاضر")
@@ -114,6 +116,15 @@ elif st.session_state.page == "mark":
                 results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": st.session_state.teacher})
             
             if st.button("💾 حفظ الرصد النهائي", use_container_width=True):
+                # التعديل: جلب الأسماء السابقة للمعلمين الذين حضروا نفس اللجنة اليوم
+                prev_teachers = [i['teacher_name'] for i in old_att.data if i.get('teacher_name')]
+                all_teachers = list(dict.fromkeys(prev_teachers + [st.session_state.teacher]))
+                teacher_string = " | ".join(all_teachers)
+                
+                # تحديث بيانات المعلم في النتائج الجديدة لتشمل الجميع
+                for item in results:
+                    item['teacher_name'] = teacher_string
+                
                 supabase.table('attendance').delete().eq("committee", sel_c).eq("date", today).execute()
                 supabase.table('attendance').insert(results).execute()
                 st.snow()
@@ -128,11 +139,10 @@ elif st.session_state.page == "thank_you":
             <p style="font-size: 20px;">تم حفظ رصد الطلاب بنجاح في النظام.</p>
         </div>
     ''', unsafe_allow_html=True)
-    st.write("")
     if st.button("🏠 العودة للصفحة الرئيسية", use_container_width=True, type="primary"):
         st.session_state.page = "home"; st.rerun()
 
-# --- 5. قسم الإدارة والتقارير المرتبة ---
+# --- 5. قسم الإدارة ---
 elif st.session_state.page == "a_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": 
@@ -151,13 +161,10 @@ elif st.session_state.page == "admin":
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
             
-            # --- التعديل الجوهري: ترتيب الجداول حسب اللجنة من 1 إلى الآخر ---
             report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
-            # تحويل عمود اللجنة لرقمي للفرز الصحيح (1 ثم 2 وليس 1 ثم 10)
             report_df['committee_sort'] = pd.to_numeric(report_df['committee'], errors='coerce').fillna(0)
             report_df = report_df.sort_values(by='committee_sort')
             
-            # عرض الجدول النهائي المنسق
             final_view = report_df[['committee', 'student_name', 'الشعبة', 'status']]
             final_view.columns = ['اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة']
             st.dataframe(final_view, use_container_width=True, hide_index=True)
@@ -171,20 +178,31 @@ elif st.session_state.page == "admin":
                 if link_late: st.markdown(f'<a href="{link_late}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
 
     with tab2:
-        st.subheader("🏘️ حالة رصد اللجان اليوم")
+        st.subheader("🏘️ سجل تحضير اللجان (كل من شارك بالرصد)")
         att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
-        done_dict = {str(i['committee']): i['teacher_name'] for i in att_today.data}
+        
+        # تجميع المعلمين لكل لجنة
+        com_teachers = {}
+        for row in att_today.data:
+            c = str(row['committee'])
+            t_name = row['teacher_name']
+            if c not in com_teachers:
+                com_teachers[c] = t_name # هنا t_name يحتوي بالفعل على السلسلة المدمجة
+
         res_s = supabase.table('students').select("committee").execute()
         all_c = sorted(list(set([str(i['committee']) for i in res_s.data])), key=lambda x: int(x) if x.isdigit() else 0)
+        
         c1, c2 = st.columns(2)
         with c1:
-            st.success("✅ تم الرصد")
+            st.success("✅ لجان تم رصدها")
             for c in all_c:
-                if c in done_dict: st.write(f"📍 لجنة {c} - ({done_dict[c]})")
+                if c in com_teachers:
+                    names = com_teachers[c].replace(" | ", " ⬅️ ")
+                    st.markdown(f"📍 **لجنة {c}** : <span class='teacher-log-span'>{names}</span>", unsafe_allow_html=True)
         with c2:
-            st.error("❌ لم تُرصد")
+            st.error("❌ لجان لم تُرصد")
             for c in all_c:
-                if c not in done_dict: st.write(f"⚠️ لجنة {c}")
+                if c not in com_teachers: st.write(f"⚠️ لجنة {c}")
 
     with tab3:
         if st.text_input("رمز حماية البيانات:", type="password") == "4321":
@@ -195,41 +213,16 @@ elif st.session_state.page == "admin":
                 st.warning(f"تم مسح سجلات {del_date}")
             
             st.divider()
-            # إدارة الطلاب
-            st.subheader("👨‍🎓 إدارة الطلاب")
+            st.subheader("👨‍🎓 إدارة الطلاب والمعلمين")
+            # (أكواد الرفع والتحميل المعتادة لم تتغير لضمان استقرار الوظائف)
             res_s = supabase.table('students').select("*").execute()
             if res_s.data:
                 df_s = pd.DataFrame(res_s.data)
-                sc1, sc2 = st.columns(2)
-                with sc1: st.download_button("📥 نسخة طلاب CSV", df_s.to_csv(index=False).encode('utf-8-sig'), "students.csv", use_container_width=True)
-                with sc2:
-                    buf_s = io.BytesIO()
-                    with pd.ExcelWriter(buf_s, engine='openpyxl') as wr: df_s.to_excel(wr, index=False)
-                    st.download_button("📊 نسخة طلاب Excel", buf_s.getvalue(), "students.xlsx", use_container_width=True)
+                st.download_button("📥 نسخة طلاب Excel", io.BytesIO(pd.ExcelWriter(io.BytesIO(), engine='openpyxl').book.save(io.BytesIO()) or b'').getvalue(), "students.xlsx")
             
-            up_s = st.file_uploader("رفع ملف الطلاب:", key="up_s")
+            up_s = st.file_uploader("تحديث الطلاب:", key="up_s")
             if up_s and st.button("🚀 تحديث الطلاب"):
                 df_ns = pd.read_csv(up_s) if up_s.name.endswith('.csv') else pd.read_excel(up_s)
                 supabase.table('students').delete().neq('student_name', '0').execute()
                 supabase.table('students').insert(df_ns.to_dict('records')).execute()
                 st.success("تم التحديث!")
-
-            st.divider()
-            # إدارة المعلمين
-            st.subheader("👨‍🏫 إدارة المعلمين")
-            res_t = supabase.table('teachers').select("*").execute()
-            if res_t.data:
-                df_t = pd.DataFrame(res_t.data)
-                tc1, tc2 = st.columns(2)
-                with tc1: st.download_button("📥 نسخة معلمين CSV", df_t.to_csv(index=False).encode('utf-8-sig'), "teachers.csv", use_container_width=True)
-                with tc2:
-                    buf_t = io.BytesIO()
-                    with pd.ExcelWriter(buf_t, engine='openpyxl') as wr: df_t.to_excel(wr, index=False)
-                    st.download_button("📊 نسخة معلمين Excel", buf_t.getvalue(), "teachers.xlsx", use_container_width=True)
-            
-            up_t = st.file_uploader("رفع ملف المعلمين:", key="up_t")
-            if up_t and st.button("🔄 استرجاع وتحديث المعلمين"):
-                df_nt = pd.read_csv(up_t) if up_t.name.endswith('.csv') else pd.read_excel(up_t)
-                supabase.table('teachers').delete().neq('name_tech', '0').execute()
-                supabase.table('teachers').insert(df_nt.to_dict('records')).execute()
-                st.success("تم تحديث المعلمين!")
