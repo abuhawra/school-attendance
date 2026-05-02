@@ -23,14 +23,13 @@ st.markdown("""
     .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 18px; }
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
-    .wa-all { background-color: #28a745; }
     .teacher-log-span { background-color: #f0f2f6; padding: 2px 8px; border-radius: 5px; color: #1a237e; font-weight: bold; font-size: 14px; border: 1px solid #d1d9e6; }
     </style>
     """, unsafe_allow_html=True)
 
 if 'page' not in st.session_state: st.session_state.page = "home"
 
-# --- 🛠️ دالة بناء رسالة الواتساب ---
+# --- 🛠️ دالة بناء رسالة الواتساب المحدثة مع الشعبة ---
 def get_wa_link(df, status_type, d):
     if df.empty: return None
     header_emoji = "🚫" if "غائب" in status_type else "⏳"
@@ -41,7 +40,8 @@ def get_wa_link(df, status_type, d):
     df_sorted['committee_int'] = pd.to_numeric(df_sorted['committee'], errors='coerce').fillna(0)
     df_sorted = df_sorted.sort_values(by='committee_int')
     for _, r in df_sorted.iterrows():
-        msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']}%0A⚠️ *الحالة:* {r['status']}%0A-----------------%0A"
+        shoba = r.get('الشعبة', 'غير محدد')
+        msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']}%0A🏫 *الشعبة:* {shoba}%0A⚠️ *الحالة:* {r['status']}%0A-----------------%0A"
     return f"https://wa.me/?text={msg}"
 
 # --- الصفحة الرئيسية ---
@@ -110,17 +110,25 @@ elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
     tab1, tab2, tab3 = st.tabs(["📊 التقارير", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
     
-    with tab1: # --- إعادة أزرار الواتساب المفقودة ---
+    with tab1: # --- جلب الشعبة وربطها بالجدول ---
         d = st.date_input("تاريخ التقرير:", datetime.now())
         res_att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
         if res_att.data:
             df_all = pd.DataFrame(res_att.data)
+            # جلب بيانات الطلاب لربط الشعبة
+            res_std = supabase.table("students").select("student_name, class_name").execute()
+            if res_std.data:
+                std_map = {i['student_name']: i['class_name'] for i in res_std.data}
+                df_all['الشعبة'] = df_all['student_name'].map(std_map).fillna("---")
+            
             df_report = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
             
             if not df_report.empty:
                 df_report['committee_sort'] = pd.to_numeric(df_report['committee'], errors='coerce').fillna(0)
                 df_report = df_report.sort_values(by='committee_sort')
-                st.dataframe(df_report[['committee', 'student_name', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
+                
+                # عرض الجدول مع عمود الشعبة
+                st.dataframe(df_report[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
                 
                 st.markdown("### 📲 إرسال التقارير عبر الواتساب")
                 c1, c2 = st.columns(2)
