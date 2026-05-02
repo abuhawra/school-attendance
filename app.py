@@ -68,8 +68,9 @@ if st.session_state.page == "home":
             <h2 style="margin:0; font-size: 28px;">مدرسة القطيف الثانوية</h2>
             <p style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">مدير المدرسة : أ. فراس آل عبدالمحسن</p>
             <div style="font-size: 20px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
-            فكرة و برمجة : أ.عارف أحمد الحداد
-             <h3 style="margin:0; font-size: 10px;">2026</h3>
+             <h3 style="margin:0; font-size: 22px;">فكرة و برمجة </h3>
+             أ.عارف أحمد الحداد
+             <h4 style="margin:0; font-size: 22px;">2026</h4>
             </div>
         </div>
     ''', unsafe_allow_html=True)
