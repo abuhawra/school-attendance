@@ -65,7 +65,7 @@ if st.session_state.page == "home":
     st.markdown(f'''
         <div class="main-header">
             <h2 style="color:#ffd700; font-size: 50px;">بصمة تميز</h2>
-            <h2 style="margin:0; font-size: 18px;">التحضير أولى خطوات النجاح اليومي</h2>
+            <h2 style="margin:0; font-size: 18px;">التحضير أولى خطوات النجاح</h2>
             <h2 style="margin:0; font-size: 28px;">مدرسة</h2>
             <h2 style="margin:0; font-size: 28px;"> القطيف الثانوية</h2>
             <div style="font-size: 22px; margin-top: 22px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 22px;">
