@@ -69,7 +69,7 @@ if st.session_state.page == "home":
             <h2 style="margin:0; font-size: 28px;">مدرسة</h2>
             <h2 style="margin:0; font-size: 28px;"> القطيف الثانوية</h2>
             <h2 style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">مدير المدرسة</h2>
-            <h2 style="color:#ffffff; font-size:22px; margin-top:10px; font-weight: bold;"أ. فراس آل عبدالمحسن</h2>
+            <h2 style="color:#ffffff ; font-size:22px; margin-top:10px; font-weight: bold;"أ. فراس آل عبدالمحسن</h2>
             <div style="font-size: 22px; margin-top: 22px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 22px;">
             <h3 style="margin:0; font-size: 22px;">فكرة و برمجة </h3>
             <h2 style="color:#ffd700; font-size: 22px;">أ. عارف أحمد الحداد </h4>
