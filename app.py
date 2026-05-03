@@ -26,9 +26,7 @@ st.markdown("""
     .teacher-log-span { background-color: #f0f2f6; padding: 2px 8px; border-radius: 5px; color: #1a237e; font-weight: bold; font-size: 14px; border: 1px solid #d1d9e6; }
     </style>
     """, unsafe_allow_html=True)
-
 if 'page' not in st.session_state: st.session_state.page = "home"
-
 # --- دالة بناء رسالة الواتساب ---
 def get_wa_link(df, status_type, d):
     if df.empty: return None
@@ -41,40 +39,23 @@ def get_wa_link(df, status_type, d):
         shoba = r.get('الشعبة', '---')
         msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']}%0A🏫 *الشعبة:* {shoba}%0A⚠️ *الحالة:* {r['status']}%0A-----------------%0A"
     return f"https://wa.me/?text={msg}"
-
 # --- الصفحة الرئيسية ---
 if st.session_state.page == "home":
-
     st.markdown(f"""
-
         <div class="main-header">
-
             <h2 style="margin:0; font-size: 55px;">بصمة تميز</p>
-
             <h1 style="margin:0; font-size: 20px;">التحضير أولى خطوات النجاح</h1>
-
             <h1 style="margin:0; font-size: 30px;"> ----------------------</h1>
-
             <h2 style="margin:0; font-size: 28px;">مدرسة القطيف الثانوية</h2>
-
             <h1 style="margin:0; font-size: 30px;"> ----------------------</h1>
-
             <p style="color:#ffFFFF; font-size:22px;">مدير المدرسة </p>
-
             <p style="color:#ffd700; font-size:22px;">أ. فراس آل عبدالمحسن</p>
-
             <div style="font-size: 22px; margin-top: 22px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 22px;">
-
             <h3 style="margin:0; font-size: 22px;">فكرة و برمجة </h3>
-
             <p style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">أ. عارف بن أحمد الحداد</p>
-
             <h5 style="margin:0; font-size: 22px;">2026</h5>
-
             </div>
-
         </div>
-
     """, unsafe_allow_html=True)
     """, unsafe_allow_html=True)
     col_b = st.columns([1, 2, 1])[1]
@@ -82,7 +63,6 @@ if st.session_state.page == "home":
         if st.button("📝 رصد غياب الطلاب اليومي", type="primary", use_container_width=True): st.session_state.page = "t_log"; st.rerun()
         st.write("")
         if st.button("⚙️ لوحة الإدارة والتقارير الموحدة", use_container_width=True): st.session_state.page = "a_log"; st.rerun()
-
 elif st.session_state.page == "t_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     tid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
