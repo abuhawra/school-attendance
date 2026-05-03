@@ -44,23 +44,37 @@ def get_wa_link(df, status_type, d):
 
 # --- الصفحة الرئيسية ---
 if st.session_state.page == "home":
+
     st.markdown(f"""
-        <div class="main-header" style="text-align: center;">
-            <h2 style="margin:0; font-size: 55px; line-height: 1.1;">بصمة تميز</h2>
-            <h1 style="margin:0; font-size: 20px; line-height: 1.1;">التحضير أولى خطوات النجاح</h1>
-            
-            <h1 style="margin:0; font-size: 30px; opacity: 0.5;">----------------------</h1>
+
+        <div class="main-header">
+
+            <h2 style="margin:0; font-size: 55px;">بصمة تميز</p>
+
+            <h1 style="margin:0; font-size: 20px;">التحضير أولى خطوات النجاح</h1>
+
+            <h1 style="margin:0; font-size: 30px;"> ----------------------</h1>
+
             <h2 style="margin:0; font-size: 28px;">مدرسة القطيف الثانوية</h2>
-            <h1 style="margin:0; font-size: 30px; opacity: 0.5;">----------------------</h1>
-            
-            <p style="color:#FFFFFF; font-size:22px; margin-bottom: 5px;">مدير المدرسة</p>
-            <p style="color:#ffd700; font-size:22px; margin-top:0; font-weight: bold;">أ. فراس آل عبدالمحسن</p>
-            
+
+            <h1 style="margin:0; font-size: 30px;"> ----------------------</h1>
+
+            <p style="color:#ffFFFF; font-size:22px;">مدير المدرسة </p>
+
+            <p style="color:#ffd700; font-size:22px;">أ. فراس آل عبدالمحسن</p>
+
             <div style="font-size: 22px; margin-top: 22px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 22px;">
-                <h3 style="margin:0; font-size: 22px;">فكرة وبرمجة</h3>
-                <p style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">أ. عارف بن أحمد الحداد</p>
-                <h5 style="margin:0; font-size: 22px;">2026</h5>
-                  </div>
+
+            <h3 style="margin:0; font-size: 22px;">فكرة و برمجة </h3>
+
+            <p style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">أ. عارف بن أحمد الحداد</p>
+
+            <h5 style="margin:0; font-size: 22px;">2026</h5>
+
+            </div>
+
+        </div>
+
     """, unsafe_allow_html=True)
     """, unsafe_allow_html=True)
     col_b = st.columns([1, 2, 1])[1]
