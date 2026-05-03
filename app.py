@@ -46,7 +46,7 @@ def get_wa_link(df, status_type, d):
 if st.session_state.page == "home":
     st.markdown(f"""
         <div class="main-header">
-            <h1 style="margin:0; font-size: 55px;">بصمة تميز</h1>
+            <p style="color:#ffd700; font-size:50px; margin-top:10px; font-weight: bold;">بصمة تميز</p>
             <h1 style="margin:0; font-size: 20px;">التحضير هو أولى خطوات النجاح</h1>
             <h1 style="margin:0; font-size: 30px;"> ----------------------</h1>
             <h2 style="margin:0; font-size: 28px;">مدرسة القطيف الثانوية</h2>
