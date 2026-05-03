@@ -19,13 +19,10 @@ st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
-    
     .stDataFrame { width: 100% !important; }
-    
     .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 18px; }
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
-    
     .main-header { 
         background-color: #1a237e; padding: 30px; text-align: center; color: white; 
         border-radius: 20px; margin-bottom: 25px; border-bottom: 8px solid #ffd700; 
@@ -34,6 +31,7 @@ st.markdown('''
         text-align: center; padding: 50px; background: white; border-radius: 20px;
         box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 2px solid #1a237e; margin-top: 50px;
     }
+    .teacher-tag { background-color: #e8eaf6; color: #1a237e; padding: 2px 8px; border-radius: 5px; font-weight: bold; font-size: 14px; border: 1px solid #c5cae9; }
     </style>
 ''', unsafe_allow_html=True)
 
@@ -47,7 +45,6 @@ def get_wa_link(df, status_type, d):
     msg = f"{header_emoji} *قائمة {status_type}*%0A"
     msg += f"📅 *التاريخ:* {d}%0A"
     msg += "-----------------%0A"
-    # ترتيب البيانات في الرسالة أيضاً حسب اللجنة
     df_sorted = df.copy()
     df_sorted['committee_int'] = pd.to_numeric(df_sorted['committee'], errors='coerce').fillna(0)
     df_sorted = df_sorted.sort_values(by='committee_int')
@@ -57,6 +54,7 @@ def get_wa_link(df, status_type, d):
         msg += f"👤 *الاسم:* {r['student_name']}%0A"
         msg += f"🏫 *الشعبة:* {r.get('الشعبة','--')}%0A"
         msg += f"⚠️ *الحالة:* {r['status']}%0A"
+        msg += f"✍️ *بواسطة:* {r.get('teacher_name','--')}%0A"
         msg += "-----------------%0A" 
     return f"https://wa.me/?text={msg}"
 
@@ -64,17 +62,17 @@ def get_wa_link(df, status_type, d):
 if st.session_state.page == "home":
     st.markdown(f'''
         <div class="main-header">
-            <h2 style="color:#ffd700; font-size: 50px;">بصمة تميز</h2>
-            <h2 style="margin:0; font-size: 18px;">التحضير أولى خطوات النجاح</h2>
-            <h2 style="margin:0; font-size: 28px;">مدرسة</h2>
-            <h2 style="margin:0; font-size: 28px;"> القطيف الثانوية</h2>
+            <h2 style="color:#ffd700; font-size: 50px; font-weight: 800;">بصمة تميز</h2>
+            <h2 style="margin:0; font-size: 18px; opacity: 0.9;">التحضير أولى خطوات النجاح</h2>
+            <h2 style="margin:15px 0; font-size: 28px;">مدرسة القطيف الثانوية</h2>
             <div style="font-size: 22px; margin-top: 22px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 22px;">
-            <h3 style="margin:0; font-size: 22px;">مدير المدرسة</h3>
-            <h2 style="color:#ffd700; font-size: 22px;">أ. فراس آل عبدالمحسن </h2>
-            <div style="font-size: 22px; margin-top: 22px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 22px;">
-            <h3 style="margin:0; font-size: 22px;">فكرة و برمجة </h3>
-            <h2 style="color:#ffd700; font-size: 22px;">أ. عارف أحمد الحداد </h2>
-            <h5 style="margin:0; font-size: 22px;">2026</h5>
+                <h3 style="margin:0; font-size: 20px;">مدير المدرسة</h3>
+                <h2 style="color:#ffd700; font-size: 24px;">أ. فراس آل عبدالمحسن</h2>
+            </div>
+            <div style="font-size: 22px; margin-top: 15px;">
+                <h3 style="margin:0; font-size: 18px;">فكرة وبرمجة</h3>
+                <h2 style="color:#ffd700; font-size: 24px;">أ. عارف أحمد الحداد</h2>
+                <h5 style="margin:5px 0; font-size: 16px; opacity: 0.7;">2026</h5>
             </div>
         </div>
     ''', unsafe_allow_html=True)
@@ -154,15 +152,13 @@ elif st.session_state.page == "admin":
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
             
-            # --- التعديل الجوهري: ترتيب الجداول حسب اللجنة من 1 إلى الآخر ---
             report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
-            # تحويل عمود اللجنة لرقمي للفرز الصحيح (1 ثم 2 وليس 1 ثم 10)
             report_df['committee_sort'] = pd.to_numeric(report_df['committee'], errors='coerce').fillna(0)
             report_df = report_df.sort_values(by='committee_sort')
             
-            # عرض الجدول النهائي المنسق
-            final_view = report_df[['committee', 'student_name', 'الشعبة', 'status']]
-            final_view.columns = ['اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة']
+            # عرض اسم المعلم في جدول التقرير
+            final_view = report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']]
+            final_view.columns = ['اللجنة', 'اسم الطالب', 'الشعبة', 'الحالة', 'رصد بواسطة']
             st.dataframe(final_view, use_container_width=True, hide_index=True)
             
             c1, c2 = st.columns(2)
@@ -176,14 +172,23 @@ elif st.session_state.page == "admin":
     with tab2:
         st.subheader("🏘️ حالة رصد اللجان اليوم")
         att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
-        done_dict = {str(i['committee']): i['teacher_name'] for i in att_today.data}
+        # تجميع المعلمين حسب اللجنة (لإظهار كافة الأسماء في حال تعاون أكثر من معلم)
+        done_dict = {}
+        for i in att_today.data:
+            c = str(i['committee'])
+            t = i['teacher_name']
+            if c not in done_dict: done_dict[c] = set()
+            done_dict[c].add(t)
+            
         res_s = supabase.table('students').select("committee").execute()
-        all_c = sorted(list(set([str(i['committee']) for i in res_s.data])), key=lambda x: int(x) if x.isdigit() else 0)
+        all_c = sorted(list(set([str(i['committee']) for i in res_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
         c1, c2 = st.columns(2)
         with c1:
             st.success("✅ تم الرصد")
             for c in all_c:
-                if c in done_dict: st.write(f"📍 لجنة {c} - ({done_dict[c]})")
+                if c in done_dict:
+                    teachers_names = " ، ".join(done_dict[c])
+                    st.markdown(f"📍 **لجنة {c}** <span class='teacher-tag'>👤 {teachers_names}</span>", unsafe_allow_html=True)
         with c2:
             st.error("❌ لم تُرصد")
             for c in all_c:
@@ -198,7 +203,6 @@ elif st.session_state.page == "admin":
                 st.warning(f"تم مسح سجلات {del_date}")
             
             st.divider()
-            # إدارة الطلاب
             st.subheader("👨‍🎓 إدارة الطلاب")
             res_s = supabase.table('students').select("*").execute()
             if res_s.data:
@@ -218,7 +222,6 @@ elif st.session_state.page == "admin":
                 st.success("تم التحديث!")
 
             st.divider()
-            # إدارة المعلمين
             st.subheader("👨‍🏫 إدارة المعلمين")
             res_t = supabase.table('teachers').select("*").execute()
             if res_t.data:
