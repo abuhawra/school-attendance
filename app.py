@@ -54,9 +54,9 @@ if st.session_state.page == "home":
             <p style="color:#ffFFFF; font-size:22px; margin-top:10px; font-weight: bold;">مدير المدرسة </p>
             <p style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">أ. فراس آل عبدالمحسن</p>
             <div style="font-size: 22px; margin-top: 22px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 22px;">
-                <h3 style="margin:0; font-size: 22px;">فكرة و برمجة </h3>
-                <p style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">أ. عارف بن أحمد الحداد</p>
-                <h5 style="margin:0; font-size: 22px;">2026</h5>
+            <h3 style="margin:0; font-size: 22px;">فكرة و برمجة </h3>
+            <p style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">أ. عارف بن أحمد الحداد</p>
+            <h5 style="margin:0; font-size: 22px;">2026</h5>
             </div>
         </div>
     """, unsafe_allow_html=True)
