@@ -60,8 +60,7 @@ if st.session_state.page == "home":
                 <h3 style="margin:0; font-size: 22px;">فكرة وبرمجة</h3>
                 <p style="color:#ffd700; font-size:22px; margin-top:10px; font-weight: bold;">أ. عارف بن أحمد الحداد</p>
                 <h5 style="margin:0; font-size: 22px;">2026</h5>
-            </div>
-        </div>
+                  </div>
     """, unsafe_allow_html=True)
     """, unsafe_allow_html=True)
     col_b = st.columns([1, 2, 1])[1]
