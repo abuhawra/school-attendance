@@ -6,7 +6,7 @@ import io
 
 # 1. إعدادات الاتصال بقاعدة البيانات (Supabase)
 url = "https://lsmevvsogsqqqjyuqzbx.supabase.co"
-key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzbWV2dnN campfire." # تأكد من المفتاح الخاص بك
+key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzbWV2dnNvZ3NxcXFqeXVxemJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDMyOTgsImV4cCI6MjA5Mjk3OTI5OH0.ecqJS75fPbKqwSAiBzP6Qonn4cuymgwjB96tIGek8j0"
 
 if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
@@ -27,6 +27,7 @@ st.markdown('''
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
     .arrow-sep { color: #1a237e; font-weight: bold; margin: 0 5px; font-size: 18px; }
+    .thank-you-box { text-align: center; padding: 40px; background: #f8fdf9; border-radius: 20px; border: 2px solid #22c55e; margin-top: 20px; }
     </style>
 ''', unsafe_allow_html=True)
 
@@ -112,10 +113,17 @@ elif st.session_state.page == "mark":
                 supabase.table('attendance').insert(results).execute()
                 st.session_state.page = "thank_you"; st.rerun()
 
-# --- 4. صفحة الشكر ---
+# --- 4. صفحة الشكر (تم تعديلها لتظهر باسم المعلم) ---
 elif st.session_state.page == "thank_you":
     st.snow()
-    st.success("✅ تم الرصد بنجاح")
+    teacher_name = st.session_state.get('teacher', 'المعلم')
+    st.markdown(f'''
+        <div class="thank-you-box">
+            <h1 style="color: #22c55e; font-size: 40px;">✅ تم الرصد بنجاح</h1>
+            <h2 style="color: #1a237e; margin-top: 20px;">شكراً لك: أ. {teacher_name}</h2>
+            <p style="font-size: 18px; color: #666;">تم حفظ البيانات وتحديث قائمة المعلمين الراصدين.</p>
+        </div>
+    ''', unsafe_allow_html=True)
     if st.button("🏠 العودة للرئيسية", use_container_width=True):
         st.session_state.page = "home"; st.rerun()
 
@@ -127,7 +135,7 @@ elif st.session_state.page == "a_log":
 
 elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
-    tab1, tab2, tab3 = st.tabs(["📊 تقارير الواتساب والحذف", "🏘️ حالة اللجان", "💾 إدارة البيانات والنسخ"])
+    tab1, tab2, tab3 = st.tabs(["📊 التقارير والحذف", "🏘️ حالة اللجان", "💾 النسخ الاحتياطي"])
     
     with tab1:
         d = st.date_input("اختر التاريخ المطلوب:", datetime.now())
@@ -135,18 +143,12 @@ elif st.session_state.page == "admin":
         
         if res_att.data:
             df_all = pd.DataFrame(res_att.data)
-            
-            # --- ميزة حذف تقرير تاريخ محدد ---
-            with st.expander("🗑️ خيارات حذف البيانات لهذا اليوم"):
-                st.warning(f"سيتم مسح جميع سجلات الغياب ليوم {d} بشكل نهائي.")
-                if st.button(f"تأكيد حذف رصد يوم {d}", use_container_width=True):
+            with st.expander("🗑️ منطقة الحذف"):
+                if st.button(f"حذف رصد يوم {d} نهائياً", use_container_width=True):
                     supabase.table("attendance").delete().eq("date", str(d)).execute()
-                    st.success("تم الحذف بنجاح.")
-                    st.rerun()
+                    st.success("تم الحذف."); st.rerun()
             
             st.divider()
-            
-            # عرض بيانات الغياب
             res_std = supabase.table("students").select("student_name, class_name").execute()
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
@@ -160,60 +162,48 @@ elif st.session_state.page == "admin":
             with c2:
                 link_late = get_wa_link(df_all[df_all['status'] == "متأخر"], "المتأخرين", d)
                 if link_late: st.markdown(f'<a href="{link_late}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
-        else:
-            st.info("لا توجد بيانات رصد لهذا التاريخ.")
 
-    with tab2:
-        st.subheader("🏘️ حالة رصد اللجان اليوم")
+    with tab2: # حالة اللجان (تم والرصد واللجان التي لم ترصد)
         att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
-        comm_map = {}
-        for row in att_today.data:
-            c = str(row['committee'])
-            if c not in comm_map:
-                names = [n.strip() for n in row['teacher_name'].split(" | ") if n.strip()]
-                seen = set()
-                comm_map[c] = [x for x in names if not (x in seen or seen.add(x))]
-        
+        comm_map = {str(row['committee']): [n.strip() for n in row['teacher_name'].split(" | ") if n.strip()] for row in att_today.data}
         res_s = supabase.table('students').select("committee").execute()
         all_c = sorted(list(set([str(i['committee']) for i in res_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
         
-        col_res1, col_res2 = st.columns(2)
-        with col_res1:
+        c_res1, c_res2 = st.columns(2)
+        with c_res1:
             st.success("✅ لجان تم رصدها")
             for c in all_c:
                 if c in comm_map:
-                    html = "".join([f"<span class='teacher-tag'>{n}</span>" + ("<span class='arrow-sep'>⬅️</span>" if i < len(comm_map[c])-1 else "") for i, n in enumerate(comm_map[c])])
+                    names = comm_map[c]
+                    unique_names = []
+                    [unique_names.append(x) for x in names if x not in unique_names]
+                    html = "".join([f"<span class='teacher-tag'>{n}</span>" + ("<span class='arrow-sep'>⬅️</span>" if i < len(unique_names)-1 else "") for i, n in enumerate(unique_names)])
                     st.markdown(f"📍 **لجنة {c}:** {html}", unsafe_allow_html=True)
-        with col_res2:
-            st.error("❌ لجان لم تُرصد بعد")
+        with c_res2:
+            st.error("❌ لجان لم تُرصد")
             for c in all_c:
-                if c not in comm_map:
-                    st.markdown(f"⚠️ **لجنة {c}**")
+                if c not in comm_map: st.markdown(f"⚠️ **لجنة {c}**")
 
-    with tab3:
-        if st.text_input("رمز حماية الإدارة:", type="password") == "4321":
-            st.subheader("💾 النسخ الاحتياطي للقواعد")
-            
-            # --- الطلاب ---
-            st.markdown("#### 👨‍🎓 قاعدة بيانات الطلاب")
-            df_students = pd.DataFrame(supabase.table('students').select("*").execute().data)
-            if not df_students.empty:
-                c1, c2 = st.columns(2)
-                with c1: st.download_button("📥 تحميل الطلاب CSV", df_students.to_csv(index=False).encode('utf-8-sig'), "students.csv", use_container_width=True)
-                with c2:
+    with tab3: # النسخ الاحتياطي المفصل
+        if st.text_input("رمز حماية النسخ:", type="password") == "4321":
+            # الطلاب
+            st.markdown("#### 👨‍🎓 بيانات الطلاب")
+            df_s = pd.DataFrame(supabase.table('students').select("*").execute().data)
+            if not df_s.empty:
+                col1, col2 = st.columns(2)
+                with col1: st.download_button("📥 الطلاب CSV", df_s.to_csv(index=False).encode('utf-8-sig'), "students.csv", use_container_width=True)
+                with col2:
                     buf_s = io.BytesIO()
-                    with pd.ExcelWriter(buf_s, engine='openpyxl') as wr: df_students.to_excel(wr, index=False)
-                    st.download_button("📊 تحميل الطلاب Excel", buf_s.getvalue(), "students.xlsx", use_container_width=True)
-            
+                    with pd.ExcelWriter(buf_s) as wr: df_s.to_excel(wr, index=False)
+                    st.download_button("📊 الطلاب Excel", buf_s.getvalue(), "students.xlsx", use_container_width=True)
             st.divider()
-            
-            # --- المعلمين ---
-            st.markdown("#### 👨‍🏫 قاعدة بيانات المعلمين")
-            df_teachers = pd.DataFrame(supabase.table('teachers').select("*").execute().data)
-            if not df_teachers.empty:
-                c3, c4 = st.columns(2)
-                with c3: st.download_button("📥 تحميل المعلمين CSV", df_teachers.to_csv(index=False).encode('utf-8-sig'), "teachers.csv", use_container_width=True)
-                with c4:
+            # المعلمين
+            st.markdown("#### 👨‍🏫 بيانات المعلمين")
+            df_t = pd.DataFrame(supabase.table('teachers').select("*").execute().data)
+            if not df_t.empty:
+                col3, col4 = st.columns(2)
+                with col3: st.download_button("📥 المعلمين CSV", df_t.to_csv(index=False).encode('utf-8-sig'), "teachers.csv", use_container_width=True)
+                with col4:
                     buf_t = io.BytesIO()
-                    with pd.ExcelWriter(buf_t, engine='openpyxl') as wr: df_teachers.to_excel(wr, index=False)
-                    st.download_button("📊 تحميل المعلمين Excel", buf_t.getvalue(), "teachers.xlsx", use_container_width=True)
+                    with pd.ExcelWriter(buf_t) as wr: df_t.to_excel(wr, index=False)
+                    st.download_button("📊 المعلمين Excel", buf_t.getvalue(), "teachers.xlsx", use_container_width=True)
