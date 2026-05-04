@@ -12,7 +12,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# --- ⚙️ نظام التحكم في حالة النظام ---
+# --- ⚙️ نظام التحكم في حالة النظام (فتح/إغلاق الرصد) ---
 if 'system_open' not in st.session_state:
     st.session_state.system_open = True
 
@@ -30,9 +30,8 @@ st.markdown('''
         background-color: #1a237e; padding: 30px; text-align: center; color: white; 
         border-radius: 20px; margin-bottom: 25px; border-bottom: 8px solid #ffd700; 
     }
-    .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 13px; border: 1px solid #d1d9e6; margin-left: 5px; margin-bottom: 5px; display: inline-block; }
+    .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 4px 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: 1px solid #d1d9e6; margin-left: 5px; margin-bottom: 5px; display: inline-block; }
     .thank-you-card { text-align: center; padding: 40px; background: white; border-radius: 15px; border: 2px solid #22c55e; margin-top: 20px; }
-    .time-badge { font-size: 10px; color: #666; display: block; margin-top: -2px; }
     </style>
 ''', unsafe_allow_html=True)
 
@@ -77,11 +76,13 @@ if st.session_state.page == "home":
     
     col_b = st.columns([1, 2, 1])[1]
     with col_b:
+        # زر الرصد المتغير بناءً على حالة النظام
         if st.session_state.system_open:
             if st.button("📝 رصد غياب الطلاب اليومي", use_container_width=True, type="primary"):
                 st.session_state.page = "t_log"; st.rerun()
         else:
             st.button("🔒 النظام مغلق: يفتح الرصد 7:10 ص", use_container_width=True, disabled=True)
+            st.caption("<center>عذراً، الرصد متاح فقط خلال الفترة الصباحية المحددة.</center>", unsafe_allow_html=True)
         
         st.write("")
         if st.button("⚙️ لوحة الإدارة والتقارير الموحدة", use_container_width=True):
@@ -108,26 +109,11 @@ elif st.session_state.page == "mark":
         sel_c = st.selectbox("اختر اللجنة:", ["---"] + coms)
         if sel_c != "---":
             students = supabase.table('students').select("*").eq("committee", sel_c).execute()
-            # جلب الرصد القديم مع التوقيت للترتيب
             old_att = supabase.table('attendance').select("*").eq("committee", sel_c).eq("date", today).execute()
+            old_map = {i['student_name']: i['status'] for i in old_att.data}
             
-            # منطق دمج أسماء المعلمين مع الحفاظ على الترتيب الزمني
-            if old_att.data:
-                # استخراج المعلمين مرتبين حسب وقت الرصد (نفترض وجود حقل created_at أو نستخدم الترتيب الحالي)
-                prev_t_list = []
-                for entry in old_att.data:
-                    names = entry.get('teacher_name', '').split(" | ")
-                    for n in names:
-                        if n.strip() and n.strip() not in prev_t_list:
-                            prev_t_list.append(n.strip())
-                
-                if st.session_state.teacher not in prev_t_list:
-                    prev_t_list.append(st.session_state.teacher)
-                all_t = " | ".join(prev_t_list)
-                old_map = {i['student_name']: i['status'] for i in old_att.data}
-            else:
-                all_t = st.session_state.teacher
-                old_map = {}
+            prev_t = list(set([i['teacher_name'] for i in old_att.data if i.get('teacher_name')]))
+            all_t = " | ".join(prev_t + [st.session_state.teacher]) if st.session_state.teacher not in prev_t else " | ".join(prev_t)
 
             results = []
             for s in students.data:
@@ -140,14 +126,14 @@ elif st.session_state.page == "mark":
                 supabase.table('attendance').insert(results).execute()
                 st.session_state.page = "thank_you"; st.rerun()
 
-# --- 4. صفحة الشكر ---
+# --- 4. صفحة الشكر (لحل مشكلة الاختفاء) ---
 elif st.session_state.page == "thank_you":
     st.snow()
     st.markdown(f'''
         <div class="thank-you-card">
             <h1 style="color: #22c55e;">✅ تم الرصد بنجاح</h1>
             <p style="font-size: 20px;">شكراً لك أستاذ <b>{st.session_state.get('teacher', '')}</b></p>
-            <p>تم ترتيب اسمك ضمن قائمة المعلمين الراصدين لهذه اللجنة.</p>
+            <p>تم تحديث بيانات اللجنة في النظام المركزي للمدرسة.</p>
         </div>
     ''', unsafe_allow_html=True)
     if st.button("🏠 العودة للرئيسية", use_container_width=True):
@@ -174,7 +160,7 @@ elif st.session_state.page == "admin":
             report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
             report_df['committee_sort'] = pd.to_numeric(report_df['committee'], errors='coerce').fillna(0)
             report_df = report_df.sort_values(by='committee_sort')
-            st.dataframe(report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون (بالترتيب)'}), use_container_width=True, hide_index=True)
+            st.dataframe(report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
             c1, c2 = st.columns(2)
             with c1:
                 link_abs = get_wa_link(df_all[df_all['status'] == "غائب"], "الغائبين", d)
@@ -183,51 +169,46 @@ elif st.session_state.page == "admin":
                 link_late = get_wa_link(df_all[df_all['status'] == "متأخر"], "المتأخرين", d)
                 if link_late: st.markdown(f'<a href="{link_late}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
 
-    with tab2: # حالة اللجان (الترتيب من الأقدم للأحدث)
+    with tab2: # حالة اللجان
         st.subheader("🏘️ حالة رصد اللجان اليوم")
         att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
-        
         comm_map = {}
         for row in att_today.data:
             c = str(row['committee'])
-            t_string = row['teacher_name']
-            if c not in comm_map:
-                # نحافظ على قائمة فريدة بالترتيب الذي ظهرت به في النص
-                names_in_order = []
-                for name in t_string.split(" | "):
-                    clean_name = name.strip()
-                    if clean_name and clean_name not in names_in_order:
-                        names_in_order.append(clean_name)
-                comm_map[c] = names_in_order
-
+            for name in row['teacher_name'].split(" | "):
+                if c not in comm_map: comm_map[c] = set()
+                comm_map[c].add(name.strip())
         res_s = supabase.table('students').select("committee").execute()
         all_c = sorted(list(set([str(i['committee']) for i in res_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
         c1, c2 = st.columns(2)
         with c1:
-            st.success("✅ تم الرصد بواسطة (مرتبين من الأقدم للأحدث):")
+            st.success("✅ تم الرصد")
             for c in all_c:
                 if c in comm_map:
-                    names_html = ""
-                    for i, name in enumerate(comm_map[c]):
-                        order_label = " (الأول)" if i == 0 else ""
-                        names_html += f"<span class='teacher-tag'>{name}{order_label}</span>"
+                    names_html = "".join([f"<span class='teacher-tag'>{n}</span>" for n in comm_map[c]])
                     st.markdown(f"📍 **لجنة {c}:** {names_html}", unsafe_allow_html=True)
         with c2:
             st.error("❌ لم تُرصد")
             for c in all_c:
                 if c not in comm_map: st.write(f"⚠️ لجنة {c}")
 
-    with tab3: # إدارة البيانات
+    with tab3: # إدارة البيانات والتحكم في النظام
         if st.text_input("رمز حماية البيانات:", type="password") == "4321":
+            
+            # --- 🔑 زر التحكم في حالة الرصد ---
             st.subheader("🔒 التحكم في صلاحية الرصد")
             if st.session_state.system_open:
-                if st.button("إغلاق نظام الرصد الآن", use_container_width=True):
-                    st.session_state.system_open = False; st.rerun()
+                if st.button("إغلاق نظام الرصد الآن", use_container_width=True, type="secondary"):
+                    st.session_state.system_open = False
+                    st.rerun()
             else:
                 if st.button("فتح نظام الرصد الآن", use_container_width=True, type="primary"):
-                    st.session_state.system_open = True; st.rerun()
-            
+                    st.session_state.system_open = True
+                    st.rerun()
+            st.caption("عند الإغلاق، سيظهر زر 'النظام مغلق' في الواجهة الرئيسية ولن يتمكن المعلمون من الدخول.")
             st.divider()
+
+            # إدارة المعلمين والطلاب
             st.subheader("👨‍🏫 المعلمين")
             res_t = supabase.table('teachers').select("*").execute()
             if res_t.data:
@@ -238,3 +219,22 @@ elif st.session_state.page == "admin":
                     buf_t = io.BytesIO()
                     with pd.ExcelWriter(buf_t, engine='openpyxl') as wr: df_t.to_excel(wr, index=False)
                     st.download_button("📊 Excel المعلمين", buf_t.getvalue(), "teachers.xlsx", use_container_width=True)
+            
+            st.divider()
+            st.subheader("👨‍🎓 الطلاب")
+            res_s = supabase.table('students').select("*").execute()
+            if res_s.data:
+                df_s = pd.DataFrame(res_s.data)
+                col1, col2 = st.columns(2)
+                with col1: st.download_button("📥 CSV الطلاب", df_s.to_csv(index=False).encode('utf-8-sig'), "students.csv", use_container_width=True)
+                with col2:
+                    buf_s = io.BytesIO()
+                    with pd.ExcelWriter(buf_s, engine='openpyxl') as wr: df_s.to_excel(wr, index=False)
+                    st.download_button("📊 Excel الطلاب", buf_s.getvalue(), "students.xlsx", use_container_width=True)
+
+            st.divider()
+            st.subheader("🗑️ تنظيف السجلات")
+            del_date = st.date_input("اختر تاريخاً لحذفه:", datetime.now())
+            if st.button("❌ تأكيد حذف سجلات اليوم"):
+                supabase.table('attendance').delete().eq("date", str(del_date)).execute()
+                st.warning(f"تم حذف سجلات يوم {del_date}")
