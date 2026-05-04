@@ -6,7 +6,7 @@ import io
 
 # 1. إعدادات الاتصال بقاعدة البيانات (Supabase)
 url = "https://lsmevvsogsqqqjyuqzbx.supabase.co"
-key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzbWV2dnNvZ3NxcXFqeXVxemJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDMyOTgsImV4cCI6MjA5Mjk3OTI5OH0.ecqJS75fPbKqwSAiBzP6Qonn4cuymgwjB96tIGek8j0"
+key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzbWV2dnN campfire." # تأكد من المفتاح الخاص بك
 
 if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
@@ -18,15 +18,14 @@ st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
-    .stDataFrame { width: 100% !important; }
-    .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 18px; }
-    .wa-absent { background-color: #dc3545; }
-    .wa-late { background-color: #fd7e14; }
     .main-header { 
         background-color: #1a237e; padding: 30px; text-align: center; color: white; 
         border-radius: 20px; margin-bottom: 25px; border-bottom: 8px solid #ffd700; 
     }
     .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 13px; border: 1px solid #d1d9e6; margin-left: 5px; margin-bottom: 5px; display: inline-block; }
+    .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 18px; }
+    .wa-absent { background-color: #dc3545; }
+    .wa-late { background-color: #fd7e14; }
     .arrow-sep { color: #1a237e; font-weight: bold; margin: 0 5px; font-size: 18px; }
     </style>
 ''', unsafe_allow_html=True)
@@ -128,7 +127,7 @@ elif st.session_state.page == "a_log":
 
 elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
-    tab1, tab2, tab3 = st.tabs(["📊 تقارير الواتساب", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
+    tab1, tab2, tab3 = st.tabs(["📊 تقارير الواتساب والحذف", "🏘️ حالة اللجان", "💾 إدارة البيانات والنسخ"])
     
     with tab1:
         d = st.date_input("اختر التاريخ المطلوب:", datetime.now())
@@ -137,24 +136,22 @@ elif st.session_state.page == "admin":
         if res_att.data:
             df_all = pd.DataFrame(res_att.data)
             
-            # --- إضافة زر الحذف هنا ---
-            with st.expander("⚠️ منطقة الحذف (إجراء خطير)"):
-                st.warning(f"هل أنت متأكد من رغبتك في حذف جميع بيانات الرصد لتاريخ {d}؟")
-                if st.button(f"🗑️ حذف رصد يوم {d} نهائياً", use_container_width=True):
+            # --- ميزة حذف تقرير تاريخ محدد ---
+            with st.expander("🗑️ خيارات حذف البيانات لهذا اليوم"):
+                st.warning(f"سيتم مسح جميع سجلات الغياب ليوم {d} بشكل نهائي.")
+                if st.button(f"تأكيد حذف رصد يوم {d}", use_container_width=True):
                     supabase.table("attendance").delete().eq("date", str(d)).execute()
-                    st.success(f"تم حذف بيانات يوم {d} بنجاح.")
+                    st.success("تم الحذف بنجاح.")
                     st.rerun()
             
             st.divider()
             
-            # عرض التقارير كالمعتاد
+            # عرض بيانات الغياب
             res_std = supabase.table("students").select("student_name, class_name").execute()
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
             report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
-            report_df['committee_sort'] = pd.to_numeric(report_df['committee'], errors='coerce').fillna(0)
-            report_df = report_df.sort_values(by='committee_sort')
-            st.dataframe(report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
+            st.dataframe(report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']], use_container_width=True, hide_index=True)
             
             c1, c2 = st.columns(2)
             with c1:
@@ -166,7 +163,7 @@ elif st.session_state.page == "admin":
         else:
             st.info("لا توجد بيانات رصد لهذا التاريخ.")
 
-    with tab2: # حالة اللجان
+    with tab2:
         st.subheader("🏘️ حالة رصد اللجان اليوم")
         att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
         comm_map = {}
@@ -178,21 +175,45 @@ elif st.session_state.page == "admin":
                 comm_map[c] = [x for x in names if not (x in seen or seen.add(x))]
         
         res_s = supabase.table('students').select("committee").execute()
-        all_c = sorted(list(set([str(i['committee']) for i in res_s.data])), key=lambda x: int(x) if x.isdigit() else 0)
-        for c in all_c:
-            if c in comm_map:
-                html = "".join([f"<span class='teacher-tag'>{n}</span>" + ("<span class='arrow-sep'>⬅️</span>" if i < len(comm_map[c])-1 else "") for i, n in enumerate(comm_map[c])])
-                st.markdown(f"📍 **لجنة {c}:** {html}", unsafe_allow_html=True)
+        all_c = sorted(list(set([str(i['committee']) for i in res_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
+        
+        col_res1, col_res2 = st.columns(2)
+        with col_res1:
+            st.success("✅ لجان تم رصدها")
+            for c in all_c:
+                if c in comm_map:
+                    html = "".join([f"<span class='teacher-tag'>{n}</span>" + ("<span class='arrow-sep'>⬅️</span>" if i < len(comm_map[c])-1 else "") for i, n in enumerate(comm_map[c])])
+                    st.markdown(f"📍 **لجنة {c}:** {html}", unsafe_allow_html=True)
+        with col_res2:
+            st.error("❌ لجان لم تُرصد بعد")
+            for c in all_c:
+                if c not in comm_map:
+                    st.markdown(f"⚠️ **لجنة {c}**")
 
-    with tab3: # إدارة البيانات
-        if st.text_input("رمز حماية البيانات:", type="password") == "4321":
-            st.subheader("💾 النسخ الاحتياطي")
-            res_std = supabase.table('students').select("*").execute()
-            if res_std.data:
-                df_s = pd.DataFrame(res_std.data)
-                col1, col2 = st.columns(2)
-                with col1: st.download_button("📥 تحميل الطلاب CSV", df_s.to_csv(index=False).encode('utf-8-sig'), "students.csv", use_container_width=True)
-                with col2:
+    with tab3:
+        if st.text_input("رمز حماية الإدارة:", type="password") == "4321":
+            st.subheader("💾 النسخ الاحتياطي للقواعد")
+            
+            # --- الطلاب ---
+            st.markdown("#### 👨‍🎓 قاعدة بيانات الطلاب")
+            df_students = pd.DataFrame(supabase.table('students').select("*").execute().data)
+            if not df_students.empty:
+                c1, c2 = st.columns(2)
+                with c1: st.download_button("📥 تحميل الطلاب CSV", df_students.to_csv(index=False).encode('utf-8-sig'), "students.csv", use_container_width=True)
+                with c2:
                     buf_s = io.BytesIO()
-                    with pd.ExcelWriter(buf_s, engine='openpyxl') as wr: df_s.to_excel(wr, index=False)
+                    with pd.ExcelWriter(buf_s, engine='openpyxl') as wr: df_students.to_excel(wr, index=False)
                     st.download_button("📊 تحميل الطلاب Excel", buf_s.getvalue(), "students.xlsx", use_container_width=True)
+            
+            st.divider()
+            
+            # --- المعلمين ---
+            st.markdown("#### 👨‍🏫 قاعدة بيانات المعلمين")
+            df_teachers = pd.DataFrame(supabase.table('teachers').select("*").execute().data)
+            if not df_teachers.empty:
+                c3, c4 = st.columns(2)
+                with c3: st.download_button("📥 تحميل المعلمين CSV", df_teachers.to_csv(index=False).encode('utf-8-sig'), "teachers.csv", use_container_width=True)
+                with c4:
+                    buf_t = io.BytesIO()
+                    with pd.ExcelWriter(buf_t, engine='openpyxl') as wr: df_teachers.to_excel(wr, index=False)
+                    st.download_button("📊 تحميل المعلمين Excel", buf_t.getvalue(), "teachers.xlsx", use_container_width=True)
