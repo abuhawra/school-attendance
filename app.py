@@ -2,6 +2,7 @@ import streamlit as st
 from supabase import create_client
 import pandas as pd
 from datetime import datetime
+import time
 import io
 
 # 1. إعدادات الاتصال بقاعدة البيانات (Supabase)
@@ -78,8 +79,11 @@ elif st.session_state.page == "t_log":
     if st.button("دخول للنظام"):
         res = supabase.table("teachers").select("*").eq("national_id", tid.strip()).execute()
         if res.data:
-            st.session_state.teacher = res.data[0]['name_tech']
-            st.session_state.page = "mark"; st.rerun()
+            if res.data[0].get('status') == 'موقوف':
+                st.error("عذراً، هذا الحساب موقوف حالياً.")
+            else:
+                st.session_state.teacher = res.data[0]['name_tech']
+                st.session_state.page = "mark"; st.rerun()
         else: st.error("عذراً، السجل المدني غير مسجل.")
 
 # --- 3. واجهة الرصد ---
@@ -94,7 +98,6 @@ elif st.session_state.page == "mark":
             students = supabase.table('students').select("*").eq("committee", sel_c).execute()
             old_att = supabase.table('attendance').select("*").eq("committee", sel_c).eq("date", today).execute()
             
-            # معالجة أسماء المعلمين الراصدين
             if old_att.data:
                 prev_list = []
                 for entry in old_att.data:
@@ -139,26 +142,23 @@ elif st.session_state.page == "a_log":
 
 elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
-    tab1, tab2, tab3 = st.tabs(["📊 التقارير والحذف", "🏘️ حالة اللجان", "💾 النسخ الاحتياطي"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 التقارير والحذف", "🏘️ حالة اللجان", "💾 النسخ الاحتياطي", "👨‍🏫 إدارة المعلمين"])
     
     with tab1:
         d = st.date_input("اختر التاريخ المطلوب:", datetime.now())
         res_att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
-        
         if res_att.data:
             df_all = pd.DataFrame(res_att.data)
             with st.expander("🗑️ منطقة الحذف (ليوم محدد)"):
                 if st.button(f"حذف رصد يوم {d} نهائياً", use_container_width=True):
                     supabase.table("attendance").delete().eq("date", str(d)).execute()
                     st.success("تم حذف البيانات."); st.rerun()
-            
             st.divider()
             res_std = supabase.table("students").select("student_name, class_name").execute()
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
             report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
             st.dataframe(report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
-            
             c1, c2 = st.columns(2)
             with c1:
                 link_abs = get_wa_link(df_all[df_all['status'] == "غائب"], "الغائبين", d)
@@ -169,12 +169,9 @@ elif st.session_state.page == "admin":
         else:
             st.info("لا توجد بيانات رصد لهذا التاريخ.")
 
-    with tab2: # حالة اللجان - تصحيح البيانات غير المقروءة
+    with tab2:
         st.subheader("🏘️ متابعة رصد اللجان اللحظي")
-        # جلب البيانات لليوم الحالي
         att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
-        
-        # تجميع المعلمين حسب اللجنة بشكل نظيف
         comm_map = {}
         for row in att_today.data:
             c_id = str(row['committee'])
@@ -184,10 +181,8 @@ elif st.session_state.page == "admin":
                 name = name.strip()
                 if name and name not in clean_names: clean_names.append(name)
             comm_map[c_id] = clean_names
-
         res_s = supabase.table('students').select("committee").execute()
         all_c_list = sorted(list(set([str(i['committee']) for i in res_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
-        
         col_done, col_not = st.columns(2)
         with col_done:
             st.success("✅ لجان تم رصدها")
@@ -201,9 +196,8 @@ elif st.session_state.page == "admin":
                 if c not in comm_map:
                     st.markdown(f"⚠️ **اللجنة رقم {c}** لم يتم رصدها")
 
-    with tab3: # النسخ الاحتياطي
+    with tab3:
         if st.text_input("رمز حماية النسخ:", type="password") == "4321":
-            # الطلاب
             st.markdown("#### 👨‍🎓 بيانات الطلاب")
             df_s = pd.DataFrame(supabase.table('students').select("*").execute().data)
             if not df_s.empty:
@@ -213,14 +207,54 @@ elif st.session_state.page == "admin":
                     buf_s = io.BytesIO()
                     with pd.ExcelWriter(buf_s) as wr: df_s.to_excel(wr, index=False)
                     st.download_button("📊 الطلاب Excel", buf_s.getvalue(), "students_backup.xlsx", use_container_width=True)
-            st.divider()
-            # المعلمين
-            st.markdown("#### 👨‍🏫 بيانات المعلمين")
-            df_t = pd.DataFrame(supabase.table('teachers').select("*").execute().data)
-            if not df_t.empty:
-                col3, col4 = st.columns(2)
-                with col3: st.download_button("📥 المعلمين CSV", df_t.to_csv(index=False).encode('utf-8-sig'), "teachers_backup.csv", use_container_width=True)
-                with col4:
-                    buf_t = io.BytesIO()
-                    with pd.ExcelWriter(buf_t) as wr: df_t.to_excel(wr, index=False)
-                    st.download_button("📊 المعلمين Excel", buf_t.getvalue(), "teachers_backup.xlsx", use_container_width=True)
+
+    with tab4: # تبويب إدارة المعلمين المضاف
+        st.subheader("👨‍🏫 إدارة بيانات وحالات المعلمين")
+        
+        # التحكم الجماعي
+        st.write("⚙️ التحكم الجماعي:")
+        cg1, cg2 = st.columns(2)
+        with cg1:
+            if st.button("✅ تنشيط جميع المعلمين", use_container_width=True):
+                supabase.table("teachers").update({"status": "نشط"}).neq("id", 0).execute()
+                st.success("تم تنشيط الجميع"); time.sleep(1); st.rerun()
+        with cg2:
+            if st.button("🚫 إيقاف جميع المعلمين", use_container_width=True):
+                supabase.table("teachers").update({"status": "موقوف"}).neq("id", 0).execute()
+                st.warning("تم إيقاف الجميع"); time.sleep(1); st.rerun()
+        
+        st.divider()
+        
+        # عرض المعلمين للتحديث الفردي
+        res_t = supabase.table("teachers").select("*").execute()
+        if res_t.data:
+            df_t = pd.DataFrame(res_t.data).sort_values('name_tech')
+            for _, row in df_t.iterrows():
+                with st.expander(f"👤 {row['name_tech']} - ({row.get('status', 'نشط')})"):
+                    c_name = st.text_input("الاسم:", value=row['name_tech'], key=f"n_{row['id']}")
+                    c_pwd = st.text_input("السجل المدني (الرقم السري):", value=row['national_id'], key=f"p_{row['id']}")
+                    
+                    status_opts = ["نشط", "موقوف"]
+                    curr_status = row.get('status', 'نشط')
+                    c_stat = st.radio("الحالة:", status_opts, 
+                                     index=status_opts.index(curr_status) if curr_status in status_opts else 0,
+                                     key=f"s_{row['id']}", horizontal=True)
+                    
+                    if st.button("💾 تحديث البيانات", key=f"b_{row['id']}"):
+                        supabase.table("teachers").update({
+                            "name_tech": c_name,
+                            "national_id": str(c_pwd).strip(),
+                            "status": c_stat
+                        }).eq("id", row['id']).execute()
+                        st.success("تم التحديث"); time.sleep(0.5); st.rerun()
+
+        # إضافة معلم جديد
+        st.divider()
+        with st.expander("➕ إضافة معلم جديد"):
+            with st.form("add_t"):
+                nn = st.text_input("اسم المعلم:")
+                ni = st.text_input("السجل المدني:")
+                if st.form_submit_button("إضافة"):
+                    if nn and ni:
+                        supabase.table("teachers").insert({"name_tech": nn, "national_id": ni, "status": "نشط"}).execute()
+                        st.success("تمت الإضافة"); st.rerun()
