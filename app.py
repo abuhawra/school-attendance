@@ -50,11 +50,15 @@ def get_wa_link(df, status_type, d):
 if st.session_state.page == "home":
     st.markdown('''
         <div class="main-header">
-            <h2 style="color:#ffd700; font-size: 45px; font-weight: 800;">بصمة تميز</h2>
-            <h2 style="margin:10px 0; font-size: 24px;">مدرسة القطيف الثانوية</h2>
+            <h2 style="color:#ffd700; font-size: 55px; font-weight: 800;">بصمة تميز</h2>
+            <h2 style="color:#ffffff; font-size: 30px; font-weight: 800;">أولى خطوات النجاح التحضير اليومي</h2>
+            <h2 style="margin:10px 0; font-size: 24px;">مدرسة</h2>
+            <h2 style="margin:10px 0; font-size: 24px;">القطيف الثانوية</h2>
             <div style="font-size: 18px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
-                <span>مدير المدرسة: أ. فراس آل عبدالمحسن</span><br>
-                <span>برمجة وتطوير: أ. عارف أحمد الحداد</span>
+                <span>مدير المدرسة</span><br>
+                <span>.أ.فراس آل عبدالمحسن</span><br>
+                <span>برمجة وتطوير</span>
+                <span>أ. عارف أحمد الحداد</span>
             </div>
         </div>
     ''', unsafe_allow_html=True)
