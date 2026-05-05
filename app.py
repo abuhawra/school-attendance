@@ -56,10 +56,10 @@ if st.session_state.page == "home":
             <h2 style="margin:10px 0; font-size: 24px;">القطيف الثانوية</h2>
             <div style="font-size: 18px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
             </div>
-             <h2 style="color:#ffd700; font-size: 55px; font-weight: 800;">مدير المدرسة</h2>
-            <h2 style="color:#ffffff; font-size: 30px; font-weight: 500;">أ. فراس آل عبدالمحسن</h2>
-            <h2 style="margin:10px 0; font-size: 24px;">فكرة و برمجة</h2>
-            <h2 style="margin:10px 0; font-size: 24px;">أ. عارف أحمد الحداد</h2>
+            <h2 style="color:#ffd700; font-size: 24px; font-weight: 500;">مدير المدرسة</h2>
+            <h2 style="color:#ffffff; font-size: 24px; font-weight: 500;">أ. فراس آل عبدالمحسن</h2>
+            <h2 style="color:#ffd700; font-size: 24px;">فكرة و برمجة</h2>
+            <h2 style="color:#ffffff; font-size: 24px;">أ. عارف أحمد الحداد</h2>
         </div>
     ''', unsafe_allow_html=True)
     
