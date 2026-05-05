@@ -65,6 +65,7 @@ if st.session_state.page == "home":
                  <h2 class="school-name">مدرسة</h2>
                  <h2 class="school-name">   </h2>
                 <h2 class="school-name">القطيف الثانوية</h2>
+                 <h2 class="school-name">   </h2>                
             <div style="font-size: 20px; margin-top: 15px; border-top: 2px solid rgba(255,255,255,0.2); padding-top: 15px;">
                 <p style="color:#ff9800; font-size: 24px; font-weight: 500; margin: 0;">مدير المدرسة</p>
                 <p style="color:#ffffff; font-size: 24px; font-weight: 500; margin: 0;">أ. فراس آل عبدالمحسن</p>
