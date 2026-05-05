@@ -73,14 +73,13 @@ elif st.session_state.page == "t_log":
     if st.button("دخول للنظام"):
         res = supabase.table("teachers").select("*").eq("national_id", tid.strip()).execute()
         if res.data:
-            teacher_data = res.data[0]
-            # التحقق مما إذا كان المعلم موقوفاً
-            if teacher_data.get('status') == 'موقوف':
-                st.error("عذراً، هذا الحساب موقوف حالياً. يرجى مراجعة الإدارة.")
+            teacher_info = res.data[0]
+            if teacher_info.get('status') == 'موقوف':
+                st.error("عذراً، تم إيقاف حسابك من قبل الإدارة.")
             else:
-                st.session_state.teacher = teacher_data['name_tech']
+                st.session_state.teacher = teacher_info['name_tech']
                 st.session_state.page = "mark"; st.rerun()
-        else: st.error("عذراً، السجل المدني غير صحيح أو غير مسجل.")
+        else: st.error("عذراً، السجل المدني غير مسجل.")
 
 # --- 3. واجهة الرصد ---
 elif st.session_state.page == "mark":
@@ -124,119 +123,4 @@ elif st.session_state.page == "thank_you":
     st.markdown(f'''
         <div class="thank-you-box">
             <h1 style="color: #22c55e; font-size: 40px;">✅ تم الرصد بنجاح</h1>
-            <h2 style="color: #1a237e; margin-top: 20px;">شكراً لك: أ. {teacher_name}</h2>
-        </div>
-    ''', unsafe_allow_html=True)
-    if st.button("🏠 العودة للرئيسية", use_container_width=True):
-        st.session_state.page = "home"; st.rerun()
-
-# --- 5. لوحة الإدارة ---
-elif st.session_state.page == "a_log":
-    if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": 
-        st.session_state.page = "admin"; st.rerun()
-
-elif st.session_state.page == "admin":
-    if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 التقارير والحذف", "🏘️ حالة اللجان", "💾 النسخ الاحتياطي", "👨‍🏫 إدارة المعلمين"])
-    
-    with tab1:
-        d = st.date_input("اختر التاريخ المطلوب:", datetime.now())
-        res_att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
-        if res_att.data:
-            df_all = pd.DataFrame(res_att.data)
-            with st.expander("🗑️ منطقة الحذف (ليوم محدد)"):
-                if st.button(f"حذف رصد يوم {d} نهائياً", use_container_width=True):
-                    supabase.table("attendance").delete().eq("date", str(d)).execute()
-                    st.success("تم الحذف."); st.rerun()
-            st.divider()
-            res_std = supabase.table("students").select("student_name, class_name").execute()
-            s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
-            df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
-            report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
-            st.dataframe(report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
-            c1, c2 = st.columns(2)
-            with c1:
-                link_abs = get_wa_link(df_all[df_all['status'] == "غائب"], "الغائبين", d)
-                if link_abs: st.markdown(f'<a href="{link_abs}" target="_blank" class="wa-link wa-absent">🚫 إرسال الغائبين</a>', unsafe_allow_html=True)
-            with c2:
-                link_late = get_wa_link(df_all[df_all['status'] == "متأخر"], "المتأخرين", d)
-                if link_late: st.markdown(f'<a href="{link_late}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
-        else: st.info("لا توجد بيانات رصد لهذا التاريخ.")
-
-    with tab2: # حالة اللجان
-        st.subheader("🏘️ متابعة رصد اللجان اللحظي")
-        att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
-        comm_map = {}
-        for row in att_today.data:
-            c_id = str(row['committee'])
-            t_names = str(row['teacher_name']).split(" | ")
-            clean_names = []
-            for name in t_names:
-                if name.strip() and name.strip() not in clean_names: clean_names.append(name.strip())
-            comm_map[c_id] = clean_names
-        res_s = supabase.table('students').select("committee").execute()
-        all_c_list = sorted(list(set([str(i['committee']) for i in res_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
-        col_done, col_not = st.columns(2)
-        with col_done:
-            st.success("✅ لجان تم رصدها")
-            for c in all_c_list:
-                if c in comm_map:
-                    names_html = "".join([f"<span class='teacher-tag'>{n}</span>" + ("<span class='arrow-sep'>⬅️</span>" if i < len(comm_map[c])-1 else "") for i, n in enumerate(comm_map[c])])
-                    st.markdown(f"📍 **لجنة {c}:** {names_html}", unsafe_allow_html=True)
-        with col_not:
-            st.error("❌ لجان لم تُرصد")
-            for c in all_c_list:
-                if c not in comm_map: st.markdown(f"⚠️ **اللجنة رقم {c}** لم تُرصد")
-
-    with tab3: # النسخ الاحتياطي
-        if st.text_input("رمز حماية النسخ:", type="password") == "4321":
-            st.markdown("#### 📥 تحميل البيانات")
-            col1, col2 = st.columns(2)
-            df_s = pd.DataFrame(supabase.table('students').select("*").execute().data)
-            df_t = pd.DataFrame(supabase.table('teachers').select("*").execute().data)
-            with col1:
-                st.download_button("📊 تحميل الطلاب (Excel)", io.BytesIO(), "students.xlsx", use_container_width=True)
-            with col2:
-                st.download_button("📊 تحميل المعلمين (Excel)", io.BytesIO(), "teachers.xlsx", use_container_width=True)
-
-    with tab4: # إدارة المعلمين (الصفحة المطلوبة)
-        st.subheader("👨‍🏫 إدارة بيانات المعلمين")
-        
-        # 1. إضافة معلم جديد
-        with st.expander("➕ إضافة معلم جديد"):
-            with st.form("add_teacher"):
-                new_name = st.text_input("اسم المعلم:")
-                new_id = st.text_input("السجل المدني (كلمة المرور):")
-                if st.form_submit_button("إضافة المعلم للقاعدة"):
-                    if new_name and new_id:
-                        supabase.table("teachers").insert({"name_tech": new_name, "national_id": new_id, "status": "نشط"}).execute()
-                        st.success(f"تمت إضافة {new_name} بنجاح.")
-                        st.rerun()
-                    else: st.warning("يرجى ملء جميع الحقول.")
-
-        st.divider()
-
-        # 2. تعديل المعلمين الحاليين
-        res_t = supabase.table("teachers").select("*").execute()
-        if res_t.data:
-            df_teachers = pd.DataFrame(res_t.data)
-            for index, row in df_teachers.iterrows():
-                with st.container():
-                    c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
-                    with c1:
-                        st.write(f"**{row['name_tech']}**")
-                    with c2:
-                        # تغيير الرقم السري
-                        new_pwd = st.text_input("تغيير السجل:", value=row['national_id'], key=f"pwd_{row['id']}")
-                    with c3:
-                        # اختيار الحالة
-                        current_status = row.get('status', 'نشط')
-                        status_options = ["نشط", "موقوف"]
-                        new_status = st.selectbox("الحالة:", status_options, index=status_options.index(current_status), key=f"stat_{row['id']}")
-                    with c4:
-                        if st.button("تحديث", key=f"btn_{row['id']}"):
-                            supabase.table("teachers").update({"national_id": new_pwd, "status": new_status}).eq("id", row['id']).execute()
-                            st.success("تم التحديث")
-                            st.rerun()
-                st.markdown("---")
+            <h2 style="
