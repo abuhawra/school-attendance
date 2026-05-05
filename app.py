@@ -53,14 +53,9 @@ if st.session_state.page == "home":
         <div class="main-header">
             <h2 style="color:#ffd700; font-size: 65px; font-weight: 800;">بصمة تميز</h2>
             <h2 style="color:#ffd700; font-size: 22px; font-weight: 500;">أولى خطوات النجاح التحضير اليومي</h2>
-            <h2 style="margin:10px 0; font-size: 40px;">مدرسة</h2>
-            <h2 style="margin:10px 0; font-size: 40px;">القطيف الثانوية</h2>
-            <div style="font-size: 18px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
-            </div>
-            <h2 style="color:#ffd700; font-size: 24px; font-weight: 500;">مدير المدرسة</h2>
-            <h2 style="color:#ffffff; font-size: 24px; font-weight: 500;">أ. فراس آل عبدالمحسن</h2>
-            <h2 style="color:#ffd700; font-size: 24px;">فكرة و برمجة</h2>
-            <h2 style="color:#ffffff; font-size: 24px;">أ. عارف أحمد الحداد</h2>
+            <h2 style="margin:10px 0; font-size: 40px;">مدرسة القطيف الثانوية</h2>
+            <h2 style="color:#ffd700; font-size: 24px; font-weight: 500;">مدير المدرسة: أ. فراس آل عبدالمحسن</h2>
+            <h2 style="color:#ffffff; font-size: 24px;">فكرة و برمجة: أ. عارف أحمد الحداد</h2>
         </div>
     ''', unsafe_allow_html=True)
     
@@ -208,53 +203,60 @@ elif st.session_state.page == "admin":
                     with pd.ExcelWriter(buf_s) as wr: df_s.to_excel(wr, index=False)
                     st.download_button("📊 الطلاب Excel", buf_s.getvalue(), "students_backup.xlsx", use_container_width=True)
 
-    with tab4: # تبويب إدارة المعلمين المضاف
-        st.subheader("👨‍🏫 إدارة بيانات وحالات المعلمين")
+    with tab4: # تبويب إدارة المعلمين المحدث
+        st.subheader("👨‍🏫 التحكم في حسابات المعلمين")
         
         # التحكم الجماعي
-        st.write("⚙️ التحكم الجماعي:")
-        cg1, cg2 = st.columns(2)
-        with cg1:
-            if st.button("✅ تنشيط جميع المعلمين", use_container_width=True):
+        st.write("🔧 إجراءات جماعية:")
+        c_all1, c_all2 = st.columns(2)
+        with c_all1:
+            if st.button("✅ تفعيل جميع المعلمين (نشط)", use_container_width=True):
                 supabase.table("teachers").update({"status": "نشط"}).neq("id", 0).execute()
-                st.success("تم تنشيط الجميع"); time.sleep(1); st.rerun()
-        with cg2:
-            if st.button("🚫 إيقاف جميع المعلمين", use_container_width=True):
+                st.success("تم تنشيط جميع الحسابات"); time.sleep(1); st.rerun()
+        with c_all2:
+            if st.button("🚫 إيقاف جميع المعلمين (موقوف)", use_container_width=True):
                 supabase.table("teachers").update({"status": "موقوف"}).neq("id", 0).execute()
-                st.warning("تم إيقاف الجميع"); time.sleep(1); st.rerun()
+                st.warning("تم إيقاف جميع الحسابات"); time.sleep(1); st.rerun()
         
         st.divider()
         
-        # عرض المعلمين للتحديث الفردي
+        # قائمة المعلمين مع التحديث الفردي وإصلاح خطأ الرقم السري
         res_t = supabase.table("teachers").select("*").execute()
         if res_t.data:
             df_t = pd.DataFrame(res_t.data).sort_values('name_tech')
             for _, row in df_t.iterrows():
+                t_id = row['id']
                 with st.expander(f"👤 {row['name_tech']} - ({row.get('status', 'نشط')})"):
-                    c_name = st.text_input("الاسم:", value=row['name_tech'], key=f"n_{row['id']}")
-                    c_pwd = st.text_input("السجل المدني (الرقم السري):", value=row['national_id'], key=f"p_{row['id']}")
+                    # حقول التعديل
+                    new_name = st.text_input("اسم المعلم:", value=row['name_tech'], key=f"n_{t_id}")
+                    new_pwd = st.text_input("السجل المدني (الرقم السري):", value=row['national_id'], key=f"p_{t_id}")
                     
+                    # اختيار الحالة (Radio)
                     status_opts = ["نشط", "موقوف"]
-                    curr_status = row.get('status', 'نشط')
-                    c_stat = st.radio("الحالة:", status_opts, 
-                                     index=status_opts.index(curr_status) if curr_status in status_opts else 0,
-                                     key=f"s_{row['id']}", horizontal=True)
+                    curr_stat = row.get('status', 'نشط')
+                    new_stat = st.radio("حالة الحساب:", status_opts, 
+                                        index=status_opts.index(curr_stat) if curr_stat in status_opts else 0,
+                                        key=f"s_{t_id}", horizontal=True)
                     
-                    if st.button("💾 تحديث البيانات", key=f"b_{row['id']}"):
-                        supabase.table("teachers").update({
-                            "name_tech": c_name,
-                            "national_id": str(c_pwd).strip(),
-                            "status": c_stat
-                        }).eq("id", row['id']).execute()
-                        st.success("تم التحديث"); time.sleep(0.5); st.rerun()
+                    if st.button("💾 حفظ التغييرات", key=f"b_{t_id}"):
+                        try:
+                            supabase.table("teachers").update({
+                                "name_tech": new_name,
+                                "national_id": str(new_pwd).strip(),
+                                "status": new_stat
+                            }).eq("id", t_id).execute()
+                            st.success("تم تحديث البيانات بنجاح")
+                            time.sleep(0.5); st.rerun()
+                        except Exception as e:
+                            st.error(f"خطأ في التحديث: {e}")
 
         # إضافة معلم جديد
         st.divider()
         with st.expander("➕ إضافة معلم جديد"):
-            with st.form("add_t"):
-                nn = st.text_input("اسم المعلم:")
-                ni = st.text_input("السجل المدني:")
+            with st.form("add_teacher_form"):
+                add_n = st.text_input("الاسم الكامل:")
+                add_i = st.text_input("السجل المدني:")
                 if st.form_submit_button("إضافة"):
-                    if nn and ni:
-                        supabase.table("teachers").insert({"name_tech": nn, "national_id": ni, "status": "نشط"}).execute()
-                        st.success("تمت الإضافة"); st.rerun()
+                    if add_n and add_i:
+                        supabase.table("teachers").insert({"name_tech": add_n, "national_id": add_i, "status": "نشط"}).execute()
+                        st.success("تمت الإضافة بنجاح"); st.rerun()
