@@ -50,7 +50,7 @@ def get_wa_link(df, status_type, d):
 if st.session_state.page == "home":
     st.markdown('''
         <div class="main-header">
-            <h2 style="color:#ffffff; font-size: 50px; font-weight: 800;">بَصمَة تَميُّز</h2>
+            <h2 style="color:#ff9800; font-size: 50px; font-weight: 800;">بَصمَة تَميُّز</h2>
             <h2 style="color:#ff9800; font-size: 20px; font-weight: 500; margin-top: 0.8; line-height: 0.8;">التحضير التزام وأمانة</h2>
             <h2 style="margin:10px 0; font-size: 35px;">مدرسة</h2>
             <h2 style="margin:10px 0; font-size: 35px;">القطيف الثانوية</h2>
