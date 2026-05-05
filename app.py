@@ -60,7 +60,7 @@ if st.session_state.page == "home":
     st.markdown('''
         <div class="main-header">
             <h1 style="color:#ff9800; font-size: 65px; font-weight: 800; margin-bottom: 0;">بصمة تميز</h1>
-            <h2 style="color:#ff9800; font-size: 22px; font-weight: 500; margin-top: 0; line-height: 0.5;">أولى خطوات النجاح التحضير اليومي</h2>
+            <h2 style="color:#ff9800; font-size: 22px; font-weight: 500; margin-top: 0; line-height: 0.5;">أول خطوة للنجاح...التحضير</h2>
             <div style="margin-top: 25px; margin-bottom: 20px;">
                 <h2 class="school-name">مدرسة</h2>
                 <h2 class="school-name">القطيف الثانوية</h2>
