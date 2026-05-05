@@ -2,7 +2,6 @@ import streamlit as st
 from supabase import create_client
 import pandas as pd
 from datetime import datetime
-import time
 import io
 
 # 1. إعدادات الاتصال بقاعدة البيانات (Supabase)
@@ -13,7 +12,7 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# --- 🎨 التنسيق والـ CSS ---
+# --- 🎨 التنسيق المرئي والـ CSS ---
 st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
 st.markdown('''
     <style>
@@ -23,22 +22,44 @@ st.markdown('''
         background-color: #1a237e; padding: 30px; text-align: center; color: white; 
         border-radius: 20px; margin-bottom: 25px; border-bottom: 8px solid #ffd700; 
     }
-    .wa-button { color: white !important; padding: 12px; border-radius: 10px; text-align: center; display: block; text-decoration: none; font-weight: bold; margin-top: 10px; }
-    .wa-all { background-color: #28a745; }
-    .status-active { color: #28a745; font-weight: bold; }
-    .status-stop { color: #dc3545; font-weight: bold; }
+    .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 14px; border: 1px solid #d1d9e6; margin: 4px; display: inline-block; }
+    .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 18px; }
+    .wa-absent { background-color: #dc3545; }
+    .wa-late { background-color: #fd7e14; }
+    .arrow-sep { color: #1a237e; font-weight: bold; margin: 0 8px; font-size: 18px; }
+    .thank-you-box { text-align: center; padding: 40px; background: #f8fdf9; border-radius: 20px; border: 2px solid #22c55e; margin-top: 20px; }
     </style>
 ''', unsafe_allow_html=True)
 
-if 'page' not in st.session_state: st.session_state.page = "home"
+if 'page' not in st.session_state:
+    st.session_state.page = "home"
+
+# --- 🛠️ دالة بناء رسالة الواتساب ---
+def get_wa_link(df, status_type, d):
+    if df.empty: return None
+    header_emoji = "🚫" if "غائب" in status_type else "⏳"
+    msg = f"{header_emoji} *قائمة {status_type}*%0A📅 *التاريخ:* {d}%0A-----------------%0A"
+    df_sorted = df.copy()
+    df_sorted['committee_int'] = pd.to_numeric(df_sorted['committee'], errors='coerce').fillna(0)
+    df_sorted = df_sorted.sort_values(by='committee_int')
+    for _, r in df_sorted.iterrows():
+        msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']}%0A🏫 *الشعبة:* {r.get('الشعبة','--')}%0A⚠️ *الحالة:* {r['status']}%0A-----------------%0A"
+    return f"https://wa.me/?text={msg}"
 
 # --- 1. الصفحة الرئيسية ---
 if st.session_state.page == "home":
     st.markdown('''
         <div class="main-header">
-            <h2 style="color:#ffd700; font-size: 60px; font-weight: 800;">بصمة تميز</h2>
-            <h2 style="margin:10px 0; font-size: 40px;">مدرسة القطيف الثانوية</h2>
-            <h2 style="color:#ffffff; font-size: 24px;">فكرة و برمجة: أ. عارف أحمد الحداد</h2>
+            <h2 style="color:#ffd700; font-size: 65px; font-weight: 800;">بصمة تميز</h2>
+            <h2 style="color:#ffd700; font-size: 22px; font-weight: 500;">أولى خطوات النجاح التحضير اليومي</h2>
+            <h2 style="margin:10px 0; font-size: 40px;">مدرسة</h2>
+            <h2 style="margin:10px 0; font-size: 40px;">القطيف الثانوية</h2>
+            <div style="font-size: 18px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
+            </div>
+            <h2 style="color:#ffd700; font-size: 24px; font-weight: 500;">مدير المدرسة</h2>
+            <h2 style="color:#ffffff; font-size: 24px; font-weight: 500;">أ. فراس آل عبدالمحسن</h2>
+            <h2 style="color:#ffd700; font-size: 24px;">فكرة و برمجة</h2>
+            <h2 style="color:#ffffff; font-size: 24px;">أ. عارف أحمد الحداد</h2>
         </div>
     ''', unsafe_allow_html=True)
     
@@ -50,24 +71,21 @@ if st.session_state.page == "home":
         if st.button("⚙️ لوحة الإدارة والتقارير الموحدة", use_container_width=True):
             st.session_state.page = "a_log"; st.rerun()
 
-# --- 2. دخول المعلم ---
+# --- 2. تسجيل دخول المعلم ---
 elif st.session_state.page == "t_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    tid = st.text_input("أدخل السجل المدني (كلمة المرور):", type="password")
+    tid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
     if st.button("دخول للنظام"):
         res = supabase.table("teachers").select("*").eq("national_id", tid.strip()).execute()
         if res.data:
-            if res.data[0].get('status') == 'موقوف':
-                st.error("عذراً، هذا الحساب موقوف حالياً.")
-            else:
-                st.session_state.teacher = res.data[0]['name_tech']
-                st.session_state.page = "mark"; st.rerun()
-        else: st.error("السجل المدني غير مسجل.")
+            st.session_state.teacher = res.data[0]['name_tech']
+            st.session_state.page = "mark"; st.rerun()
+        else: st.error("عذراً، السجل المدني غير مسجل.")
 
 # --- 3. واجهة الرصد ---
 elif st.session_state.page == "mark":
     today = str(datetime.now().date())
-    st.info(f"المعلم: {st.session_state.teacher} | التاريخ: {today}")
+    st.info(f"المعلم الحالي: {st.session_state.teacher} | التاريخ: {today}")
     res_s = supabase.table('students').select("committee").execute()
     if res_s.data:
         coms = sorted(list(set([str(i['committee']) for i in res_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
@@ -75,21 +93,45 @@ elif st.session_state.page == "mark":
         if sel_c != "---":
             students = supabase.table('students').select("*").eq("committee", sel_c).execute()
             old_att = supabase.table('attendance').select("*").eq("committee", sel_c).eq("date", today).execute()
-            old_map = {i['student_name']: i['status'] for i in old_att.data}
             
+            # معالجة أسماء المعلمين الراصدين
+            if old_att.data:
+                prev_list = []
+                for entry in old_att.data:
+                    for n in str(entry.get('teacher_name', '')).split(" | "):
+                        if n.strip() and n.strip() not in prev_list: prev_list.append(n.strip())
+                if st.session_state.teacher not in prev_list: prev_list.append(st.session_state.teacher)
+                all_t = " | ".join(prev_list)
+                old_map = {i['student_name']: i['status'] for i in old_att.data}
+            else:
+                all_t = st.session_state.teacher
+                old_map = {}
+
             results = []
             for s in students.data:
                 prev = old_map.get(s['student_name'], "حاضر")
-                choice = st.radio(f"👤 {s['student_name']}", ["حاضر", "غائب", "متأخر"], 
-                                 index=["حاضر", "غائب", "متأخر"].index(prev), key=f"std_{s['id']}", horizontal=True)
-                results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": st.session_state.teacher})
+                choice = st.radio(f"👤 {s['student_name']}", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True)
+                results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": all_t})
             
             if st.button("💾 حفظ الرصد النهائي", use_container_width=True):
                 supabase.table('attendance').delete().eq("committee", sel_c).eq("date", today).execute()
                 supabase.table('attendance').insert(results).execute()
-                st.success("تم الحفظ بنجاح!"); time.sleep(1); st.session_state.page = "home"; st.rerun()
+                st.session_state.page = "thank_you"; st.rerun()
 
-# --- 4. لوحة الإدارة ---
+# --- 4. صفحة الشكر ---
+elif st.session_state.page == "thank_you":
+    st.snow()
+    teacher_name = st.session_state.get('teacher', 'المعلم')
+    st.markdown(f'''
+        <div class="thank-you-box">
+            <h1 style="color: #22c55e; font-size: 40px;">✅ تم الرصد بنجاح</h1>
+            <h2 style="color: #1a237e; margin-top: 20px;">شكراً لك: أ. {teacher_name}</h2>
+        </div>
+    ''', unsafe_allow_html=True)
+    if st.button("🏠 العودة للرئيسية", use_container_width=True):
+        st.session_state.page = "home"; st.rerun()
+
+# --- 5. لوحة الإدارة ---
 elif st.session_state.page == "a_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": 
@@ -97,89 +139,88 @@ elif st.session_state.page == "a_log":
 
 elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 التقارير", "🏘️ حالة اللجان", "💾 البيانات", "👨‍🏫 إدارة المعلمين"])
+    tab1, tab2, tab3 = st.tabs(["📊 التقارير والحذف", "🏘️ حالة اللجان", "💾 النسخ الاحتياطي"])
     
-    with tab4: # تبويب إدارة المعلمين الجديد
-        st.subheader("👨‍🏫 التحكم في حسابات المعلمين")
-        
-        # أزرار التغيير الجماعي
-        st.write("🔧 إجراءات سريعة لجميع المعلمين:")
-        c_all1, c_all2 = st.columns(2)
-        with c_all1:
-            if st.button("✅ تنشيط جميع الحسابات", use_container_width=True):
-                supabase.table("teachers").update({"status": "نشط"}).neq("id", 0).execute()
-                st.success("تم تنشيط جميع المعلمين"); time.sleep(1); st.rerun()
-        with c_all2:
-            if st.button("🚫 إيقاف جميع الحسابات", use_container_width=True):
-                supabase.table("teachers").update({"status": "موقوف"}).neq("id", 0).execute()
-                st.warning("تم إيقاف جميع المعلمين"); time.sleep(1); st.rerun()
-
-        st.divider()
-
-        # قائمة المعلمين مع تحديث السجل والحالة
-        res_t = supabase.table("teachers").select("*").execute()
-        if res_t.data:
-            df_t = pd.DataFrame(res_t.data).sort_values('name_tech')
-            for index, row in df_t.iterrows():
-                t_id = row['id']
-                with st.expander(f"👤 {row['name_tech']} - الحالة الحالية: ({row.get('status', 'نشط')})"):
-                    # تعديل البيانات الفردية
-                    new_name = st.text_input("اسم المعلم:", value=row['name_tech'], key=f"nm_{t_id}")
-                    new_pwd = st.text_input("السجل المدني (الرقم السري):", value=row['national_id'], key=f"pwd_{t_id}")
-                    
-                    # اختيار الحالة (راديو)
-                    status_list = ["نشط", "موقوف"]
-                    curr_idx = status_list.index(row.get('status', 'نشط')) if row.get('status') in status_list else 0
-                    new_stat = st.radio("تغيير الحالة:", status_list, index=curr_idx, key=f"rad_{t_id}", horizontal=True)
-                    
-                    if st.button(f"💾 تحديث بيانات {row['name_tech']}", key=f"btn_{t_id}"):
-                        try:
-                            supabase.table("teachers").update({
-                                "name_tech": new_name,
-                                "national_id": str(new_pwd).strip(),
-                                "status": new_stat
-                            }).eq("id", t_id).execute()
-                            st.success(f"تم تحديث بيانات المعلم بنجاح")
-                            time.sleep(0.5); st.rerun()
-                        except Exception as e:
-                            st.error(f"حدث خطأ أثناء التحديث: {e}")
-
-        # إضافة معلم جديد
-        st.divider()
-        with st.expander("➕ إضافة معلم جديد للنظام"):
-            with st.form("add_new"):
-                an = st.text_input("اسم المعلم:")
-                ai = st.text_input("السجل المدني:")
-                if st.form_submit_button("إضافة"):
-                    if an and ai:
-                        supabase.table("teachers").insert({"name_tech": an, "national_id": ai, "status": "نشط"}).execute()
-                        st.success("تمت الإضافة"); st.rerun()
-
-    # بقية التبويبات (التقارير وحالة اللجان والبيانات) كما هي في النسخة المستقرة السابقة
     with tab1:
-        d = st.date_input("تاريخ التقرير:", datetime.now())
+        d = st.date_input("اختر التاريخ المطلوب:", datetime.now())
         res_att = supabase.table("attendance").select("*").eq("date", str(d)).execute()
+        
         if res_att.data:
-            df_rep = pd.DataFrame(res_att.data)
-            df_rep = df_rep[df_rep['status'].isin(['غائب', 'متأخر'])]
-            st.table(df_rep[['committee', 'student_name', 'status', 'teacher_name']])
-            msg = f"📝 *تقرير الغياب*%0A📅 *التاريخ:* {d}%0A"
-            for _, r in df_rep.iterrows(): msg += f"-----------------%0A📦 اللجنة: {r['committee']}%0A👤 الطالب: {r['student_name']}%0A⚠️ الحالة: {r['status']}%0A"
-            st.markdown(f'<a href="https://wa.me/?text={msg}" target="_blank" class="wa-button wa-all">📲 إرسال عبر واتساب</a>', unsafe_allow_html=True)
-
-    with tab3: # تبويب البيانات والنسخ الاحتياطي
-        if st.text_input("رمز البيانات:", type="password") == "4321":
-            st.subheader("💾 النسخة الاحتياطية")
-            res_b = supabase.table('students').select("*").execute()
-            if res_b.data:
-                df_b = pd.DataFrame(res_b.data)
-                csv = df_b.to_csv(index=False).encode('utf-8-sig')
-                st.download_button("📥 تحميل ملف الطلاب (CSV)", csv, "backup.csv", "text/csv")
+            df_all = pd.DataFrame(res_att.data)
+            with st.expander("🗑️ منطقة الحذف (ليوم محدد)"):
+                if st.button(f"حذف رصد يوم {d} نهائياً", use_container_width=True):
+                    supabase.table("attendance").delete().eq("date", str(d)).execute()
+                    st.success("تم حذف البيانات."); st.rerun()
             
             st.divider()
-            up = st.file_uploader("تحديث الطلاب (CSV):")
-            if up and st.button("🚀 رفع"):
-                df_new = pd.read_csv(up)
-                supabase.table('students').delete().neq('committee', '0').execute()
-                supabase.table('students').insert(df_new.to_dict('records')).execute()
-                st.success("تم!")
+            res_std = supabase.table("students").select("student_name, class_name").execute()
+            s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
+            df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
+            report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
+            st.dataframe(report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                link_abs = get_wa_link(df_all[df_all['status'] == "غائب"], "الغائبين", d)
+                if link_abs: st.markdown(f'<a href="{link_abs}" target="_blank" class="wa-link wa-absent">🚫 إرسال الغائبين</a>', unsafe_allow_html=True)
+            with c2:
+                link_late = get_wa_link(df_all[df_all['status'] == "متأخر"], "المتأخرين", d)
+                if link_late: st.markdown(f'<a href="{link_late}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
+        else:
+            st.info("لا توجد بيانات رصد لهذا التاريخ.")
+
+    with tab2: # حالة اللجان - تصحيح البيانات غير المقروءة
+        st.subheader("🏘️ متابعة رصد اللجان اللحظي")
+        # جلب البيانات لليوم الحالي
+        att_today = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
+        
+        # تجميع المعلمين حسب اللجنة بشكل نظيف
+        comm_map = {}
+        for row in att_today.data:
+            c_id = str(row['committee'])
+            t_names = str(row['teacher_name']).split(" | ")
+            clean_names = []
+            for name in t_names:
+                name = name.strip()
+                if name and name not in clean_names: clean_names.append(name)
+            comm_map[c_id] = clean_names
+
+        res_s = supabase.table('students').select("committee").execute()
+        all_c_list = sorted(list(set([str(i['committee']) for i in res_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
+        
+        col_done, col_not = st.columns(2)
+        with col_done:
+            st.success("✅ لجان تم رصدها")
+            for c in all_c_list:
+                if c in comm_map:
+                    names_html = "".join([f"<span class='teacher-tag'>{n}</span>" + ("<span class='arrow-sep'>⬅️</span>" if i < len(comm_map[c])-1 else "") for i, n in enumerate(comm_map[c])])
+                    st.markdown(f"📍 **لجنة {c}:** {names_html}", unsafe_allow_html=True)
+        with col_not:
+            st.error("❌ لجان لم تُرصد")
+            for c in all_c_list:
+                if c not in comm_map:
+                    st.markdown(f"⚠️ **اللجنة رقم {c}** لم يتم رصدها")
+
+    with tab3: # النسخ الاحتياطي
+        if st.text_input("رمز حماية النسخ:", type="password") == "4321":
+            # الطلاب
+            st.markdown("#### 👨‍🎓 بيانات الطلاب")
+            df_s = pd.DataFrame(supabase.table('students').select("*").execute().data)
+            if not df_s.empty:
+                col1, col2 = st.columns(2)
+                with col1: st.download_button("📥 الطلاب CSV", df_s.to_csv(index=False).encode('utf-8-sig'), "students_backup.csv", use_container_width=True)
+                with col2:
+                    buf_s = io.BytesIO()
+                    with pd.ExcelWriter(buf_s) as wr: df_s.to_excel(wr, index=False)
+                    st.download_button("📊 الطلاب Excel", buf_s.getvalue(), "students_backup.xlsx", use_container_width=True)
+            st.divider()
+            # المعلمين
+            st.markdown("#### 👨‍🏫 بيانات المعلمين")
+            df_t = pd.DataFrame(supabase.table('teachers').select("*").execute().data)
+            if not df_t.empty:
+                col3, col4 = st.columns(2)
+                with col3: st.download_button("📥 المعلمين CSV", df_t.to_csv(index=False).encode('utf-8-sig'), "teachers_backup.csv", use_container_width=True)
+                with col4:
+                    buf_t = io.BytesIO()
+                    with pd.ExcelWriter(buf_t) as wr: df_t.to_excel(wr, index=False)
+                    st.download_button("📊 المعلمين Excel", buf_t.getvalue(), "teachers_backup.xlsx", use_container_width=True)
