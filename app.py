@@ -50,18 +50,20 @@ def get_wa_link(df, status_type, d):
 if st.session_state.page == "home":
     st.markdown('''
         <div class="main-header">
-            <h2 style="color:#ffd700; font-size: 65px; font-weight: 800;">بصمة تميز</h2>
+            <h1 style="color:#ffd700; font-size: 65px; font-weight: 800;">بصمة تميز</h1>
             <h2 style="color:#ffd700; font-size: 22px; font-weight: 500;">أولى خطوات النجاح التحضير اليومي</h2>
-            <div style="margin: 0; padding: -2;">
+            
+            <div style="margin: 0; padding: 0;">
                 <h2 class="school-name">مدرسة</h2>
                 <h2 class="school-name">القطيف الثانوية</h2>
             </div>
-            <div style="font-size: 18px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
+            
+            <div style="font-size: 18px; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px;">
+                <h2 style="color:#ffd700; font-size: 24px; font-weight: 500; margin: 0;">مدير المدرسة</h2>
+                <h2 style="color:#ffffff; font-size: 24px; font-weight: 500; margin: 0 0 10px 0;">أ. فراس آل عبدالمحسن</h2>
+                <h2 style="color:#ffd700; font-size: 24px; margin: 0;">فكرة و برمجة</h2>
+                <h2 style="color:#ffffff; font-size: 24px; margin: 0;">أ. عارف أحمد الحداد</h2>
             </div>
-            <h2 style="color:#ffd700; font-size: 24px; font-weight: 500;">مدير المدرسة</h2>
-            <h2 style="color:#ffffff; font-size: 24px; font-weight: 500;">أ. فراس آل عبدالمحسن</h2>
-            <h2 style="color:#ffd700; font-size: 24px;">فكرة و برمجة</h2>
-            <h2 style="color:#ffffff; font-size: 24px;">أ. عارف أحمد الحداد</h2>
         </div>
     ''', unsafe_allow_html=True)
     
