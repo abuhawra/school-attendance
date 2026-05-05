@@ -55,10 +55,6 @@ if st.session_state.page == "home":
             <h2 style="margin:10px 0; font-size: 24px;">مدرسة</h2>
             <h2 style="margin:10px 0; font-size: 24px;">القطيف الثانوية</h2>
             <div style="font-size: 18px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
-                <span>مدير المدرسة</span><br>
-                <span>.أ.فراس آل عبدالمحسن</span><br>
-                <span>برمجة وتطوير</span>
-                <span>أ. عارف أحمد الحداد</span>
             </div>
         </div>
     ''', unsafe_allow_html=True)
