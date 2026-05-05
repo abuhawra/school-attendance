@@ -52,7 +52,7 @@ if st.session_state.page == "home":
         <div class="main-header">
             <h2 style="color:#ffd700; font-size: 65px; font-weight: 800;">بصمة تميز</h2>
             <h2 style="color:#ffd700; font-size: 22px; font-weight: 500;">أولى خطوات النجاح التحضير اليومي</h2>
-            <div style="margin: 0; padding: 0;">
+            <div style="margin: -3; padding: 0;">
                 <h2 class="school-name">مدرسة</h2>
                 <h2 class="school-name">القطيف الثانوية</h2>
             </div>
