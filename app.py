@@ -58,7 +58,8 @@ def get_wa_link(df, status_type, d):
 # --- 1. الصفحة الرئيسية ---
 if st.session_state.page == "home":
     st.markdown('''
-                   <h1 style="color:#ff9800; font-size: 55px; font-weight: 800; margin-bottom: 0;">بَصمَة تَميُز</h1>
+        <div class="main-header">
+            <h1 style="color:#ff9800; font-size: 55px; font-weight: 800; margin-bottom: 0;">بَصمَة تَميُز</h1>
             <h2 style="color:#ff9800; font-size: 22px; font-weight: 500; margin-top: 0; line-height: 0;">أول خطوة للنجاح...التحضير</h2>
                 <h2 class="school-name">مدرسة</h2>
                 <h2 class="school-name">القطيف الثانوية</h2>
@@ -68,7 +69,8 @@ if st.session_state.page == "home":
                 <p style="color:#ff9800; font-size: 22px; margin: 5px 0;">فكرة وبرمجة</p>
                 <p style="color:#ffffff; font-size: 22px; margin: 5px 0;"> أ. عارف أحمد الحداد</p>
             </div>
-         ''', unsafe_allow_html=True)
+        </div>
+    ''', unsafe_allow_html=True)
     
     col_b = st.columns([1, 2, 1])[1]
     with col_b:
