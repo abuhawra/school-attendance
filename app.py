@@ -13,8 +13,10 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# --- 🎨 التنسيق المرئي والـ CSS ---
-st.set_page_config(page_title="نظام مدرسة القطيف التقني", layout="wide")
+# --- 🎨 التنسيق المرئي والـ CSS وضبط اسم التطبيق الافتراضي عند الحفظ ---
+# تم تعديل page_title هنا ليتعرف عليه الجوال بالاسم الذي تريده تلقائياً
+st.set_page_config(page_title="نظام بصمة تميز المطور", layout="wide")
+
 st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
@@ -139,7 +141,6 @@ elif st.session_state.page == "mark":
                 results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": all_t})
             
             st.write("")
-            # إنشاء عمودين لزر الحفظ النهائي وزر العودة بدون حفظ
             col_save, col_back = st.columns(2)
             
             with col_save:
@@ -181,7 +182,6 @@ elif st.session_state.page == "admin":
             df_all['c_sort'] = pd.to_numeric(df_all['committee'], errors='coerce').fillna(0)
             df_all = df_all.sort_values(by='c_sort')
             
-            # --- زر حذف الغياب لهذا اليوم ---
             with st.expander("⚠️ خيارات الحذف"):
                 if st.button(f"🗑️ حذف كافة سجلات يوم {d_rep}", use_container_width=True):
                     supabase.table("attendance").delete().eq("date", str(d_rep)).execute()
@@ -191,16 +191,13 @@ elif st.session_state.page == "admin":
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
             
-            # فلترة السجلات الأساسية (إظهار الغياب والتأخر بشكل عام)
             report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
             
-            # تطبيق الفلترة المتقدمة بناءً على اختيار المستخدم من المنسدل
             if filter_status == "الغياب فقط":
                 report_df = report_df[report_df['status'] == "غائب"].copy()
             elif filter_status == "التأخر فقط":
                 report_df = report_df[report_df['status'] == "متأخر"].copy()
             
-            # عرض الجدول المفلتر
             if not report_df.empty:
                 st.dataframe(report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
                 
@@ -217,11 +214,10 @@ elif st.session_state.page == "admin":
                 st.info(f"لا توجد سجلات مطابقة لـ ({filter_status}) في هذا التاريخ.")
         else: st.info("لا توجد بيانات لهذا التاريخ.")
 
-    with tab2: # حالة اللجان مع السهم
+    with tab2: # حالة اللجان
         st.subheader("🏘️ حالة رصد اللجان اللحظية")
         att_now = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
         
-        # معالجة الأسماء لإضافة السهم
         comm_status = {}
         for r in att_now.data:
             c_id = str(r['committee'])
@@ -229,7 +225,6 @@ elif st.session_state.page == "admin":
             clean_names = []
             for name in t_names:
                 if name.strip() and name.strip() not in clean_names: clean_names.append(name.strip())
-            # دمج الأسماء بسهم
             comm_status[c_id] = " <span class='arrow-sep'>⬅️</span> ".join([f"<span class='teacher-tag'>{n}</span>" for n in clean_names])
 
         res_s = supabase.table('students').select("committee").execute()
@@ -245,11 +240,10 @@ elif st.session_state.page == "admin":
             for c in all_c:
                 if c not in comm_status: st.write(f"⚠️ لجنة {c}")
 
-    with tab3: # إدارة البيانات (طلاب ومعلمين)
+    with tab3: # إدارة البيانات
         if st.text_input("رمز الأمان لإدارة البيانات:", type="password") == "4321":
             st.markdown("### 💾 النسخ الاحتياطي للبيانات")
             
-            # --- قسم الطلاب ---
             st.write("👨‍🎓 **قاعدة بيانات الطلاب**")
             df_s = pd.DataFrame(supabase.table('students').select("*").execute().data)
             if not df_s.empty:
@@ -259,7 +253,6 @@ elif st.session_state.page == "admin":
             
             st.divider()
             
-            # --- قسم المعلمين ---
             st.write("👨‍🏫 **قاعدة بيانات المعلمين**")
             df_t = pd.DataFrame(supabase.table('teachers').select("*").execute().data)
             if not df_t.empty:
