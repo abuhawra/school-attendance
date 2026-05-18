@@ -145,7 +145,12 @@ elif st.session_state.page == "admin":
     tab1, tab2, tab3 = st.tabs(["📊 تقارير الانضباط", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
     
     with tab1: # تقارير الانضباط
-        d_rep = st.date_input("اختر تاريخ التقرير:", datetime.now())
+        col_date, col_filter = st.columns(2)
+        with col_date:
+            d_rep = st.date_input("اختر تاريخ التقرير:", datetime.now())
+        with col_filter:
+            filter_status = st.selectbox("عرض تصنيف الحالات:", ["الكل (الغياب والتأخر)", "الغياب فقط", "التأخر فقط"])
+            
         res_att = supabase.table("attendance").select("*").eq("date", str(d_rep)).execute()
         
         if res_att.data:
@@ -162,17 +167,33 @@ elif st.session_state.page == "admin":
             res_std = supabase.table("students").select("student_name, class_name").execute()
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
+            
+            # فلترة السجلات الأساسية (إظهار الغياب والتأخر بشكل عام)
             report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
             
-            st.dataframe(report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
+            # تطبيق الفلترة المتقدمة بناءً على اختيار المستخدم من المنسدل
+            if filter_status == "الغياب فقط":
+                report_df = report_df[report_df['status'] == "غائب"].copy()
+            elif filter_status == "التأخر فقط":
+                report_df = report_df[report_df['status'] == "متأخر"].copy()
             
-            c1, c2 = st.columns(2)
-            with c1:
-                l1 = get_wa_link(report_df[report_df['status'] == "غائب"], "الغائبين", d_rep)
-                if l1: st.markdown(f'<a href="{l1}" target="_blank" class="wa-link wa-absent">🚫 إرسال الغائبين</a>', unsafe_allow_html=True)
-            with c2:
-                l2 = get_wa_link(report_df[report_df['status'] == "متأخر"], "المتأخرين", d_rep)
-                if l2: st.markdown(f'<a href="{l2}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
+            # عرض الجدول المفلتر
+            if not report_df.empty:
+                st.dataframe(report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
+                
+                c1, c2 = st.columns(2)
+                with c1:
+                    # زر الواتساب للغائبين يظهر فقط إذا لم نكن في وضع "التأخر فقط"
+                    if filter_status != "التأخر فقط":
+                        l1 = get_wa_link(report_df[report_df['status'] == "غائب"], "الغائبين", d_rep)
+                        if l1: st.markdown(f'<a href="{l1}" target="_blank" class="wa-link wa-absent">🚫 إرسال الغائبين</a>', unsafe_allow_html=True)
+                with c2:
+                    # زر الواتساب للمتأخرين يظهر فقط إذا لم نكن في وضع "الغياب فقط"
+                    if filter_status != "الغياب فقط":
+                        l2 = get_wa_link(report_df[report_df['status'] == "متأخر"], "المتأخرين", d_rep)
+                        if l2: st.markdown(f'<a href="{l2}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
+            else:
+                st.info(f"لا توجد سجلات مطابقة لـ ({filter_status}) في هذا التاريخ.")
         else: st.info("لا توجد بيانات لهذا التاريخ.")
 
     with tab2: # حالة اللجان مع السهم
