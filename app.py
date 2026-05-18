@@ -55,6 +55,20 @@ def get_wa_link(df, status_type, d):
         msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']}%0A🏫 *الشعبة:* {r.get('الشعبة','--')}%0A⚠️ *الحالة:* {r['status']}%0A-----------------%0A"
     return f"https://wa.me/?text={msg}"
 
+# --- دالة نافذة التأكيد عند الإلغاء ---
+@st.dialog("⚠️ تأكيد التراجع")
+def confirm_back_dialog():
+    st.write("هل أنت متأكد من العودة وإلغاء التغييرات الحالية دون حفظ الرصد؟")
+    st.write("")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("نعم، إلغاء التغييرات", use_container_width=True, type="primary"):
+            st.session_state.page = "home"
+            st.rerun()
+    with c2:
+        if st.button("تراجع والبقاء", use_container_width=True):
+            st.rerun()
+
 # --- 1. الصفحة الرئيسية ---
 if st.session_state.page == "home":
     st.markdown('''
@@ -136,7 +150,7 @@ elif st.session_state.page == "mark":
                     
             with col_back:
                 if st.button("⬅️ عودة بدون حفظ", use_container_width=True):
-                    st.session_state.page = "home"; st.rerun()
+                    confirm_back_dialog()
 
 # --- 4. صفحة الشكر ---
 elif st.session_state.page == "thank_you":
