@@ -13,27 +13,78 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# --- 🎯 2. ضبط إعدادات التطبيق الرسمية (الأيقونة والاسم) ---
-# page_icon: هذا الرمز سيظهر كأيقونة للتطبيق على شاشة الجوال
+# --- 🎯 2. ضبط إعدادات التطبيق الرسمية ---
 st.set_page_config(
     page_title="بصمة تميز - القطيف الثانوية", 
     page_icon="🎯", 
     layout="wide"
 )
 
+# --- 📱 3. حقن ملفات الـ PWA (Manifest & Service Worker) تلقائياً عبر الجافاسكريبت ---
+# هذه البرمجة تجبر المتصفح على قراءة التطبيق كـ تطبيق جوال مستقل (PWA) بالاسم والأيقونة الصحيحة
+pwa_js = """
+<script>
+// 1. إنشاء ملف Manifest ديناميكياً لتحديد اسم وأيقونة التطبيق عند الحفظ
+const manifest = {
+  "short_name": "بصمة تميز",
+  "name": "بصمة تميز - القطيف الثانوية",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/emoji/96/bullseye.png",
+      "type": "image/png",
+      "sizes": "96x96"
+    },
+    {
+      "src": "https://img.icons8.com/emoji/512/bullseye.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#1a237e",
+  "theme_color": "#1a237e",
+  "display": "standalone",
+  "orientation": "portrait"
+};
+
+const stringManifest = JSON.stringify(manifest);
+const blob = new Blob([stringManifest], {type: 'application/json'});
+const manifestURL = URL.createObjectURL(blob);
+let link = document.createElement('link');
+link.rel = 'manifest';
+link.href = manifestURL;
+document.head.appendChild(link);
+
+// 2. تسجيل الـ Service Worker لتمكين التشغيل السريع كتطبيق مستقل
+if ('serviceWorker' in navigator) {
+  const swCode = `
+    self.addEventListener('install', function(e) { self.skipWaiting(); });
+    self.addEventListener('fetch', function(e) { e.respondWith(fetch(e.request)); });
+  `;
+  const swBlob = new Blob([swCode], {type: 'application/javascript'});
+  const swURL = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swURL).then(function() {
+    console.log('PWA Service Worker Registered Successfully.');
+  }).catch(function(error) {
+    console.log('Service Worker Registration Failed:', error);
+  });
+}
+</script>
+"""
+st.markdown(pwa_js, unsafe_allow_html=True)
+
 # --- 🎨 التنسيق المرئي والـ CSS ---
 st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
     
-    /* تنسيق الخط والاتجاه */
     html, body, [class*="css"] { 
         font-family: 'Cairo', sans-serif; 
         direction: rtl; 
         text-align: right; 
     }
     
-    /* إخفاء شعار Streamlit وعناصر التحكم الافتراضية لجعل التطبيق يبدو احترافياً */
+    /* إخفاء شريط وذيل Streamlit الافتراضي لتبدو الواجهة كتطبيق مستقل */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
