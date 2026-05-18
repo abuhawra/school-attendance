@@ -124,10 +124,19 @@ elif st.session_state.page == "mark":
                 choice = st.radio(f"👤 {s['student_name']}", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True)
                 results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": all_t})
             
-            if st.button("💾 حفظ الرصد النهائي", use_container_width=True):
-                supabase.table('attendance').delete().eq("committee", sel_c).eq("date", today).execute()
-                supabase.table('attendance').insert(results).execute()
-                st.session_state.page = "thank_you"; st.rerun()
+            st.write("")
+            # إنشاء عمودين لزر الحفظ النهائي وزر العودة بدون حفظ
+            col_save, col_back = st.columns(2)
+            
+            with col_save:
+                if st.button("💾 حفظ الرصد النهائي", use_container_width=True, type="primary"):
+                    supabase.table('attendance').delete().eq("committee", sel_c).eq("date", today).execute()
+                    supabase.table('attendance').insert(results).execute()
+                    st.session_state.page = "thank_you"; st.rerun()
+                    
+            with col_back:
+                if st.button("⬅️ عودة بدون حفظ", use_container_width=True):
+                    st.session_state.page = "home"; st.rerun()
 
 # --- 4. صفحة الشكر ---
 elif st.session_state.page == "thank_you":
@@ -183,12 +192,10 @@ elif st.session_state.page == "admin":
                 
                 c1, c2 = st.columns(2)
                 with c1:
-                    # زر الواتساب للغائبين يظهر فقط إذا لم نكن في وضع "التأخر فقط"
                     if filter_status != "التأخر فقط":
                         l1 = get_wa_link(report_df[report_df['status'] == "غائب"], "الغائبين", d_rep)
                         if l1: st.markdown(f'<a href="{l1}" target="_blank" class="wa-link wa-absent">🚫 إرسال الغائبين</a>', unsafe_allow_html=True)
                 with c2:
-                    # زر الواتساب للمتأخرين يظهر فقط إذا لم نكن في وضع "الغياب فقط"
                     if filter_status != "الغياب فقط":
                         l2 = get_wa_link(report_df[report_df['status'] == "متأخر"], "المتأخرين", d_rep)
                         if l2: st.markdown(f'<a href="{l2}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
