@@ -13,14 +13,30 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# --- 🎨 التنسيق المرئي والـ CSS وضبط اسم التطبيق الرسمي عند الحفظ ---
-# تم تحديث الاسم هنا ليظهر: بصمة تميز - القطيف الثانوية
-st.set_page_config(page_title="بصمة تميز - القطيف الثانوية", layout="wide")
+# --- 🎯 2. ضبط إعدادات التطبيق الرسمية (الأيقونة والاسم) ---
+# page_icon: هذا الرمز سيظهر كأيقونة للتطبيق على شاشة الجوال
+st.set_page_config(
+    page_title="بصمة تميز - القطيف الثانوية", 
+    page_icon="🎯", 
+    layout="wide"
+)
 
+# --- 🎨 التنسيق المرئي والـ CSS ---
 st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
-    html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; text-align: right; }
+    
+    /* تنسيق الخط والاتجاه */
+    html, body, [class*="css"] { 
+        font-family: 'Cairo', sans-serif; 
+        direction: rtl; 
+        text-align: right; 
+    }
+    
+    /* إخفاء شعار Streamlit وعناصر التحكم الافتراضية لجعل التطبيق يبدو احترافياً */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
     
     .main-header { 
         background-color: #1a237e; padding: 30px; text-align: center; color: white; 
