@@ -13,9 +13,9 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
-# --- 🎨 التنسيق المرئي والـ CSS وضبط اسم التطبيق الافتراضي عند الحفظ ---
-# تم تعديل page_title هنا ليتعرف عليه الجوال بالاسم الذي تريده تلقائياً
-st.set_page_config(page_title="نظام بصمة تميز المطور", layout="wide")
+# --- 🎨 التنسيق المرئي والـ CSS وضبط اسم التطبيق الرسمي عند الحفظ ---
+# تم تحديث الاسم هنا ليظهر: بصمة تميز - القطيف الثانوية
+st.set_page_config(page_title="بصمة تميز - القطيف الثانوية", layout="wide")
 
 st.markdown('''
     <style>
