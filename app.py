@@ -233,7 +233,7 @@ def export_attendance_to_excel(df, report_date, sheet_label, valid_teachers_set)
     return output.getvalue()
 
 
-# تعديل دالة توليد الـ PDF لمعالجة الخطأ الموضح في صورة الحزمة
+# دالة توليد الـ PDF المستقرة والمتوافقة بنسبة 100% مع أزرار تحميل سترمليت
 def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
     days_ar = {"Monday": "الإثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
     day_name_en = report_date.strftime('%A')
@@ -255,7 +255,6 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
     for _, row in df.iterrows():
         pdf.add_page()
         
-        # استخدام الدالة القياسية set_line_width بدلاً من الدالة المسببة للخطأ
         pdf.set_draw_color(26, 35, 126)
         pdf.set_line_width(1.5)
         pdf.rect(10, 10, 190, 277)
@@ -314,7 +313,8 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
         pdf.set_text_color(150, 150, 150)
         pdf.cell(170, 5, format_ar("تم استخراج هذا التقرير تلقائياً عبر منصة بصمة تميز الموحدة."), align="C")
 
-    return pdf.output()
+    # تغليف المخرجات بـ bytes() لضمان توافقها الكامل والصريح مع دالة التنزيل في سترمليت ومنع الخطأ المباغت
+    return bytes(pdf.output())
 
 
 @st.dialog("⚠️ تأكيد التراجع")
