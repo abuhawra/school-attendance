@@ -59,7 +59,7 @@ if ('serviceWorker' in navigator) {
     self.addEventListener('fetch', function(e) { e.respondWith(fetch(e.request)); });
   `;
   const swBlob = new Blob([swCode], {type: 'application/javascript'});
-  const swURL = URL.createObjectURL(swBlob);
+  const swURL = URL.createObjectURL(swCode);
   navigator.serviceWorker.register(swURL).then(function() {
     console.log('PWA Service Worker Registered Successfully.');
   }).catch(function(error) {
@@ -102,7 +102,6 @@ st.markdown('''
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
     .wa-stats { background-color: #1a237e; border: 1px solid #ff9800; }
-    .export-excel-btn { background-color: #2e7d32; border: 1px solid #1b5e20; }
     .thank-you-box { text-align: center; padding: 40px; background: #f8fdf9; border-radius: 20px; border: 2px solid #22c55e; margin-top: 20px; }
     
     /* تنسيق صندوق الإحصائيات أسفل صفحة الرصد */
@@ -131,7 +130,6 @@ if 'page' not in st.session_state:
 
 # --- 🛠️ دالات مساعدة ---
 
-# دالة صياغة رسائل اللجان الفردية (كل بيان في سطر مستقل)
 def get_wa_link(df, status_type, d):
     if df.empty: return None
     df_sorted = df.copy()
@@ -149,7 +147,6 @@ def get_wa_link(df, status_type, d):
         )
     return f"https://wa.me/?text={msg}"
 
-# دالة صياغة إحصائية المراحل بالتنسيق والأسطر الجديدة المطلوبة
 def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
     msg = (
         f"📊 *إحصائيات الانضباط التفصيلية للمراحل*%0A"
@@ -169,14 +166,12 @@ def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
     )
     return f"https://wa.me/?text={msg}"
 
-# [دالة جديدة]: صياغة وتوليد ملف إكسيل مخصص ومنسق لترحيل الغياب والتأخر حسب الخلايا المطلوبة تماماً
-def export_attendance_to_excel(df, report_date):
-    # مصفوفة ترجمة أيام الأسبوع للعربية
+# دالة صياغة وتوليد ملف إكسيل المخصص والمقسّم حسب الطلب (للغياب أو للتأخر بشكل منفصل)
+def export_attendance_to_excel(df, report_date, sheet_label):
     days_ar = {"Monday": "الإثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
     day_name_en = report_date.strftime('%A')
     day_name_ar = days_ar.get(day_name_en, day_name_en)
     
-    # جلب أسماء المعلمين الملاحظين من السجلات الفرعية بشكل فريد ونظيف
     teachers_list = []
     for t in df['teacher_name'].dropna().unique():
         for name in str(t).split(" | "):
@@ -184,51 +179,43 @@ def export_attendance_to_excel(df, report_date):
                 teachers_list.append(name.strip())
     observers = " | ".join(teachers_list) if teachers_list else "لجنة الانضباط"
 
-    # تهيئة كائن البايتات للكتابة
     output = io.BytesIO()
     
-    # استخدام XlsxWriter للتحكم الكامل بمواقع الخلايا والتنسيق
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         workbook  = writer.book
-        worksheet = workbook.add_worksheet('تقرير الانضباط الموحد')
+        worksheet = workbook.add_worksheet(f'تقرير {sheet_label}')
         
-        # تفعيل اتجاه الورقة من اليمين لليسار ليتناسب مع اللغة العربية
         worksheet.right_to_left()
         
-        # التنسيقات العامة
-        text_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'align': 'right', 'valign': 'vcenter'})
         header_title_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'bold': True, 'font_color': '#1a237e', 'align': 'right'})
         table_header_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'bold': True, 'bg_color': '#1a237e', 'font_color': '#ffffff', 'align': 'center', 'border': 1})
         table_cell_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'align': 'center', 'border': 1})
         
-        # 1. كتابة ترويسة البيانات الثابتة في خلايا العمود A
+        # كتابة الترويسة المحددة بالخلايا المطلوبة
         worksheet.write('A1', f"اليوم: {day_name_ar}", header_title_format)
         worksheet.write('A2', f"التاريخ: {report_date.strftime('%Y-%m-%d')}", header_title_format)
         worksheet.write('A3', f"اسم الملاحظ: {observers}", header_title_format)
         
-        # 2. كتابة عناوين جدول البيانات في السطر الأول للأعمدة المقررة E, F, G
+        # كتابة ترويسة الجدول في السطر الأول للأعمدة المقررة E, F, G
         worksheet.write('E1', 'اسم الطالب', table_header_format)
         worksheet.write('F1', 'الشعبة', table_header_format)
         worksheet.write('G1', 'اللجنة', table_header_format)
-        worksheet.write('H1', 'الحالة', table_header_format) # عمود إضافي توضيحي للحالة تفادياً للخلط
+        worksheet.write('H1', 'الحالة', table_header_format)
         
-        # 3. تدوين بيانات الطلاب الفردية ابتداءً من السطر الثاني في الإكسيل (index 1 في البرمجة)
         row_idx = 1
         for _, row in df.iterrows():
-            worksheet.write(row_idx, 4, row['student_name'], table_cell_format) # العمود E (index 4)
-            worksheet.write(row_idx, 5, row.get('الشعبة', '---'), table_cell_format) # العمود F (index 5)
-            worksheet.write(row_idx, 6, row['committee'], table_cell_format)    # العمود G (index 6)
-            worksheet.write(row_idx, 7, row['status'], table_cell_format)       # العمود H (index 7)
+            worksheet.write(row_idx, 4, row['student_name'], table_cell_format) # العمود E
+            worksheet.write(row_idx, 5, row.get('الشعبة', '---'), table_cell_format) # العمود F
+            worksheet.write(row_idx, 6, row['committee'], table_cell_format)    # العمود G
+            worksheet.write(row_idx, 7, row['status'], table_cell_format)       # العمود H
             row_idx += 1
             
-        # ضبط عرض الأعمدة تلقائياً لضمان وضوح النصوص والأسماء
         worksheet.set_column('A:A', 25)
         worksheet.set_column('E:E', 35)
         worksheet.set_column('F:H', 15)
         
     return output.getvalue()
 
-# دالة نافذة التأكيد عند الإلغاء
 @st.dialog("⚠️ تأكيد التراجع")
 def confirm_back_dialog():
     st.write("هل أنت متأكد من العودة وإلغاء التغييرات الحالية دون حفظ الرصد؟")
@@ -273,7 +260,7 @@ if st.session_state.page == "home":
         if st.button("⚙️ لوحة الإدارة والتقارير الموحدة", use_container_width=True):
             st.session_state.page = "a_log"; st.rerun()
 
-# --- 2. دخول المعلم (الغياب اليومي للجان الفرعية) ---
+# --- 2. دخول المعلم ---
 elif st.session_state.page == "t_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     tid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
@@ -309,10 +296,7 @@ elif st.session_state.page == "mark":
                 old_map = {}
 
             results = []
-            
-            count_present = 0
-            count_absent = 0
-            count_late = 0
+            count_present, count_absent, count_late = 0, 0, 0
             count_total = len(students.data)
             
             for s in students.data:
@@ -323,12 +307,9 @@ elif st.session_state.page == "mark":
                 choice = st.radio(label_text, ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True)
                 results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": all_t})
                 
-                if choice == "حاضر":
-                    count_present += 1
-                elif choice == "غائب":
-                    count_absent += 1
-                elif choice == "متأخر":
-                    count_late += 1
+                if choice == "حاضر": count_present += 1
+                elif choice == "غائب": count_absent += 1
+                elif choice == "متأخر": count_late += 1
             
             st.write("")
             col_save, col_back = st.columns(2)
@@ -352,28 +333,23 @@ elif st.session_state.page == "mark":
                 </div>
             ''', unsafe_allow_html=True)
 
-# --- 🔐 نافذة التحقق من باسوور لجنة التأخر الصباحي ---
+# --- 🔐 نافذة التحقق من باسوورد لجنة التأخر الصباحي ---
 elif st.session_state.page == "m_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     m_pass = st.text_input("أدخل كلمة مرور لجنة التأخر الصباحي:", type="password")
     if st.button("دخول للجنة"):
         if m_pass.strip() == "112233":
             st.session_state.page = "morning_late"; st.rerun()
-        else:
-            st.error("كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى.")
+        else: st.error("كلمة المرور غير صحيحة.")
 
-# --- ⏰ 4. واجهة رصد لجنة التأخر الصباحي المزامنة بالشعبة ---
+# --- ⏰ 4. واجهة رصد لجنة التأخر الصباحي ---
 elif st.session_state.page == "morning_late":
-    if st.button("⬅️ تسجيل خروج من اللجنة"): 
-        st.session_state.page = "home"
-        st.rerun()
-        
+    if st.button("⬅️ تسجيل خروج من اللجنة"): st.session_state.page = "home"; st.rerun()
     st.markdown("## ⏰ لجنة رصد التأخر الصباحي الموحد")
     today = str(datetime.now().date())
     st.info(f"📅 تاريخ الرصد والمزامنة اليومي: {today}")
     
     res_all_students = supabase.table('students').select("class_name").execute()
-    
     if res_all_students.data:
         df_std_classes = pd.DataFrame(res_all_students.data)
         df_std_classes['class_name'] = df_std_classes['class_name'].astype(str).str.strip()
@@ -385,19 +361,13 @@ elif st.session_state.page == "morning_late":
         if selected_grade_label != "---":
             grade_prefix = grades_map[selected_grade_label]
             filtered_classes = [c for c in all_classes if c.startswith(grade_prefix)]
-            
             selected_class = st.selectbox("اختر الشعبة:", ["---"] + filtered_classes)
             
             if selected_class != "---":
                 students_in_class = supabase.table('students').select("*").eq("class_name", selected_class).execute()
-                
                 if students_in_class.data:
                     all_today_attendance = supabase.table('attendance').select("*").eq("date", today).execute()
-                    
-                    att_map = {}
-                    comm_map = {}
-                    tech_map = {}
-                    
+                    att_map, comm_map, tech_map = {}, {}, {}
                     if all_today_attendance.data:
                         for att in all_today_attendance.data:
                             att_map[att['student_name']] = att['status']
@@ -405,41 +375,20 @@ elif st.session_state.page == "morning_late":
                             tech_map[att['student_name']] = att['teacher_name']
                     
                     st.write("---")
-                    st.markdown(f"📊 **قائمة طلاب شعبة ({selected_class}) الحالية والحالات المتزامنة:**")
-                    
                     morning_results = []
-                    
-                    c_total = len(students_in_class.data)
-                    c_p, c_a, c_l = 0, 0, 0
+                    c_total, c_p, c_a, c_l = len(students_in_class.data), 0, 0, 0
                     
                     for s in students_in_class.data:
                         s_name = s['student_name']
                         current_status = att_map.get(s_name, "حاضر")
                         student_committee = str(s.get('committee', 'بدون لجنة'))
-                        
                         final_committee = comm_map.get(s_name, student_committee)
                         final_teachers = tech_map.get(s_name, "لجنة التأخر الصباحي")
-                        
                         if "لجنة التأخر الصباحي" not in final_teachers:
                             final_teachers = f"{final_teachers} | لجنة التأخر الصباحي"
                             
-                        label_text = f"👤 {s_name} (لجنة الطالب: {final_committee})"
-                        
-                        choice = st.radio(
-                            label_text, 
-                            ["حاضر", "غائب", "متأخر"], 
-                            index=["حاضر", "غائب", "متأخر"].index(current_status), 
-                            key=f"morning_{s_name}", 
-                            horizontal=True
-                        )
-                        
-                        morning_results.append({
-                            "student_name": s_name,
-                            "committee": final_committee,
-                            "status": choice,
-                            "date": today,
-                            "teacher_name": final_teachers
-                        })
+                        choice = st.radio(f"👤 {s_name} (لجنة الطالب: {final_committee})", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(current_status), key=f"morning_{s_name}", horizontal=True)
+                        morning_results.append({"student_name": s_name, "committee": final_committee, "status": choice, "date": today, "teacher_name": final_teachers})
                         
                         if choice == "حاضر": c_p += 1
                         elif choice == "غائب": c_a += 1
@@ -447,20 +396,15 @@ elif st.session_state.page == "morning_late":
                         
                     st.write("")
                     col_save_m, col_back_m = st.columns(2)
-                    
                     with col_save_m:
                         if st.button("💾 اعتماد وتحديث رصد التأخر الصباحي", use_container_width=True, type="primary"):
-                            with st.spinner("جاري تحديث سجلات الحالات وتزامنها..."):
-                                for record in morning_results:
-                                    supabase.table('attendance').delete().eq("student_name", record['student_name']).eq("date", today).execute()
-                                supabase.table('attendance').insert(morning_results).execute()
-                                st.success("✅ تم حفظ وتزامن البيانات بنجاح مع لجان رصد الغياب الفرعية والتقارير الإدارية!")
-                                time.sleep(1.5)
-                                st.rerun()
-                                
+                            for record in morning_results:
+                                supabase.table('attendance').delete().eq("student_name", record['student_name']).eq("date", today).execute()
+                            supabase.table('attendance').insert(morning_results).execute()
+                            st.success("✅ تم حفظ وتزامن البيانات بنجاح!")
+                            time.sleep(1.5); st.rerun()
                     with col_back_m:
-                        if st.button("⬅️ إلغاء والتراجع", use_container_width=True):
-                            confirm_back_dialog()
+                        if st.button("⬅️ إلغاء والتراجع", use_container_width=True): confirm_back_dialog()
                             
                     st.markdown(f'''
                         <div class="stats-footer-container">
@@ -470,10 +414,6 @@ elif st.session_state.page == "morning_late":
                             <span class="stat-badge stat-late">متأخر ( {c_l} )</span>
                         </div>
                     ''', unsafe_allow_html=True)
-                else:
-                    st.warning("لا يوجد طلاب مسجلين في هذه الشعبة.")
-    else:
-        st.error("لم يتم العثور على بيانات طلاب في قاعدة البيانات.")
 
 # --- 5. صفحة الشكر ---
 elif st.session_state.page == "thank_you":
@@ -495,7 +435,7 @@ elif st.session_state.page == "admin":
         with col_date:
             d_rep = st.date_input("اختر تاريخ التقرير:", datetime.now())
         with col_filter:
-            filter_status = st.selectbox("عرض تصنيف الحالات:", ["الكل (الغياب والتأخر)", "الغياب فقط", "التأخر فقط"])
+            filter_status = st.selectbox("عرض تصنيف الحالات بالجدول:", ["الكل (الغياب والتأخر)", "الغياب فقط", "التأخر فقط"])
             
         res_att = supabase.table("attendance").select("*").eq("date", str(d_rep)).execute()
         
@@ -518,71 +458,61 @@ elif st.session_state.page == "admin":
             
             g1_abs = len(df_stats[(df_stats['الشعبة_str'].str.startswith('1')) & (df_stats['status'] == 'غائب')])
             g1_lat = len(df_stats[(df_stats['الشعبة_str'].str.startswith('1')) & (df_stats['status'] == 'متأخر')])
-            
             g2_abs = len(df_stats[(df_stats['الشعبة_str'].str.startswith('2')) & (df_stats['status'] == 'غائب')])
             g2_lat = len(df_stats[(df_stats['الشعبة_str'].str.startswith('2')) & (df_stats['status'] == 'متأخر')])
-            
             g3_abs = len(df_stats[(df_stats['الشعبة_str'].str.startswith('3')) & (df_stats['status'] == 'غائب')])
             g3_lat = len(df_stats[(df_stats['الشعبة_str'].str.startswith('3')) & (df_stats['status'] == 'متأخر')])
             
             st.markdown("### 📈 إحصائيات الانضباط التفصيلية للمراحل")
             c_g1, c_g2, c_g3 = st.columns(3)
-            
-            with c_g1:
-                st.markdown(f'''
-                    <div class="admin-grade-box">
-                        <div class="admin-grade-title">أول ثانوي</div>
-                        <div class="grade-stat-sub" style="color: #c62828;">🚫 الغائبين: {g1_abs}</div>
-                        <div class="grade-stat-sub" style="color: #ef6c00;">⏳ المتأخرين: {g1_lat}</div>
-                    </div>
-                ''', unsafe_allow_html=True)
-                
-            with c_g2:
-                st.markdown(f'''
-                    <div class="admin-grade-box">
-                        <div class="admin-grade-title">ثاني ثانوي</div>
-                        <div class="grade-stat-sub" style="color: #c62828;">🚫 الغائبين: {g2_abs}</div>
-                        <div class="grade-stat-sub" style="color: #ef6c00;">⏳ المتأخرين: {g2_lat}</div>
-                    </div>
-                ''', unsafe_allow_html=True)
-                
-            with c_g3:
-                st.markdown(f'''
-                    <div class="admin-grade-box">
-                        <div class="admin-grade-title">ثالث ثانوي</div>
-                        <div class="grade-stat-sub" style="color: #c62828;">🚫 الغائبين: {g3_abs}</div>
-                        <div class="grade-stat-sub" style="color: #ef6c00;">⏳ المتأخرين: {g3_lat}</div>
-                    </div>
-                ''', unsafe_allow_html=True)
+            with c_g1: st.markdown(f'<div class="admin-grade-box"><div class="admin-grade-title">أول ثانوي</div><div class="grade-stat-sub" style="color: #c62828;">🚫 الغائبين: {g1_abs}</div><div class="grade-stat-sub" style="color: #ef6c00;">⏳ المتأخرين: {g1_lat}</div></div>', unsafe_allow_html=True)
+            with c_g2: st.markdown(f'<div class="admin-grade-box"><div class="admin-grade-title">ثاني ثانوي</div><div class="grade-stat-sub" style="color: #c62828;">🚫 الغائبين: {g2_abs}</div><div class="grade-stat-sub" style="color: #ef6c00;">⏳ المتأخرين: {g2_lat}</div></div>', unsafe_allow_html=True)
+            with c_g3: st.markdown(f'<div class="admin-grade-box"><div class="admin-grade-title">ثالث ثانوي</div><div class="grade-stat-sub" style="color: #c62828;">🚫 الغائبين: {g3_abs}</div><div class="grade-stat-sub" style="color: #ef6c00;">⏳ المتأخرين: {g3_lat}</div></div>', unsafe_allow_html=True)
             
             st.write("")
             wa_grade_link = get_wa_grade_stats_link(d_rep, g1_abs, g1_lat, g2_abs, g2_lat, g3_abs, g3_lat)
             st.markdown(f'<a href="{wa_grade_link}" target="_blank" class="wa-link wa-stats">📊 إرسال إحصائية المراحل التفصيلية عبر الواتساب</a>', unsafe_allow_html=True)
             
-            # --- [إضافة جديدة]: ميزة ترحيل وتصدير البيانات المخصصة إلى ملف Excel المستهدف ---
-            df_excel_source = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
-            if not df_excel_source.empty:
-                excel_data = export_attendance_to_excel(df_excel_source, d_rep)
-                st.download_button(
-                    label="📥 ترحيل بيانات الغياب والتأخر (الكل) إلى Excel مُنسق",
-                    data=excel_data,
-                    file_name=f"ترحيل_انضباط_{d_rep}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
+            # --- 🛠️ [التعديل المطلوب]: تقسيم ترحيل بيانات الغياب والتأخر لزرين مستقلين وعريضين ---
+            st.markdown("### 💾 ترحيل كشوفات الانضباط إلى Excel")
+            col_excel_abs, col_excel_lat = st.columns(2)
+            
+            with col_excel_abs:
+                df_absent_only = df_all[df_all['status'] == 'غائب'].copy()
+                if not df_absent_only.empty:
+                    excel_absent_data = export_attendance_to_excel(df_absent_only, d_rep, "الغياب اليومي")
+                    st.download_button(
+                        label="🚫 ترحيل كشف (الغياب فقط) إلى Excel مُنسق",
+                        data=excel_absent_data,
+                        file_name=f"كشف_الغياب_{d_rep}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                else:
+                    st.button("🚫 لا يوجد غياب لترحيله", disabled=True, use_container_width=True)
+                    
+            with col_excel_lat:
+                df_late_only = df_all[df_all['status'] == 'متأخر'].copy()
+                if not df_late_only.empty:
+                    excel_late_data = export_attendance_to_excel(df_late_only, d_rep, "التأخر الصباحي")
+                    st.download_button(
+                        label="⏳ ترحيل كشف (التأخر فقط) إلى Excel مُنسق",
+                        data=excel_late_data,
+                        file_name=f"كشف_التأخر_{d_rep}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                else:
+                    st.button("⏳ لا يوجد تأخر لترحيله", disabled=True, use_container_width=True)
             
             st.markdown("---")
             
             report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
-            
-            if filter_status == "الغياب فقط":
-                report_df = report_df[report_df['status'] == "غائب"].copy()
-            elif filter_status == "التأخر فقط":
-                report_df = report_df[report_df['status'] == "متأخر"].copy()
+            if filter_status == "الغياب فقط": report_df = report_df[report_df['status'] == "غائب"].copy()
+            elif filter_status == "التأخر فقط": report_df = report_df[report_df['status'] == "متأخر"].copy()
             
             if not report_df.empty:
                 st.dataframe(report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
-                
                 c1, c2 = st.columns(2)
                 with c1:
                     if filter_status != "التأخر فقط":
@@ -599,7 +529,6 @@ elif st.session_state.page == "admin":
     with tab2: # حالة اللجان
         st.subheader("🏘️ حالة رصد اللجان اللحظية")
         att_now = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
-        
         comm_status = {}
         for r in att_now.data:
             c_id = str(r['committee'])
@@ -624,18 +553,12 @@ elif st.session_state.page == "admin":
 
     with tab3: # إدارة البيانات
         if st.text_input("رمز الأمان لإدارة البيانات:", type="password") == "4321":
-            st.markdown("### 💾 النسخ الاحتياطي للبيانات (تصدير)")
-            
-            st.write("👨‍🎓 **قاعدة بيانات الطلاب حالياً**")
             df_s = pd.DataFrame(supabase.table('students').select("*").execute().data)
             if not df_s.empty:
                 buf_s = io.BytesIO()
                 with pd.ExcelWriter(buf_s) as wr: df_s.to_excel(wr, index=False)
                 st.download_button("📥 تحميل سجل الطلاب الحالي (Excel)", buf_s.getvalue(), "students_backup.xlsx", use_container_width=True)
-            
             st.divider()
-            
-            st.write("👨‍🏫 **قاعدة بيانات المعلمين حالياً**")
             df_t = pd.DataFrame(supabase.table('teachers').select("*").execute().data)
             if not df_t.empty:
                 buf_t = io.BytesIO()
@@ -643,51 +566,31 @@ elif st.session_state.page == "admin":
                 st.download_button("📥 تحميل سجل المعلمين الحالي (Excel)", buf_t.getvalue(), "teachers_backup.xlsx", use_container_width=True)
             
             st.markdown("---")
-            st.markdown("### 🔄 استرجاع ورفع البيانات (استيراد من ملف)")
-            st.warning("⚠️ تنبيه: رفع ملف جديد سيقوم بمسح السجلات القديمة في الجدول المختار واستبدالها بالبيانات الجديدة المرفوعة لحماية قاعدة البيانات من التكرار.")
-            
-            # تحديد الجدول المستهدف للرفع
             target_table = st.selectbox("اختر الجدول المراد تحديث بياناته:", ["---", "Students (الطلاب)", "Teachers (المعلمون)"])
-            
             if target_table != "---":
                 uploaded_file = st.file_uploader("اختر ملف Excel أو CSV المُراد رفعه:", type=["xlsx", "csv"])
-                
                 if uploaded_file is not None:
                     try:
                         if uploaded_file.name.endswith('.csv'):
                             file_bytes = uploaded_file.read()
                             sample = file_bytes[:1024].decode('utf-8', errors='ignore')
                             uploaded_file.seek(0)
-                            
                             delim = ';' if ';' in sample.split('\n')[0] and sample.count(';') > sample.count(',') else ','
                             df_uploaded = pd.read_csv(uploaded_file, sep=delim)
                         else:
                             df_uploaded = pd.read_excel(uploaded_file)
-                        
-                        st.write("👀 **معاينة من البيانات المرفوعة (أول 5 أسطر):**")
                         st.dataframe(df_uploaded.head(), use_container_width=True)
-                        
                         if st.button("🚀 تأكيد مسح البيانات القديمة ورفع الجديدة", use_container_width=True, type="primary"):
-                            with st.spinner("جاري تحديث قاعدة البيانات الحالية..."):
-                                df_uploaded = df_uploaded.astype(str).replace('nan', None).replace('NaN', None)
-                                records_to_insert = df_uploaded.to_dict(orient='records')
-                                
-                                if target_table == "Students (الطلاب)":
-                                    supabase.table("students").delete().neq("student_name", "🔴🔴🔴").execute()
-                                    supabase.table("students").insert(records_to_insert).execute()
-                                    
-                                    st.balloons()
-                                    st.success(f"⚡ تم اكتمال الرفع بنجاح! تم استيراد وتحديث {len(records_to_insert)} طالباً في جدول الطلاب بكفاءة.")
-                                    
-                                elif target_table == "Teachers (المعلمون)":
-                                    supabase.table("teachers").delete().neq("name_tech", "🔴🔴🔴").execute()
-                                    supabase.table("teachers").insert(records_to_insert).execute()
-                                    
-                                    st.balloons()
-                                    st.success(f"⚡ تم اكتمال الرفع بنجاح! تم استيراد وتحديث {len(records_to_insert)} معلماً في جدول المعلمين بكفاءة.")
-                                    
-                                time.sleep(3.0)
-                                st.rerun()
-                                
+                            df_uploaded = df_uploaded.astype(str).replace('nan', None).replace('NaN', None)
+                            records_to_insert = df_uploaded.to_dict(orient='records')
+                            if target_table == "Students (الطلاب)":
+                                supabase.table("students").delete().neq("student_name", "🔴🔴🔴").execute()
+                                supabase.table("students").insert(records_to_insert).execute()
+                                st.success("⚡ تم تحديث سجل الطلاب بنجاح!")
+                            elif target_table == "Teachers (المعلمون)":
+                                supabase.table("teachers").delete().neq("name_tech", "🔴🔴🔴").execute()
+                                supabase.table("teachers").insert(records_to_insert).execute()
+                                st.success("⚡ تم تحديث سجل المعلمين بنجاح!")
+                            time.sleep(1.5); st.rerun()
                     except Exception as e:
-                        st.error(f"حدث خطأ أثناء قراءة أو رفع الملف، تأكد من مطابقة أسماء الأعمدة في قاعدة البيانات. تفاصيل الخطأ: {e}")
+                        st.error(f"حدث خطأ: {e}")
