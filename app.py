@@ -104,7 +104,6 @@ st.markdown('''
     .wa-stats { background-color: #1a237e; border: 1px solid #ff9800; }
     .thank-you-box { text-align: center; padding: 40px; background: #f8fdf9; border-radius: 20px; border: 2px solid #22c55e; margin-top: 20px; }
     
-    /* تنسيق صندوق الإحصائيات أسفل صفحة الرصد */
     .stats-footer-container {
         margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 12px; border: 1px solid #e9ecef; text-align: center;
     }
@@ -116,7 +115,6 @@ st.markdown('''
     .stat-absent { background-color: #c62828; }
     .stat-late { background-color: #ef6c00; }
     
-    /* تنسيق كروت إحصائيات الإدارة لصفوف المراحل */
     .admin-grade-box {
         background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
@@ -166,18 +164,37 @@ def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
     )
     return f"https://wa.me/?text={msg}"
 
-# دالة صياغة وتوليد ملف إكسيل المخصص والمقسّم حسب الطلب (للغياب أو للتأخر بشكل منفصل)
+# دالة صياغة وتوليد ملف إكسيل المخصص والمقسّم مع نقل الملاحظ إلى I1 والربط بجدول المعلمين المعتمد
 def export_attendance_to_excel(df, report_date, sheet_label):
     days_ar = {"Monday": "الإثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
     day_name_en = report_date.strftime('%A')
     day_name_ar = days_ar.get(day_name_en, day_name_en)
     
+    # جلب جدول المعلمين كاملاً للربط والمطابقة الصحيحة والآمنة لأسماء الملاحظين
+    try:
+        res_teachers = supabase.table("teachers").select("name_tech").execute()
+        valid_teachers_set = {str(t['name_tech']).strip() for t in res_teachers.data} if res_teachers.data else set()
+    except Exception:
+        valid_teachers_set = set()
+
+    # معالجة وتنظيف أسماء المعلمين المرتبطين بالرصد والتحقق من وجودهم بجدول المعلمين
     teachers_list = []
     for t in df['teacher_name'].dropna().unique():
         for name in str(t).split(" | "):
-            if name.strip() and name.strip() not in teachers_list:
-                teachers_list.append(name.strip())
-    observers = " | ".join(teachers_list) if teachers_list else "لجنة الانضباط"
+            clean_name = name.strip()
+            if clean_name and clean_name not in teachers_list:
+                # إذا كان المعلم مسجلاً بجدول المعلمين أو كانت لجنة الرصد الرسمية الصباحية يتم اعتماده فوراً
+                if clean_name in valid_teachers_set or clean_name == "لجنة التأخر الصباحي":
+                    teachers_list.append(clean_name)
+                else:
+                    # محاولة مطابقة جزئية في حال وجود فروق بسيطة في إدخال الأسماء
+                    matched = [real_name for real_name in valid_teachers_set if clean_name in real_name]
+                    if matched:
+                        if matched[0] not in teachers_list: teachers_list.append(matched[0])
+                    else:
+                        teachers_list.append(clean_name)
+                        
+    observers = " | ".join(teachers_list) if teachers_list else "لجنة الانضباط المعتمدة"
 
     output = io.BytesIO()
     
@@ -191,10 +208,12 @@ def export_attendance_to_excel(df, report_date, sheet_label):
         table_header_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'bold': True, 'bg_color': '#1a237e', 'font_color': '#ffffff', 'align': 'center', 'border': 1})
         table_cell_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'align': 'center', 'border': 1})
         
-        # كتابة الترويسة المحددة بالخلايا المطلوبة
+        # كتابة الترويسة المحددة بالخلايا المطلوبة (اليوم في A1 والتاريخ في A2)
         worksheet.write('A1', f"اليوم: {day_name_ar}", header_title_format)
         worksheet.write('A2', f"التاريخ: {report_date.strftime('%Y-%m-%d')}", header_title_format)
-        worksheet.write('A3', f"اسم الملاحظ: {observers}", header_title_format)
+        
+        # [تعديل مستهدف]: كتابة اسم الملاحظ المرتبط والموثق في الخلية I1 بدلاً من A3
+        worksheet.write('I1', f"اسم الملاحظ: {observers}", header_title_format)
         
         # كتابة ترويسة الجدول في السطر الأول للأعمدة المقررة E, F, G
         worksheet.write('E1', 'اسم الطالب', table_header_format)
@@ -213,6 +232,7 @@ def export_attendance_to_excel(df, report_date, sheet_label):
         worksheet.set_column('A:A', 25)
         worksheet.set_column('E:E', 35)
         worksheet.set_column('F:H', 15)
+        worksheet.set_column('I:I', 30) # ضبط اتساع عمود الملاحظ الجديد لضمان القراءة الكاملة للأسماء
         
     return output.getvalue()
 
@@ -473,7 +493,7 @@ elif st.session_state.page == "admin":
             wa_grade_link = get_wa_grade_stats_link(d_rep, g1_abs, g1_lat, g2_abs, g2_lat, g3_abs, g3_lat)
             st.markdown(f'<a href="{wa_grade_link}" target="_blank" class="wa-link wa-stats">📊 إرسال إحصائية المراحل التفصيلية عبر الواتساب</a>', unsafe_allow_html=True)
             
-            # --- 🛠️ [التعديل المطلوب]: تقسيم ترحيل بيانات الغياب والتأخر لزرين مستقلين وعريضين ---
+            # --- 💾 ترحيل كشوفات الانضباط المحدثة إلى Excel بخلية الملاحظ I1 المربوطة بالجدول ---
             st.markdown("### 💾 ترحيل كشوفات الانضباط إلى Excel")
             col_excel_abs, col_excel_lat = st.columns(2)
             
@@ -520,7 +540,7 @@ elif st.session_state.page == "admin":
                         if l1: st.markdown(f'<a href="{l1}" target="_blank" class="wa-link wa-absent">🚫 إرسال الغائبين</a>', unsafe_allow_html=True)
                 with c2:
                     if filter_status != "الغياب فقط":
-                        l2 = get_wa_link(report_df[report_df['status'] == "متأخر"], "المتأخرين", d_rep)
+                        l2 = get_wa_link(report_df[report_df['status'] == "metahar", "المتأخرين", d_rep])
                         if l2: st.markdown(f'<a href="{l2}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
             else:
                 st.info(f"لا توجد سجلات مطابقة لـ ({filter_status}) في هذا التاريخ.")
