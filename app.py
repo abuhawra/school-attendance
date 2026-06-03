@@ -102,6 +102,7 @@ st.markdown('''
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
     .wa-stats { background-color: #1a237e; border: 1px solid #ff9800; }
+    .export-excel-btn { background-color: #2e7d32; border: 1px solid #1b5e20; }
     .thank-you-box { text-align: center; padding: 40px; background: #f8fdf9; border-radius: 20px; border: 2px solid #22c55e; margin-top: 20px; }
     
     /* تنسيق صندوق الإحصائيات أسفل صفحة الرصد */
@@ -167,6 +168,65 @@ def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
         f"🎯 *تم الإرسال عبر نظام بصمة تميز*"
     )
     return f"https://wa.me/?text={msg}"
+
+# [دالة جديدة]: صياغة وتوليد ملف إكسيل مخصص ومنسق لترحيل الغياب والتأخر حسب الخلايا المطلوبة تماماً
+def export_attendance_to_excel(df, report_date):
+    # مصفوفة ترجمة أيام الأسبوع للعربية
+    days_ar = {"Monday": "الإثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
+    day_name_en = report_date.strftime('%A')
+    day_name_ar = days_ar.get(day_name_en, day_name_en)
+    
+    # جلب أسماء المعلمين الملاحظين من السجلات الفرعية بشكل فريد ونظيف
+    teachers_list = []
+    for t in df['teacher_name'].dropna().unique():
+        for name in str(t).split(" | "):
+            if name.strip() and name.strip() not in teachers_list:
+                teachers_list.append(name.strip())
+    observers = " | ".join(teachers_list) if teachers_list else "لجنة الانضباط"
+
+    # تهيئة كائن البايتات للكتابة
+    output = io.BytesIO()
+    
+    # استخدام XlsxWriter للتحكم الكامل بمواقع الخلايا والتنسيق
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        workbook  = writer.book
+        worksheet = workbook.add_worksheet('تقرير الانضباط الموحد')
+        
+        # تفعيل اتجاه الورقة من اليمين لليسار ليتناسب مع اللغة العربية
+        worksheet.right_to_left()
+        
+        # التنسيقات العامة
+        text_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'align': 'right', 'valign': 'vcenter'})
+        header_title_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'bold': True, 'font_color': '#1a237e', 'align': 'right'})
+        table_header_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'bold': True, 'bg_color': '#1a237e', 'font_color': '#ffffff', 'align': 'center', 'border': 1})
+        table_cell_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'align': 'center', 'border': 1})
+        
+        # 1. كتابة ترويسة البيانات الثابتة في خلايا العمود A
+        worksheet.write('A1', f"اليوم: {day_name_ar}", header_title_format)
+        worksheet.write('A2', f"التاريخ: {report_date.strftime('%Y-%m-%d')}", header_title_format)
+        worksheet.write('A3', f"اسم الملاحظ: {observers}", header_title_format)
+        
+        # 2. كتابة عناوين جدول البيانات في السطر الأول للأعمدة المقررة E, F, G
+        worksheet.write('E1', 'اسم الطالب', table_header_format)
+        worksheet.write('F1', 'الشعبة', table_header_format)
+        worksheet.write('G1', 'اللجنة', table_header_format)
+        worksheet.write('H1', 'الحالة', table_header_format) # عمود إضافي توضيحي للحالة تفادياً للخلط
+        
+        # 3. تدوين بيانات الطلاب الفردية ابتداءً من السطر الثاني في الإكسيل (index 1 في البرمجة)
+        row_idx = 1
+        for _, row in df.iterrows():
+            worksheet.write(row_idx, 4, row['student_name'], table_cell_format) # العمود E (index 4)
+            worksheet.write(row_idx, 5, row.get('الشعبة', '---'), table_cell_format) # العمود F (index 5)
+            worksheet.write(row_idx, 6, row['committee'], table_cell_format)    # العمود G (index 6)
+            worksheet.write(row_idx, 7, row['status'], table_cell_format)       # العمود H (index 7)
+            row_idx += 1
+            
+        # ضبط عرض الأعمدة تلقائياً لضمان وضوح النصوص والأسماء
+        worksheet.set_column('A:A', 25)
+        worksheet.set_column('E:E', 35)
+        worksheet.set_column('F:H', 15)
+        
+    return output.getvalue()
 
 # دالة نافذة التأكيد عند الإلغاء
 @st.dialog("⚠️ تأكيد التراجع")
@@ -363,7 +423,6 @@ elif st.session_state.page == "morning_late":
                         if "لجنة التأخر الصباحي" not in final_teachers:
                             final_teachers = f"{final_teachers} | لجنة التأخر الصباحي"
                             
-                        # [تعديل مستهدف]: تم استبدال عبارة (اللجنة الحالية المقترنة بها الحالات) بـ (لجنة الطالب) كما طُلِب تماماً
                         label_text = f"👤 {s_name} (لجنة الطالب: {final_committee})"
                         
                         choice = st.radio(
@@ -499,6 +558,18 @@ elif st.session_state.page == "admin":
             st.write("")
             wa_grade_link = get_wa_grade_stats_link(d_rep, g1_abs, g1_lat, g2_abs, g2_lat, g3_abs, g3_lat)
             st.markdown(f'<a href="{wa_grade_link}" target="_blank" class="wa-link wa-stats">📊 إرسال إحصائية المراحل التفصيلية عبر الواتساب</a>', unsafe_allow_html=True)
+            
+            # --- [إضافة جديدة]: ميزة ترحيل وتصدير البيانات المخصصة إلى ملف Excel المستهدف ---
+            df_excel_source = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
+            if not df_excel_source.empty:
+                excel_data = export_attendance_to_excel(df_excel_source, d_rep)
+                st.download_button(
+                    label="📥 ترحيل بيانات الغياب والتأخر (الكل) إلى Excel مُنسق",
+                    data=excel_data,
+                    file_name=f"ترحيل_انضباط_{d_rep}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
             
             st.markdown("---")
             
