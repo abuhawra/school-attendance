@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 📱 3. حقن ملفات الـ PWA (Manifest & Service Worker) تلقائياً عبر الجافاسكريبت ---
+# --- 📱 3. حقن ملفات الـ PWA تلقائياً عبر الجافاسكريبت ---
 pwa_js = """
 <script>
 const manifest = {
@@ -164,37 +164,36 @@ def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
     )
     return f"https://wa.me/?text={msg}"
 
-# دالة صياغة وتوليد ملف إكسيل المخصص والمقسّم مع نقل الملاحظ إلى I1 والربط بجدول المعلمين المعتمد
+# دالة توليد ملف إكسيل المحدثة لإظهار الملاحظ في العمود I لكل طالب بناءً على جدول المعلمين
 def export_attendance_to_excel(df, report_date, sheet_label):
     days_ar = {"Monday": "الإثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
     day_name_en = report_date.strftime('%A')
     day_name_ar = days_ar.get(day_name_en, day_name_en)
     
-    # جلب جدول المعلمين كاملاً للربط والمطابقة الصحيحة والآمنة لأسماء الملاحظين
+    # جلب أسماء المعلمين الرسمية للربط والمطابقة بدقة
     try:
         res_teachers = supabase.table("teachers").select("name_tech").execute()
         valid_teachers_set = {str(t['name_tech']).strip() for t in res_teachers.data} if res_teachers.data else set()
     except Exception:
         valid_teachers_set = set()
 
-    # معالجة وتنظيف أسماء المعلمين المرتبطين بالرصد والتحقق من وجودهم بجدول المعلمين
-    teachers_list = []
-    for t in df['teacher_name'].dropna().unique():
-        for name in str(t).split(" | "):
+    # دالة داخلية لتنظيف وربط الأسماء المسجلة بالجدول الرسمي
+    def get_clean_observer_string(raw_teacher_name):
+        if not raw_teacher_name:
+            return "لجنة الانضباط"
+        current_list = []
+        for name in str(raw_teacher_name).split(" | "):
             clean_name = name.strip()
-            if clean_name and clean_name not in teachers_list:
-                # إذا كان المعلم مسجلاً بجدول المعلمين أو كانت لجنة الرصد الرسمية الصباحية يتم اعتماده فوراً
+            if clean_name and clean_name not in current_list:
                 if clean_name in valid_teachers_set or clean_name == "لجنة التأخر الصباحي":
-                    teachers_list.append(clean_name)
+                    current_list.append(clean_name)
                 else:
-                    # محاولة مطابقة جزئية في حال وجود فروق بسيطة في إدخال الأسماء
                     matched = [real_name for real_name in valid_teachers_set if clean_name in real_name]
                     if matched:
-                        if matched[0] not in teachers_list: teachers_list.append(matched[0])
+                        if matched[0] not in current_list: current_list.append(matched[0])
                     else:
-                        teachers_list.append(clean_name)
-                        
-    observers = " | ".join(teachers_list) if teachers_list else "لجنة الانضباط المعتمدة"
+                        current_list.append(clean_name)
+        return " | ".join(current_list) if current_list else "لجنة الانضباط"
 
     output = io.BytesIO()
     
@@ -208,31 +207,33 @@ def export_attendance_to_excel(df, report_date, sheet_label):
         table_header_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'bold': True, 'bg_color': '#1a237e', 'font_color': '#ffffff', 'align': 'center', 'border': 1})
         table_cell_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'align': 'center', 'border': 1})
         
-        # كتابة الترويسة المحددة بالخلايا المطلوبة (اليوم في A1 والتاريخ في A2)
+        # الترويسة الأساسية في خلايا A1 و A2 كما هو متبع
         worksheet.write('A1', f"اليوم: {day_name_ar}", header_title_format)
         worksheet.write('A2', f"التاريخ: {report_date.strftime('%Y-%m-%d')}", header_title_format)
         
-        # [تعديل مستهدف]: كتابة اسم الملاحظ المرتبط والموثق في الخلية I1 بدلاً من A3
-        worksheet.write('I1', f"اسم الملاحظ: {observers}", header_title_format)
-        
-        # كتابة ترويسة الجدول في السطر الأول للأعمدة المقررة E, F, G
+        # ترويسة الجدول بالأعمدة المقررة وصولاً للعمود I المقترن بالمعلمين
         worksheet.write('E1', 'اسم الطالب', table_header_format)
         worksheet.write('F1', 'الشعبة', table_header_format)
         worksheet.write('G1', 'اللجنة', table_header_format)
         worksheet.write('H1', 'الحالة', table_header_format)
+        worksheet.write('I1', 'الملاحظ / المعلمون', table_header_format) # [تعديل مستهدف]: ترويسة العمود I
         
         row_idx = 1
         for _, row in df.iterrows():
+            # استخراج الملاحظ المرتبط بكل طالب ومطابقته بجدول المعلمين
+            resolved_observer = get_clean_observer_string(row.get('teacher_name', ''))
+            
             worksheet.write(row_idx, 4, row['student_name'], table_cell_format) # العمود E
             worksheet.write(row_idx, 5, row.get('الشعبة', '---'), table_cell_format) # العمود F
             worksheet.write(row_idx, 6, row['committee'], table_cell_format)    # العمود G
             worksheet.write(row_idx, 7, row['status'], table_cell_format)       # العمود H
+            worksheet.write(row_idx, 8, resolved_observer, table_cell_format)  # [تعديل مستهدف]: العمود I مقترناً بكل طالب
             row_idx += 1
             
         worksheet.set_column('A:A', 25)
         worksheet.set_column('E:E', 35)
         worksheet.set_column('F:H', 15)
-        worksheet.set_column('I:I', 30) # ضبط اتساع عمود الملاحظ الجديد لضمان القراءة الكاملة للأسماء
+        worksheet.set_column('I:I', 50) # اتساع مناسب لعمود المعلمين لمنع تكدس الأسماء المركبة
         
     return output.getvalue()
 
@@ -493,7 +494,7 @@ elif st.session_state.page == "admin":
             wa_grade_link = get_wa_grade_stats_link(d_rep, g1_abs, g1_lat, g2_abs, g2_lat, g3_abs, g3_lat)
             st.markdown(f'<a href="{wa_grade_link}" target="_blank" class="wa-link wa-stats">📊 إرسال إحصائية المراحل التفصيلية عبر الواتساب</a>', unsafe_allow_html=True)
             
-            # --- 💾 ترحيل كشوفات الانضباط المحدثة إلى Excel بخلية الملاحظ I1 المربوطة بالجدول ---
+            # --- 💾 أزرار ترحيل كشوفات الانضباط المستقلة إلى Excel ---
             st.markdown("### 💾 ترحيل كشوفات الانضباط إلى Excel")
             col_excel_abs, col_excel_lat = st.columns(2)
             
@@ -540,7 +541,7 @@ elif st.session_state.page == "admin":
                         if l1: st.markdown(f'<a href="{l1}" target="_blank" class="wa-link wa-absent">🚫 إرسال الغائبين</a>', unsafe_allow_html=True)
                 with c2:
                     if filter_status != "الغياب فقط":
-                        l2 = get_wa_link(report_df[report_df['status'] == "metahar", "المتأخرين", d_rep])
+                        l2 = get_wa_link(report_df[report_df['status'] == "متأخر"], "المتأخرين", d_rep)
                         if l2: st.markdown(f'<a href="{l2}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
             else:
                 st.info(f"لا توجد سجلات مطابقة لـ ({filter_status}) في هذا التاريخ.")
