@@ -101,6 +101,7 @@ st.markdown('''
     .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; }
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
+    .wa-stats { background-color: #1a237e; border: 1px solid #ff9800; } /* لون كحلي مميز لزر الإحصائيات */
     .thank-you-box { text-align: center; padding: 40px; background: #f8fdf9; border-radius: 20px; border: 2px solid #22c55e; margin-top: 20px; }
     
     /* تنسيق صندوق الإحصائيات أسفل صفحة الرصد */
@@ -137,6 +138,23 @@ def get_wa_link(df, status_type, d):
     msg = f"{header_emoji} *قائمة {status_type}*%0A📅 *التاريخ:* {d}%0A-----------------%0A"
     for _, r in df_sorted.iterrows():
         msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']}%0A🏫 *الشعبة:* {r.get('الشعبة','--')}%0A⚠️ *الحالة:* {r['status']}%0A-----------------%0A"
+    return f"https://wa.me/?text={msg}"
+
+# دالة ذكية لإنشاء رابط واتساب لإحصائيات المراحل التفصيلية
+def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
+    msg = (
+        f"📊 *إحصائيات الانضباط التفصيلية للمراحل*%0A"
+        f"📅 *التاريخ:* {d}%0A"
+        f"-----------------%0A%0A"
+        f"🏫 *الصف أول ثانوي:*%0A"
+        f"🚫 الغائبين: {g1_a} | ⏳ المتأخرين: {g1_l}%0A%0A"
+        f"🏫 *الصف ثاني ثانوي:*%0A"
+        f"🚫 الغائبين: {g2_a} | ⏳ المتأخرين: {g2_l}%0A%0A"
+        f"🏫 *الصف ثالث ثانوي:*%0A"
+        f"🚫 الغائبين: {g3_a} | ⏳ المتأخرين: {g3_l}%0A%0A"
+        f"-----------------%0A"
+        f"🎯 *تم الإرسال عبر نظام بصمة تميز*"
+    )
     return f"https://wa.me/?text={msg}"
 
 # --- دالة نافذة التأكيد عند الإلغاء ---
@@ -298,11 +316,9 @@ elif st.session_state.page == "admin":
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
             
-            # 🛠️ [التعديل المطلوب]: احتساب الإحصائية التفصيلية حسب الصف قبل الفلترة البصرية
             df_stats = df_all.copy()
             df_stats['الشعبة_str'] = df_stats['الشعبة'].astype(str)
             
-            # تصنيف المراحل بناءً على أول رقم في اسم الشعبة (1 للـ أول، 2 للـ ثاني، 3 للـ ثالث)
             g1_abs = len(df_stats[(df_stats['الشعبة_str'].str.startswith('1')) & (df_stats['status'] == 'غائب')])
             g1_lat = len(df_stats[(df_stats['الشعبة_str'].str.startswith('1')) & (df_stats['status'] == 'متأخر')])
             
@@ -312,7 +328,6 @@ elif st.session_state.page == "admin":
             g3_abs = len(df_stats[(df_stats['الشعبة_str'].str.startswith('3')) & (df_stats['status'] == 'غائب')])
             g3_lat = len(df_stats[(df_stats['الشعبة_str'].str.startswith('3')) & (df_stats['status'] == 'متأخر')])
             
-            # عرض لوحة الإحصائيات التفصيلية للمراحل الدراسية بشكل مرئي جذاب
             st.markdown("### 📈 إحصائيات الانضباط التفصيلية للمراحل")
             c_g1, c_g2, c_g3 = st.columns(3)
             
@@ -343,10 +358,13 @@ elif st.session_state.page == "admin":
                     </div>
                 ''', unsafe_allow_html=True)
             
+            # 🛠️ [التعديل المطلوب]: إضافة زر إرسال إحصائية المراحل التفصيلية عبر الواتساب
             st.write("")
+            wa_grade_link = get_wa_grade_stats_link(d_rep, g1_abs, g1_lat, g2_abs, g2_lat, g3_abs, g3_lat)
+            st.markdown(f'<a href="{wa_grade_link}" target="_blank" class="wa-link wa-stats">📊 إرسال إحصائية المراحل التفصيلية عبر الواتساب</a>', unsafe_allow_html=True)
+            
             st.markdown("---")
             
-            # إكمال بقية عرض الجدول الفردي بناءً على الفلتر المختار
             report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
             
             if filter_status == "الغياب فقط":
