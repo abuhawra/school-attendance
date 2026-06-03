@@ -59,7 +59,7 @@ if ('serviceWorker' in navigator) {
     self.addEventListener('fetch', function(e) { e.respondWith(fetch(e.request)); });
   `;
   const swBlob = new Blob([swCode], {type: 'application/javascript'});
-  const swURL = URL.createObjectURL(swCode);
+  const swURL = URL.createObjectURL(swBlob);
   navigator.serviceWorker.register(swURL).then(function() {
     console.log('PWA Service Worker Registered Successfully.');
   }).catch(function(error) {
@@ -200,7 +200,11 @@ elif st.session_state.page == "mark":
             results = []
             for s in students.data:
                 prev = old_map.get(s['student_name'], "حاضر")
-                choice = st.radio(f"👤 {s['student_name']}", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True)
+                # 🛠️ [التعديل المطلوب]: عرض اسم الطالب وبجانبه الشعبة بين قوسين بشكل واضح للمعلّم
+                class_info = s.get('class_name', '---')
+                label_text = f"👤 {s['student_name']} ({class_info})"
+                
+                choice = st.radio(label_text, ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True)
                 results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": all_t})
             
             st.write("")
