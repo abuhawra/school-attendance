@@ -233,7 +233,7 @@ def export_attendance_to_excel(df, report_date, sheet_label, valid_teachers_set)
     return output.getvalue()
 
 
-# توليد PDF باستخدام ملف الخط arial.ttf المرفوع مسبقاً
+# تعديل دالة توليد الـ PDF لمعالجة الخطأ الموضح في صورة الحزمة
 def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
     days_ar = {"Monday": "الإثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
     day_name_en = report_date.strftime('%A')
@@ -255,8 +255,9 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
     for _, row in df.iterrows():
         pdf.add_page()
         
+        # استخدام الدالة القياسية set_line_width بدلاً من الدالة المسببة للخطأ
         pdf.set_draw_color(26, 35, 126)
-        pdf.set_solid_linewidth(1.5)
+        pdf.set_line_width(1.5)
         pdf.rect(10, 10, 190, 277)
         
         pdf.set_text_color(26, 35, 126)
@@ -268,7 +269,7 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
         pdf.cell(190, 8, format_ar("نظام الانضباط المدرسي الذكي (بصمة تميز)"), ln=True, align="C")
         
         pdf.set_draw_color(255, 152, 0)
-        pdf.set_solid_linewidth(1)
+        pdf.set_line_width(1)
         pdf.line(15, 38, 195, 38)
         pdf.ln(12)
         
