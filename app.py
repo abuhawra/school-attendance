@@ -147,7 +147,7 @@ if st.session_state.page == "home":
                  <h2 class="school-name">   </h2>                
             <div style="font-size: 20px; margin-top: 15px; border-top: 2px solid rgba(255,255,255,0.2); padding-top: 15px;">
                 <p style="color:#ff9800; font-size: 24px; font-weight: 500; margin: 0;">مدير المدرسة</p>
-                <p style="color:#ffffff; font-size: 24px; font-weight: 500; margin: 0;">أ. فراas آل عبدالمحسن</p>
+                <p style="color:#ffffff; font-size: 24px; font-weight: 500; margin: 0;">أ. فراس آل عبدالمحسن</p>
                 <p style="color:#ff9800; font-size: 22px; margin: 5px 0;">فكرة وبرمجة</p>
                 <p style="color:#ffffff; font-size: 22px; margin: 5px 0;"> أ. عارف أحمد الحداد</p>
             </div>
@@ -331,38 +331,37 @@ elif st.session_state.page == "admin":
             target_table = st.selectbox("اختر الجدول المراد تحديث بياناته:", ["---", "Students (الطلاب)", "Teachers (المعلمون)"])
             
             if target_table != "---":
-                # رفع الملف وتحديد الامتداد
                 uploaded_file = st.file_uploader("اختر ملف Excel أو CSV المُراد رفعه:", type=["xlsx", "csv"])
                 
                 if uploaded_file is not None:
                     try:
-                        # 🛠️ [تم التعديل هنا]: استخدام endswith بأحرف صغيرة بدلاً من endsWith الكبيرة المتسببة بالخطأ
                         if uploaded_file.name.endswith('.csv'):
-                            df_uploaded = pd.read_csv(uploaded_file)
+                            # 🛠️ [الاستقرار المضاف هنا]: قراءة أول سطر وفحص الفاصل التلقائي لتجنب خطأ الفاصلة المنقوطة
+                            file_bytes = uploaded_file.read()
+                            sample = file_bytes[:1024].decode('utf-8', errors='ignore')
+                            uploaded_file.seek(0) # إعادة المؤشر لبداية الملف
+                            
+                            # اختيار الفاصل بناءً على الأكثر تكراراً في السطر الأول
+                            delim = ';' if ';' in sample.split('\n')[0] and sample.count(';') > sample.count(',') else ','
+                            df_uploaded = pd.read_csv(uploaded_file, sep=delim)
                         else:
                             df_uploaded = pd.read_excel(uploaded_file)
                         
                         st.write("👀 **معاينة من البيانات المرفوعة (أول 5 أسطر):**")
                         st.dataframe(df_uploaded.head(), use_container_width=True)
                         
-                        # زر تأكيد معالج الرفع الفعلي بقاعدة البيانات
                         if st.button("🚀 تأكيد مسح البيانات القديمة ورفع الجديدة", use_container_width=True, type="primary"):
                             with st.spinner("جاري تحديث قاعدة البيانات الحالية..."):
-                                # تحويل كل الأعمدة لنصوص والتعامل مع قيم النال لتجنب مشاكل الـ JSON
                                 df_uploaded = df_uploaded.astype(str).replace('nan', None).replace('NaN', None)
                                 records_to_insert = df_uploaded.to_dict(orient='records')
                                 
                                 if target_table == "Students (الطلاب)":
-                                    # 1. تصفير الجدول أولاً
                                     supabase.table("students").delete().neq("student_name", "🔴🔴🔴").execute()
-                                    # 2. حقن الداتا الجديدة
                                     supabase.table("students").insert(records_to_insert).execute()
                                     st.success(f"✅ تم بنجاح استبدال وتحديث جدول الطلاب بـ {len(records_to_insert)} سجل جديد.")
                                     
                                 elif target_table == "Teachers (المعلمون)":
-                                    # 1. تصفير الجدول أولاً
                                     supabase.table("teachers").delete().neq("name_tech", "🔴🔴🔴").execute()
-                                    # 2. حقن الداتا الجديدة
                                     supabase.table("teachers").insert(records_to_insert).execute()
                                     st.success(f"✅ تم بنجاح استبدال وتحديث جدول المعلمين بـ {len(records_to_insert)} سجل جديد.")
                                     
