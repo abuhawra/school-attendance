@@ -59,7 +59,7 @@ if ('serviceWorker' in navigator) {
     self.addEventListener('fetch', function(e) { e.respondWith(fetch(e.request)); });
   `;
   const swBlob = new Blob([swCode], {type: 'application/javascript'});
-  const swURL = URL.createObjectURL(swBlob);
+  const swURL = URL.createObjectURL(swCode);
   navigator.serviceWorker.register(swURL).then(function() {
     console.log('PWA Service Worker Registered Successfully.');
   }).catch(function(error) {
@@ -102,6 +102,28 @@ st.markdown('''
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
     .thank-you-box { text-align: center; padding: 40px; background: #f8fdf9; border-radius: 20px; border: 2px solid #22c55e; margin-top: 20px; }
+    
+    /* تنسيق صندوق الإحصائيات أسفل الصفحة */
+    .stats-footer-container {
+        margin-top: 30px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        border: 1px solid #e9ecef;
+        text-align: center;
+    }
+    .stat-badge {
+        display: inline-block;
+        padding: 8px 20px;
+        margin: 5px 15px;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 8px;
+        color: white;
+    }
+    .stat-present { background-color: #2e7d32; }  /* أخضر */
+    .stat-absent { background-color: #c62828; }   /* أحمر */
+    .stat-late { background-color: #ef6c00; }     /* برتقالي */
     </style>
 ''', unsafe_allow_html=True)
 
@@ -198,14 +220,27 @@ elif st.session_state.page == "mark":
                 old_map = {}
 
             results = []
+            
+            # متغيرات تجميعية لحساب الإحصائية اللحظية
+            count_present = 0
+            count_absent = 0
+            count_late = 0
+            
             for s in students.data:
                 prev = old_map.get(s['student_name'], "حاضر")
-                # 🛠️ [التعديل المطلوب]: عرض اسم الطالب وبجانبه الشعبة بين قوسين بشكل واضح للمعلّم
                 class_info = s.get('class_name', '---')
                 label_text = f"👤 {s['student_name']} ({class_info})"
                 
                 choice = st.radio(label_text, ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True)
                 results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": all_t})
+                
+                # فرز وتجميع الإحصائية لحظة بلحظة بناءً على خيار المعلم الحالي
+                if choice == "حاضر":
+                    count_present += 1
+                elif choice == "غائب":
+                    count_absent += 1
+                elif choice == "متأخر":
+                    count_late += 1
             
             st.write("")
             col_save, col_back = st.columns(2)
@@ -219,6 +254,15 @@ elif st.session_state.page == "mark":
             with col_back:
                 if st.button("⬅️ عودة بدون حفظ", use_container_width=True):
                     confirm_back_dialog()
+            
+            # 🛠️ [التعديل المضاف]: صندوق الإحصائيات التلقائي في أدنى الصفحة
+            st.markdown(f'''
+                <div class="stats-footer-container">
+                    <span class="stat-badge stat-present">حاضر ( {count_present} )</span>
+                    <span class="stat-badge stat-absent">غائب ( {count_absent} )</span>
+                    <span class="stat-badge stat-late">متأخر ( {count_late} )</span>
+                </div>
+            ''', unsafe_allow_html=True)
 
 # --- 4. صفحة الشكر ---
 elif st.session_state.page == "thank_you":
