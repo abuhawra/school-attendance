@@ -21,10 +21,8 @@ st.set_page_config(
 )
 
 # --- 📱 3. حقن ملفات الـ PWA (Manifest & Service Worker) تلقائياً عبر الجافاسكريبت ---
-# هذه البرمجة تجبر المتصفح على قراءة التطبيق كـ تطبيق جوال مستقل (PWA) بالاسم والأيقونة الصحيحة
 pwa_js = """
 <script>
-// 1. إنشاء ملف Manifest ديناميكياً لتحديد اسم وأيقونة التطبيق عند الحفظ
 const manifest = {
   "short_name": "بصمة تميز",
   "name": "بصمة تميز - القطيف الثانوية",
@@ -55,7 +53,6 @@ link.rel = 'manifest';
 link.href = manifestURL;
 document.head.appendChild(link);
 
-// 2. تسجيل الـ Service Worker لتمكين التشغيل السريع كتطبيق مستقل
 if ('serviceWorker' in navigator) {
   const swCode = `
     self.addEventListener('install', function(e) { self.skipWaiting(); });
@@ -84,7 +81,6 @@ st.markdown('''
         text-align: right; 
     }
     
-    /* إخفاء شريط وذيل Streamlit الافتراضي لتبدو الواجهة كتطبيق مستقل */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -309,20 +305,69 @@ elif st.session_state.page == "admin":
 
     with tab3: # إدارة البيانات
         if st.text_input("رمز الأمان لإدارة البيانات:", type="password") == "4321":
-            st.markdown("### 💾 النسخ الاحتياطي للبيانات")
+            st.markdown("### 💾 النسخ الاحتياطي للبيانات (تصدير)")
             
-            st.write("👨‍🎓 **قاعدة بيانات الطلاب**")
+            st.write("👨‍🎓 **قاعدة بيانات الطلاب حالياً**")
             df_s = pd.DataFrame(supabase.table('students').select("*").execute().data)
             if not df_s.empty:
                 buf_s = io.BytesIO()
                 with pd.ExcelWriter(buf_s) as wr: df_s.to_excel(wr, index=False)
-                st.download_button("📥 تحميل سجل الطلاب (Excel)", buf_s.getvalue(), "students_backup.xlsx", use_container_width=True)
+                st.download_button("📥 تحميل سجل الطلاب الحالي (Excel)", buf_s.getvalue(), "students_backup.xlsx", use_container_width=True)
             
             st.divider()
             
-            st.write("👨‍🏫 **قاعدة بيانات المعلمين**")
+            st.write("👨‍🏫 **قاعدة بيانات المعلمين حالياً**")
             df_t = pd.DataFrame(supabase.table('teachers').select("*").execute().data)
             if not df_t.empty:
                 buf_t = io.BytesIO()
                 with pd.ExcelWriter(buf_t) as wr: df_t.to_excel(wr, index=False)
-                st.download_button("📥 تحميل سجل المعلمين (Excel)", buf_t.getvalue(), "teachers_backup.xlsx", use_container_width=True)
+                st.download_button("📥 تحميل سجل المعلمين الحالي (Excel)", buf_t.getvalue(), "teachers_backup.xlsx", use_container_width=True)
+            
+            st.markdown("---")
+            st.markdown("### 🔄 استرجاع ورفع البيانات (استيراد من ملف)")
+            st.warning("⚠️ تنبيه: رفع ملف جديد سيقوم بمسح السجلات القديمة في الجدول المختار واستبدالها بالبيانات الجديدة المرفوعة لحماية قاعدة البيانات من التكرار.")
+            
+            # تحديد الجدول المستهدف للرفع
+            target_table = st.selectbox("اختر الجدول المراد تحديث بياناته:", ["---", "Students (الطلاب)", "Teachers (المعلمون)"])
+            
+            if target_table != "---":
+                # رفع الملف وتحديد الامتداد
+                uploaded_file = st.file_uploader("اختر ملف Excel أو CSV المُراد رفعه:", type=["xlsx", "csv"])
+                
+                if uploaded_file is not None:
+                    try:
+                        # قراءة الملف بناءً على الامتداد الخاص به
+                        if uploaded_file.name.endsWith('.csv'):
+                            df_uploaded = pd.read_csv(uploaded_file)
+                        else:
+                            df_uploaded = pd.read_excel(uploaded_file)
+                        
+                        st.write("👀 **معاينة من البيانات المرفوعة (أول 5 أسطر):**")
+                        st.dataframe(df_uploaded.head(), use_container_width=True)
+                        
+                        # زر تأكيد معالج الرفع الفعلي بقاعدة البيانات
+                        if st.button("🚀 تأكيد مسح البيانات القديمة ورفع الجديدة", use_container_width=True, type="primary"):
+                            with st.spinner("جاري تحديث قاعدة البيانات الحالية..."):
+                                # تحويل كل الأعمدة لنصوص والتعامل مع قيم النال لتجنب مشاكل الـ JSON
+                                df_uploaded = df_uploaded.astype(str).replace('nan', None).replace('NaN', None)
+                                records_to_insert = df_uploaded.to_dict(orient='records')
+                                
+                                if target_table == "Students (الطلاب)":
+                                    # 1. تصفير الجدول أولاً
+                                    supabase.table("students").delete().neq("student_name", "🔴🔴🔴").execute()
+                                    # 2. حقن الداتا الجديدة
+                                    supabase.table("students").insert(records_to_insert).execute()
+                                    st.success(f"✅ تم بنجاح استبدال وتحديث جدول الطلاب بـ {len(records_to_insert)} سجل جديد.")
+                                    
+                                elif target_table == "Teachers (المعلمون)":
+                                    # 1. تصفير الجدول أولاً
+                                    supabase.table("teachers").delete().neq("name_tech", "🔴🔴🔴").execute()
+                                    # 2. حقن الداتا الجديدة
+                                    supabase.table("teachers").insert(records_to_insert).execute()
+                                    st.success(f"✅ تم بنجاح استبدال وتحديث جدول المعلمين بـ {len(records_to_insert)} سجل جديد.")
+                                    
+                                time.sleep(1.5)
+                                st.rerun()
+                                
+                    except Exception as e:
+                        st.error(f"حدث خطأ أثناء قراءة أو رفع الملف، تأكد من مطابقة أسماء الأعمدة في قاعدة البيانات. تفاصيل الخطأ: {e}")
