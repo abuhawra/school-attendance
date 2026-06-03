@@ -148,7 +148,7 @@ def get_wa_link(df, status_type, d):
         )
     return f"https://wa.me/?text={msg}"
 
-# 🛠️ [تعديل التنسيق المطلوب بدقة]: دالة صياغة إحصائية المراحل بالتنسيق والأسطر الجديدة المطلوبة
+# دالة صياغة إحصائية المراحل بالتنسيق والأسطر الجديدة المطلوبة
 def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
     msg = (
         f"📊 *إحصائيات الانضباط التفصيلية للمراحل*%0A"
@@ -168,7 +168,7 @@ def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
     )
     return f"https://wa.me/?text={msg}"
 
-# --- دالة نافذة التأكيد عند الإلغاء ---
+# دالة نافذة التأكيد عند الإلغاء
 @st.dialog("⚠️ تأكيد التراجع")
 def confirm_back_dialog():
     st.write("هل أنت متأكد من العودة وإلغاء التغييرات الحالية دون حفظ الرصد؟")
@@ -207,10 +207,14 @@ if st.session_state.page == "home":
         if st.button("📝 رصد غياب الطلاب اليومي", use_container_width=True, type="primary"):
             st.session_state.page = "t_log"; st.rerun()
         st.write("")
+        # [تعديل]: إضافة زر لجنة التأخر الصباحي في الصفحة الرئيسية ليتناسق مع تصميم الأزرار الحالية
+        if st.button("⏰ لجنة التأخر الصباحي", use_container_width=True):
+            st.session_state.page = "morning_late"; st.rerun()
+        st.write("")
         if st.button("⚙️ لوحة الإدارة والتقارير الموحدة", use_container_width=True):
             st.session_state.page = "a_log"; st.rerun()
 
-# --- 2. دخول المعلم ---
+# --- 2. دخول المعلم (الغياب اليومي للجان الفرعية) ---
 elif st.session_state.page == "t_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     tid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
@@ -221,7 +225,7 @@ elif st.session_state.page == "t_log":
             st.session_state.page = "mark"; st.rerun()
         else: st.error("السجل المدني غير مسجل.")
 
-# --- 3. واجهة الرصد ---
+# --- 3. واجهة الرصد باللجان الفرعية ---
 elif st.session_state.page == "mark":
     today = str(datetime.now().date())
     st.info(f"المعلم: {st.session_state.teacher} | التاريخ: {today}")
@@ -289,13 +293,136 @@ elif st.session_state.page == "mark":
                 </div>
             ''', unsafe_allow_html=True)
 
-# --- 4. صفحة الشكر ---
+# --- 🚀 [جديد]: 4. صفحة لجنة التأخر الصباحي المزامنة بالشعبة ---
+elif st.session_state.page == "morning_late":
+    if st.button("⬅️ عودة للقائمة الرئيسية"): 
+        st.session_state.page = "home"
+        st.rerun()
+        
+    st.markdown("## ⏰ لجنة رصد التأخر الصباحي الموحد")
+    today = str(datetime.now().date())
+    st.info(f"📅 تاريخ الرصد والمزامنة اليومي: {today}")
+    
+    # سحب جميع الطلاب لفرز الصفوف والشعب ديناميكياً
+    res_all_students = supabase.table('students').select("class_name").execute()
+    
+    if res_all_students.data:
+        df_std_classes = pd.DataFrame(res_all_students.data)
+        df_std_classes['class_name'] = df_std_classes['class_name'].astype(str).str.strip()
+        all_classes = sorted(list(df_std_classes['class_name'].unique()))
+        
+        # فرز ديناميكي للمراحل بناء على الرقم الأول من الشعبة
+        grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ثالث ثانوي": "3"}
+        selected_grade_label = st.selectbox("اختر الصف الدراسي:", ["---"] + list(grades_map.keys()))
+        
+        if selected_grade_label != "---":
+            grade_prefix = grades_map[selected_grade_label]
+            # تصفية الشُعب التابعة للمرحلة المختارة فقط
+            filtered_classes = [c for c in all_classes if c.startswith(grade_prefix)]
+            
+            selected_class = st.selectbox("اختر الشعبة:", ["---"] + filtered_classes)
+            
+            if selected_class != "---":
+                # جلب الطلاب المنتمين للشعبة المختارة فقط
+                students_in_class = supabase.table('students').select("*").eq("class_name", selected_class).execute()
+                
+                if students_in_class.data:
+                    # جلب الرصد الحالي الفعلي لهذا اليوم لضمان المزامنة المتبادلة اللحظية
+                    all_today_attendance = supabase.table('attendance').select("*").eq("date", today).execute()
+                    
+                    att_map = {}
+                    comm_map = {}
+                    tech_map = {}
+                    
+                    if all_today_attendance.data:
+                        for att in all_today_attendance.data:
+                            att_map[att['student_name']] = att['status']
+                            comm_map[att['student_name']] = att['committee']
+                            tech_map[att['student_name']] = att['teacher_name']
+                    
+                    st.write("---")
+                    st.markdown(f"📊 **قائمة طلاب شعبة ({selected_class}) الحالية والحالات المتزامنة:**")
+                    
+                    morning_results = []
+                    
+                    # عداد الحالات اللحظي للشعبة
+                    c_total = len(students_in_class.data)
+                    c_p, c_a, c_l = 0, 0, 0
+                    
+                    for s in students_in_class.data:
+                        s_name = s['student_name']
+                        # إظهار نفس حالة الطالب الحالية في نافذة الغياب إن وجدت، وإلا فـ "حاضر" تلقائياً
+                        current_status = att_map.get(s_name, "حاضر")
+                        student_committee = str(s.get('committee', 'بدون لجنة'))
+                        
+                        # الحفاظ على اللجنة الأصلية للتحكم الفردي الدقيق
+                        final_committee = comm_map.get(s_name, student_committee)
+                        final_teachers = tech_map.get(s_name, "لجنة التأخر الصباحي")
+                        
+                        if "لجنة التأخر الصباحي" not in final_teachers:
+                            final_teachers = f"{final_teachers} | لجنة التأخر الصباحي"
+                            
+                        label_text = f"👤 {s_name} (اللجنة الحالية المقترنة بها الحالات: {final_committee})"
+                        
+                        choice = st.radio(
+                            label_text, 
+                            ["حاضر", "غائب", "متأخر"], 
+                            index=["حاضر", "غائب", "متأخر"].index(current_status), 
+                            key=f"morning_{s_name}", 
+                            horizontal=True
+                        )
+                        
+                        morning_results.append({
+                            "student_name": s_name,
+                            "committee": final_committee,
+                            "status": choice,
+                            "date": today,
+                            "teacher_name": final_teachers
+                        })
+                        
+                        if choice == "حاضر": c_p += 1
+                        elif choice == "غائب": c_a += 1
+                        elif choice == "متأخر": c_l += 1
+                        
+                    st.write("")
+                    col_save_m, col_back_m = st.columns(2)
+                    
+                    with col_save_m:
+                        if st.button("💾 اعتماد وتحديث رصد التأخر الصباحي", use_container_width=True, type="primary"):
+                            with st.spinner("جاري تحديث سجلات الحالات وتزامنها..."):
+                                for record in morning_results:
+                                    # حذف السجل القديم للطالب لهذا اليوم أياً كانت اللجنة لضمان المزامنة المتبادلة وعدم التكرار
+                                    supabase.table('attendance').delete().eq("student_name", record['student_name']).eq("date", today).execute()
+                                # إدخال السجلات المحدثة باللجنة المقترنة بها الحالة
+                                supabase.table('attendance').insert(morning_results).execute()
+                                st.success("✅ تم حفظ وتزامن البيانات بنجاح مع لجان رصد الغياب الفرعية والتقارير الإدارية!")
+                                time.sleep(1.5)
+                                st.rerun()
+                                
+                    with col_back_m:
+                        if st.button("⬅️ إلغاء والتراجع", use_container_width=True):
+                            confirm_back_dialog()
+                            
+                    st.markdown(f'''
+                        <div class="stats-footer-container">
+                            <span class="stat-badge stat-total">طلاب الشعبة ( {c_total} )</span>
+                            <span class="stat-badge stat-present">حاضر ( {c_p} )</span>
+                            <span class="stat-badge stat-absent">غائب ( {c_a} )</span>
+                            <span class="stat-badge stat-late">متأخر ( {c_l} )</span>
+                        </div>
+                    ''', unsafe_allow_html=True)
+                else:
+                    st.warning("لا يوجد طلاب مسجلين في هذه الشعبة.")
+    else:
+        st.error("لم يتم العثور على بيانات طلاب في قاعدة البيانات.")
+
+# --- 5. صفحة الشكر ---
 elif st.session_state.page == "thank_you":
     st.snow()
     st.markdown(f'<div class="thank-you-box"><h1>✅ تم الرصد بنجاح</h1><h2>أ. {st.session_state.get("teacher", "")}</h2></div>', unsafe_allow_html=True)
     if st.button("🏠 العودة للرئيسية", use_container_width=True): st.session_state.page = "home"; st.rerun()
 
-# --- 5. لوحة الإدارة ---
+# --- 6. لوحة الإدارة ---
 elif st.session_state.page == "a_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": st.session_state.page = "admin"; st.rerun()
