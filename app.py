@@ -59,7 +59,7 @@ if ('serviceWorker' in navigator) {
     self.addEventListener('fetch', function(e) { e.respondWith(fetch(e.request)); });
   `;
   const swBlob = new Blob([swCode], {type: 'application/javascript'});
-  const swURL = URL.createObjectURL(swCode);
+  const swURL = URL.createObjectURL(swBlob);
   navigator.serviceWorker.register(swURL).then(function() {
     console.log('PWA Service Worker Registered Successfully.');
   }).catch(function(error) {
@@ -103,28 +103,24 @@ st.markdown('''
     .wa-late { background-color: #fd7e14; }
     .thank-you-box { text-align: center; padding: 40px; background: #f8fdf9; border-radius: 20px; border: 2px solid #22c55e; margin-top: 20px; }
     
-    /* تنسيق صندوق الإحصائيات أسفل الصفحة */
+    /* تنسيق صندوق الإحصائيات أسفل صفحة الرصد */
     .stats-footer-container {
-        margin-top: 30px;
-        padding: 15px;
-        background-color: #f8f9fa;
-        border-radius: 12px;
-        border: 1px solid #e9ecef;
-        text-align: center;
+        margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 12px; border: 1px solid #e9ecef; text-align: center;
     }
     .stat-badge {
-        display: inline-block;
-        padding: 8px 20px;
-        margin: 5px 10px;
-        font-size: 18px;
-        font-weight: bold;
-        border-radius: 8px;
-        color: white;
+        display: inline-block; padding: 8px 20px; margin: 5px 10px; font-size: 18px; font-weight: bold; border-radius: 8px; color: white;
     }
-    .stat-total { background-color: #1a237e; }    /* كحلي للمجموع الكلي */
-    .stat-present { background-color: #2e7d32; }  /* أخضر للمستحقين حضور */
-    .stat-absent { background-color: #c62828; }   /* أحمر للغياب */
-    .stat-late { background-color: #ef6c00; }     /* برتقالي للتأخر */
+    .stat-total { background-color: #1a237e; }
+    .stat-present { background-color: #2e7d32; }
+    .stat-absent { background-color: #c62828; }
+    .stat-late { background-color: #ef6c00; }
+    
+    /* تنسيق كروت إحصائيات الإدارة لصفوف المراحل */
+    .admin-grade-box {
+        background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .admin-grade-title { font-size: 18px; font-weight: bold; color: #1a237e; margin-bottom: 10px; border-bottom: 2px solid #ff9800; padding-bottom: 5px; }
+    .grade-stat-sub { font-size: 15px; font-weight: 700; margin: 4px 0; }
     </style>
 ''', unsafe_allow_html=True)
 
@@ -222,11 +218,10 @@ elif st.session_state.page == "mark":
 
             results = []
             
-            # متغيرات تجميعية لحساب الإحصائية اللحظية
             count_present = 0
             count_absent = 0
             count_late = 0
-            count_total = len(students.data) # المجموع الكلي للطلاب في هذه اللجنة
+            count_total = len(students.data)
             
             for s in students.data:
                 prev = old_map.get(s['student_name'], "حاضر")
@@ -236,7 +231,6 @@ elif st.session_state.page == "mark":
                 choice = st.radio(label_text, ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True)
                 results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": all_t})
                 
-                # فرز وتجميع الإحصائية لحظة بلحظة بناءً على خيار المعلم الحالي
                 if choice == "حاضر":
                     count_present += 1
                 elif choice == "غائب":
@@ -257,7 +251,6 @@ elif st.session_state.page == "mark":
                 if st.button("⬅️ عودة بدون حفظ", use_container_width=True):
                     confirm_back_dialog()
             
-            # صندوق الإحصائيات التلقائي متضمناً (مجموع الطلاب الكلي) في أدنى الصفحة
             st.markdown(f'''
                 <div class="stats-footer-container">
                     <span class="stat-badge stat-total">المجموع الكلي ( {count_total} )</span>
@@ -305,6 +298,55 @@ elif st.session_state.page == "admin":
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
             df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
             
+            # 🛠️ [التعديل المطلوب]: احتساب الإحصائية التفصيلية حسب الصف قبل الفلترة البصرية
+            df_stats = df_all.copy()
+            df_stats['الشعبة_str'] = df_stats['الشعبة'].astype(str)
+            
+            # تصنيف المراحل بناءً على أول رقم في اسم الشعبة (1 للـ أول، 2 للـ ثاني، 3 للـ ثالث)
+            g1_abs = len(df_stats[(df_stats['الشعبة_str'].str.startswith('1')) & (df_stats['status'] == 'غائب')])
+            g1_lat = len(df_stats[(df_stats['الشعبة_str'].str.startswith('1')) & (df_stats['status'] == 'متأخر')])
+            
+            g2_abs = len(df_stats[(df_stats['الشعبة_str'].str.startswith('2')) & (df_stats['status'] == 'غائب')])
+            g2_lat = len(df_stats[(df_stats['الشعبة_str'].str.startswith('2')) & (df_stats['status'] == 'متأخر')])
+            
+            g3_abs = len(df_stats[(df_stats['الشعبة_str'].str.startswith('3')) & (df_stats['status'] == 'غائب')])
+            g3_lat = len(df_stats[(df_stats['الشعبة_str'].str.startswith('3')) & (df_stats['status'] == 'متأخر')])
+            
+            # عرض لوحة الإحصائيات التفصيلية للمراحل الدراسية بشكل مرئي جذاب
+            st.markdown("### 📈 إحصائيات الانضباط التفصيلية للمراحل")
+            c_g1, c_g2, c_g3 = st.columns(3)
+            
+            with c_g1:
+                st.markdown(f'''
+                    <div class="admin-grade-box">
+                        <div class="admin-grade-title">أول ثانوي</div>
+                        <div class="grade-stat-sub" style="color: #c62828;">🚫 الغائبين: {g1_abs}</div>
+                        <div class="grade-stat-sub" style="color: #ef6c00;">⏳ المتأخرين: {g1_lat}</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+                
+            with c_g2:
+                st.markdown(f'''
+                    <div class="admin-grade-box">
+                        <div class="admin-grade-title">ثاني ثانوي</div>
+                        <div class="grade-stat-sub" style="color: #c62828;">🚫 الغائبين: {g2_abs}</div>
+                        <div class="grade-stat-sub" style="color: #ef6c00;">⏳ المتأخرين: {g2_lat}</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+                
+            with c_g3:
+                st.markdown(f'''
+                    <div class="admin-grade-box">
+                        <div class="admin-grade-title">ثالث ثانوي</div>
+                        <div class="grade-stat-sub" style="color: #c62828;">🚫 الغائبين: {g3_abs}</div>
+                        <div class="grade-stat-sub" style="color: #ef6c00;">⏳ المتأخرين: {g3_lat}</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+            
+            st.write("")
+            st.markdown("---")
+            
+            # إكمال بقية عرض الجدول الفردي بناءً على الفلتر المختار
             report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
             
             if filter_status == "الغياب فقط":
@@ -387,12 +429,10 @@ elif st.session_state.page == "admin":
                 if uploaded_file is not None:
                     try:
                         if uploaded_file.name.endswith('.csv'):
-                            # قراءة أول سطر وفحص الفاصل التلقائي لتجنب خطأ الفاصلة المنقوطة
                             file_bytes = uploaded_file.read()
                             sample = file_bytes[:1024].decode('utf-8', errors='ignore')
-                            uploaded_file.seek(0) # إعادة المؤشر لبداية الملف
+                            uploaded_file.seek(0)
                             
-                            # اختيار الفاصل بناءً على الأكثر تكراراً في السطر الأول
                             delim = ';' if ';' in sample.split('\n')[0] and sample.count(';') > sample.count(',') else ','
                             df_uploaded = pd.read_csv(uploaded_file, sep=delim)
                         else:
@@ -410,7 +450,6 @@ elif st.session_state.page == "admin":
                                     supabase.table("students").delete().neq("student_name", "🔴🔴🔴").execute()
                                     supabase.table("students").insert(records_to_insert).execute()
                                     
-                                    # 🎉 رسالة نجاح واكتمال الرفع المخصصة
                                     st.balloons()
                                     st.success(f"⚡ تم اكتمال الرفع بنجاح! تم استيراد وتحديث {len(records_to_insert)} طالباً في جدول الطلاب بكفاءة.")
                                     
@@ -418,7 +457,6 @@ elif st.session_state.page == "admin":
                                     supabase.table("teachers").delete().neq("name_tech", "🔴🔴🔴").execute()
                                     supabase.table("teachers").insert(records_to_insert).execute()
                                     
-                                    # 🎉 رسالة نجاح واكتمال الرفع المخصصة
                                     st.balloons()
                                     st.success(f"⚡ تم اكتمال الرفع بنجاح! تم استيراد وتحديث {len(records_to_insert)} معلماً في جدول المعلمين بكفاءة.")
                                     
