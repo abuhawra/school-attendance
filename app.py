@@ -208,7 +208,7 @@ if st.session_state.page == "home":
             st.session_state.page = "t_log"; st.rerun()
         st.write("")
         if st.button("⏰ لجنة التأخر الصباحي", use_container_width=True):
-            st.session_state.page = "m_log"; st.rerun() # الانتقال لصفحة طلب باسوور اللجنة أولاً
+            st.session_state.page = "m_log"; st.rerun()
         st.write("")
         if st.button("⚙️ لوحة الإدارة والتقارير الموحدة", use_container_width=True):
             st.session_state.page = "a_log"; st.rerun()
@@ -292,7 +292,7 @@ elif st.session_state.page == "mark":
                 </div>
             ''', unsafe_allow_html=True)
 
-# --- 🔐 [تعديل جديد]: نافذة التحقق من باسوور لجنة التأخر الصباحي ---
+# --- 🔐 نافذة التحقق من باسوور لجنة التأخر الصباحي ---
 elif st.session_state.page == "m_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     m_pass = st.text_input("أدخل كلمة مرور لجنة التأخر الصباحي:", type="password")
@@ -363,7 +363,8 @@ elif st.session_state.page == "morning_late":
                         if "لجنة التأخر الصباحي" not in final_teachers:
                             final_teachers = f"{final_teachers} | لجنة التأخر الصباحي"
                             
-                        label_text = f"👤 {s_name} (اللجنة الحالية المقترنة بها الحالات: {final_committee})"
+                        # [تعديل مستهدف]: تم استبدال عبارة (اللجنة الحالية المقترنة بها الحالات) بـ (لجنة الطالب) كما طُلِب تماماً
+                        label_text = f"👤 {s_name} (لجنة الطالب: {final_committee})"
                         
                         choice = st.radio(
                             label_text, 
