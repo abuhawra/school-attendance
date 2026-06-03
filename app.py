@@ -5,7 +5,9 @@ from datetime import datetime
 import time
 import io
 
-# 1. إعدادات الاتصال بقاعدة البيانات (Supabase)
+# ==============================================================================
+# 1. إعدادات الاتصال بقاعدة البيانات (Supabase) والتهيئة
+# ==============================================================================
 url = "https://lsmevvsogsqqqjyuqzbx.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzbWV2dnNvZ3NxcXFqeXVxemJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDMyOTgsImV4cCI6MjA5Mjk3OTI5OH0.ecqJS75fPbKqwSAiBzP6Qonn4cuymgwjB96tIGek8j0"
 
@@ -13,62 +15,18 @@ if 'supabase' not in st.session_state:
     st.session_state.supabase = create_client(url, key)
 supabase = st.session_state.supabase
 
+# التهيئة الافتراضية لمتغيرات التحكم بالشاشات
+if 'page' not in st.session_state:
+    st.session_state.page = "home"
+if 'teacher' not in st.session_state:
+    st.session_state.teacher = None
+
 # --- 🎯 2. ضبط إعدادات التطبيق الرسمية ---
 st.set_page_config(
     page_title="بصمة تميز - القطيف الثانوية", 
     page_icon="🎯", 
     layout="wide"
 )
-
-# --- 📱 3. حقن ملفات الـ PWA تلقائياً عبر الجافاسكريبت ---
-pwa_js = """
-<script>
-const manifest = {
-  "short_name": "بصمة تميز",
-  "name": "بصمة تميز - القطيف الثانوية",
-  "icons": [
-    {
-      "src": "https://img.icons8.com/emoji/96/bullseye.png",
-      "type": "image/png",
-      "sizes": "96x96"
-    },
-    {
-      "src": "https://img.icons8.com/emoji/512/bullseye.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    }
-  ],
-  "start_url": "/",
-  "background_color": "#1a237e",
-  "theme_color": "#1a237e",
-  "display": "standalone",
-  "orientation": "portrait"
-};
-
-const stringManifest = JSON.stringify(manifest);
-const blob = new Blob([stringManifest], {type: 'application/json'});
-const manifestURL = URL.createObjectURL(blob);
-let link = document.createElement('link');
-link.rel = 'manifest';
-link.href = manifestURL;
-document.head.appendChild(link);
-
-if ('serviceWorker' in navigator) {
-  const swCode = `
-    self.addEventListener('install', function(e) { self.skipWaiting(); });
-    self.addEventListener('fetch', function(e) { e.respondWith(fetch(e.request)); });
-  `;
-  const swBlob = new Blob([swCode], {type: 'application/javascript'});
-  const swURL = URL.createObjectURL(swCode);
-  navigator.serviceWorker.register(swURL).then(function() {
-    console.log('PWA Service Worker Registered Successfully.');
-  }).catch(function(error) {
-    console.log('Service Worker Registration Failed:', error);
-  });
-}
-</script>
-"""
-st.markdown(pwa_js, unsafe_allow_html=True)
 
 # --- 🎨 التنسيق المرئي والـ CSS ---
 st.markdown('''
@@ -120,13 +78,11 @@ st.markdown('''
     }
     .admin-grade-title { font-size: 18px; font-weight: bold; color: #1a237e; margin-bottom: 10px; border-bottom: 2px solid #ff9800; padding-bottom: 5px; }
     .grade-stat-sub { font-size: 15px; font-weight: 700; margin: 4px 0; }
-    </style>
-''', unsafe_allow_html=True)
+    </style>''', unsafe_allow_html=True)
 
-if 'page' not in st.session_state:
-    st.session_state.page = "home"
-
-# --- 🛠️ دالات مساعدة ---
+# ==============================================================================
+# 3. الدالات المساعدة للروابط وتصدير البيانات
+# ==============================================================================
 
 def get_wa_link(df, status_type, d):
     if df.empty: return None
@@ -157,27 +113,24 @@ def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
         f"🚫 الغائبين: {g2_a}%0A"
         f"⏳ المتأخرين: {g2_l}%0A%0A"
         f"🏫 *الصف ثالث ثانوي:*%0A"
-        f"🚫 الغائبين: {g3_a}%0A"
+        f"🚫 الغائبين: {g3_abs}%0A"
         f"⏳ المتأخرين: {g3_l}%0A%0A"
         f"-----------------%0A"
         f"🎯 *تم الإرسال عبر نظام بصمة تميز*"
     )
     return f"https://wa.me/?text={msg}"
 
-# دالة توليد ملف إكسيل المحدثة لنقل التاريخ إلى العمود B لكل سطر
 def export_attendance_to_excel(df, report_date, sheet_label):
     days_ar = {"Monday": "الإثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
     day_name_en = report_date.strftime('%A')
     day_name_ar = days_ar.get(day_name_en, day_name_en)
     
-    # جلب أسماء المعلمين الرسمية للربط والمطابقة بدقة
     try:
         res_teachers = supabase.table("teachers").select("name_tech").execute()
         valid_teachers_set = {str(t['name_tech']).strip() for t in res_teachers.data} if res_teachers.data else set()
     except Exception:
         valid_teachers_set = set()
 
-    # دالة لتنظيف وربط الأسماء المسجلة بالجدول الرسمي لمعلمي المدرسة
     def get_clean_observer_string(raw_teacher_name):
         if not raw_teacher_name:
             return "لجنة الانضباط"
@@ -207,11 +160,9 @@ def export_attendance_to_excel(df, report_date, sheet_label):
         table_header_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'bold': True, 'bg_color': '#1a237e', 'font_color': '#ffffff', 'align': 'center', 'border': 1})
         table_cell_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'align': 'center', 'border': 1})
         
-        # الترويسة الأساسية العلوية (اليوم فقط في A1)
         worksheet.write('A1', f"اليوم: {day_name_ar}", header_title_format)
         
-        # ترويسات الجدول الأساسية متضمنة العمود B للتاريخ
-        worksheet.write('B1', 'التاريخ', table_header_format)       # [تعديل مستهدف]: ترويسة العمود B
+        worksheet.write('B1', 'التاريخ', table_header_format)
         worksheet.write('E1', 'اسم الطالب', table_header_format)
         worksheet.write('F1', 'الشعبة', table_header_format)
         worksheet.write('G1', 'اللجنة', table_header_format)
@@ -224,16 +175,16 @@ def export_attendance_to_excel(df, report_date, sheet_label):
         for _, row in df.iterrows():
             resolved_observer = get_clean_observer_string(row.get('teacher_name', ''))
             
-            worksheet.write(row_idx, 1, formatted_date_str, table_cell_format)  # [تعديل مستهدف]: كتابة التاريخ في العمود B
-            worksheet.write(row_idx, 4, row['student_name'], table_cell_format) # العمود E
-            worksheet.write(row_idx, 5, row.get('الشعبة', '---'), table_cell_format) # العمود F
-            worksheet.write(row_idx, 6, row['committee'], table_cell_format)    # العمود G
-            worksheet.write(row_idx, 7, row['status'], table_cell_format)       # العمود H
-            worksheet.write(row_idx, 8, resolved_observer, table_cell_format)   # العمود I
+            worksheet.write(row_idx, 1, formatted_date_str, table_cell_format)  
+            worksheet.write(row_idx, 4, row['student_name'], table_cell_format) 
+            worksheet.write(row_idx, 5, row.get('الشعبة', '---'), table_cell_format) 
+            worksheet.write(row_idx, 6, row['committee'], table_cell_format)    
+            worksheet.write(row_idx, 7, row['status'], table_cell_format)       
+            worksheet.write(row_idx, 8, resolved_observer, table_cell_format)   
             row_idx += 1
             
         worksheet.set_column('A:A', 20)
-        worksheet.set_column('B:B', 18) # ضبط اتساع عمود التاريخ B ليظهر بوضوح وبدون تشويه
+        worksheet.set_column('B:B', 18) 
         worksheet.set_column('E:E', 35)
         worksheet.set_column('F:H', 15)
         worksheet.set_column('I:I', 50) 
@@ -253,7 +204,11 @@ def confirm_back_dialog():
         if st.button("تراجع والبقاء", use_container_width=True):
             st.rerun()
 
-# --- 1. الصفحة الرئيسية ---
+# ==============================================================================
+# 4. إدارة معالجة وعرض الشاشات والواجهات
+# ==============================================================================
+
+# --- 1. الشاشة الرئيسية للبرنامج ---
 if st.session_state.page == "home":
     st.markdown('''
         <div class="main-header">
@@ -284,7 +239,7 @@ if st.session_state.page == "home":
         if st.button("⚙️ لوحة الإدارة والتقارير الموحدة", use_container_width=True):
             st.session_state.page = "a_log"; st.rerun()
 
-# --- 2. دخول المعلم ---
+# --- 2. صفحة تسجيل دخول المعلم ---
 elif st.session_state.page == "t_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     tid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
@@ -357,7 +312,7 @@ elif st.session_state.page == "mark":
                 </div>
             ''', unsafe_allow_html=True)
 
-# --- 🔐 نافذة التحقق من باسوورد لجنة التأخر الصباحي ---
+# --- 4. نافذة التحقق من باسوورد لجنة التأخر الصباحي ---
 elif st.session_state.page == "m_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     m_pass = st.text_input("أدخل كلمة مرور لجنة التأخر الصباحي:", type="password")
@@ -366,7 +321,7 @@ elif st.session_state.page == "m_log":
             st.session_state.page = "morning_late"; st.rerun()
         else: st.error("كلمة المرور غير صحيحة.")
 
-# --- ⏰ 4. واجهة رصد لجنة التأخر الصباحي ---
+# --- 5. واجهة رصد لجنة التأخر الصباحي ---
 elif st.session_state.page == "morning_late":
     if st.button("⬅️ تسجيل خروج من اللجنة"): st.session_state.page = "home"; st.rerun()
     st.markdown("## ⏰ لجنة رصد التأخر الصباحي الموحد")
@@ -439,22 +394,23 @@ elif st.session_state.page == "morning_late":
                         </div>
                     ''', unsafe_allow_html=True)
 
-# --- 5. صفحة الشكر ---
+# --- 6. شاشة شكر المعلم والتأكيد الإرسال بنجاح ---
 elif st.session_state.page == "thank_you":
     st.snow()
     st.markdown(f'<div class="thank-you-box"><h1>✅ تم الرصد بنجاح</h1><h2>أ. {st.session_state.get("teacher", "")}</h2></div>', unsafe_allow_html=True)
     if st.button("🏠 العودة للرئيسية", use_container_width=True): st.session_state.page = "home"; st.rerun()
 
-# --- 6. لوحة الإدارة ---
+# --- 7. صفحة تسجيل دخول الإدارة المدرسية ---
 elif st.session_state.page == "a_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
     if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": st.session_state.page = "admin"; st.rerun()
 
+# --- 8. لوحة الإدارة الكبرى والتحكم الفوري ومشاركة التقارير ---
 elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
     tab1, tab2, tab3 = st.tabs(["📊 تقارير الانضباط", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
     
-    with tab1: # تقارير الانضباط
+    with tab1: # تقارير الانضباط والغياب والتأخر
         col_date, col_filter = st.columns(2)
         with col_date:
             d_rep = st.date_input("اختر تاريخ التقرير:", datetime.now())
@@ -467,11 +423,6 @@ elif st.session_state.page == "admin":
             df_all = pd.DataFrame(res_att.data)
             df_all['c_sort'] = pd.to_numeric(df_all['committee'], errors='coerce').fillna(0)
             df_all = df_all.sort_values(by='c_sort')
-            
-            with st.expander("⚠️ خيارات الحذف"):
-                if st.button(f"🗑️ حذف كافة سجلات يوم {d_rep}", use_container_width=True):
-                    supabase.table("attendance").delete().eq("date", str(d_rep)).execute()
-                    st.warning("تم حذف سجلات اليوم المختار."); st.rerun()
             
             res_std = supabase.table("students").select("student_name, class_name").execute()
             s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
@@ -497,7 +448,6 @@ elif st.session_state.page == "admin":
             wa_grade_link = get_wa_grade_stats_link(d_rep, g1_abs, g1_lat, g2_abs, g2_lat, g3_abs, g3_lat)
             st.markdown(f'<a href="{wa_grade_link}" target="_blank" class="wa-link wa-stats">📊 إرسال إحصائية المراحل التفصيلية عبر الواتساب</a>', unsafe_allow_html=True)
             
-            # --- 💾 أزرار ترحيل كشوفات الانضباط المستقلة إلى Excel ---
             st.markdown("### 💾 ترحيل كشوفات الانضباط إلى Excel")
             col_excel_abs, col_excel_lat = st.columns(2)
             
@@ -541,16 +491,16 @@ elif st.session_state.page == "admin":
                 with c1:
                     if filter_status != "التأخر فقط":
                         l1 = get_wa_link(report_df[report_df['status'] == "غائب"], "الغائبين", d_rep)
-                        if l1: st.markdown(f'<a href="{l1}" target="_blank" class="wa-link wa-absent">🚫 إرسال الغائبين</a>', unsafe_allow_html=True)
+                        if l1: st.markdown(f'<a href="{l1}" target="_blank" class="wa-link wa-absent">🚫 إرسال الغائبين عبر الواتساب</a>', unsafe_allow_html=True)
                 with c2:
                     if filter_status != "الغياب فقط":
                         l2 = get_wa_link(report_df[report_df['status'] == "متأخر"], "المتأخرين", d_rep)
-                        if l2: st.markdown(f'<a href="{l2}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
+                        if l2: st.markdown(f'<a href="{l2}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين عبر الواتساب</a>', unsafe_allow_html=True)
             else:
                 st.info(f"لا توجد سجلات مطابقة لـ ({filter_status}) في هذا التاريخ.")
-        else: st.info("لا توجد بيانات لهذا التاريخ.")
+        else: st.info("لا توجد بيانات حضور مسجلة لهذا التاريخ.")
 
-    with tab2: # حالة اللجان
+    with tab2: # شاشة المتابعة الفورية لحالة اللجان
         st.subheader("🏘️ حالة رصد اللجان اللحظية")
         att_now = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
         comm_status = {}
@@ -563,7 +513,7 @@ elif st.session_state.page == "admin":
             comm_status[c_id] = " <span class='arrow-sep'>⬅️</span> ".join([f"<span class='teacher-tag'>{n}</span>" for n in clean_names])
 
         res_s = supabase.table('students').select("committee").execute()
-        all_c = sorted(list(set([str(i['committee']) for i in res_s.data])), key=lambda x: int(x) if x.isdigit() else 0)
+        all_c = sorted(list(set([str(i['committee']) for i in res_s.data if i['committee']])), key=lambda x: int(x) if x.isdigit() else 0)
         
         col_ok, col_no = st.columns(2)
         with col_ok:
@@ -571,12 +521,30 @@ elif st.session_state.page == "admin":
             for c in all_c:
                 if c in comm_status: st.markdown(f"📍 **لجنة {c}:** {comm_status[c]}", unsafe_allow_html=True)
         with col_no:
-            st.error("❌ لجان لم تُرصد")
+            st.error("❌ لجان لم تُرصد بعد")
             for c in all_c:
                 if c not in comm_status: st.write(f"⚠️ لجنة {c}")
 
-    with tab3: # إدارة البيانات
+    with tab3: # لوحة إدارة قواعد البيانات (هنا تظهر خيارات الحذف حصرياً بعد الأمان)
         if st.text_input("رمز الأمان لإدارة البيانات:", type="password") == "4321":
+            
+            # تم النقل الفعلي والنهائي لخيارات الحذف لتكون هنا فقط:
+            st.markdown("### ⚠️ إدارة وحذف السجلات اليومية")
+            col_del_date = st.columns([1, 2])[0]
+            with col_del_date:
+                d_to_delete = st.date_input("اختر تاريخ اليوم المراد مسح سجلاته نهائياً:", datetime.now(), key="del_date_input")
+            
+            if st.button(f"🗑️ حذف كافة سجلات يوم {d_to_delete}", use_container_width=True, type="primary"):
+                try:
+                    supabase.table("attendance").delete().eq("date", str(d_to_delete)).execute()
+                    st.success(f"تم حذف سجلات يوم {d_to_delete} بنجاح.")
+                    time.sleep(1); st.rerun()
+                except Exception as e:
+                    st.error(f"حدث خطأ أثناء الحذف: {e}")
+            
+            st.divider()
+            
+            # بقية أدوات تبويب إدارة البيانات الافتراضية
             df_s = pd.DataFrame(supabase.table('students').select("*").execute().data)
             if not df_s.empty:
                 buf_s = io.BytesIO()
@@ -617,4 +585,4 @@ elif st.session_state.page == "admin":
                                 st.success("⚡ تم تحديث سجل المعلمين بنجاح!")
                             time.sleep(1.5); st.rerun()
                     except Exception as e:
-                        st.error(f"حدث خطأ: {e}")
+                        st.error(f"حدث خطأ أثناء الرفع والتحميل: {e}")
