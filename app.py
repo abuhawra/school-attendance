@@ -5,7 +5,7 @@ from datetime import datetime
 import time
 import io
 
-# مكتبات معالجة النصوص العربية وتوليد الـ PDF المستقرة على السيرفر
+# مكتبات معالجة النصوص العربية وتوليد الـ PDF المستقرة
 from fpdf import FPDF
 import arabic_reshaper
 from bidi.algorithm import get_display
@@ -233,7 +233,7 @@ def export_attendance_to_excel(df, report_date, sheet_label, valid_teachers_set)
     return output.getvalue()
 
 
-# 🎯 [الدالة البديلة والمستقرة بنسبة 100%]: توليد PDF منفصل لكل طالب باستخدام FPDF2 الصافية وبدعم كامل للعربية
+# 🎯 [الدالة المحدثة والمثبتة بنجاح]: توليد PDF باستخدام ملف الخط arial.ttf المرفوع مسبقاً
 def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
     days_ar = {"Monday": "الإثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
     day_name_en = report_date.strftime('%A')
@@ -244,9 +244,9 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    # إضافة الخط العربي الأساسي المتاح افتراضياً داخل بيئات لينكس لضمان جودة الأحرف
-    pdf.add_system_font(fname="DejaVuSans.ttf", font_style="")
-    pdf.set_font("DejaVuSans", size=12)
+    # تحميل الخط العربي المرفوع بالمستودع بدالة مستقرة ومدعومة 100%
+    pdf.add_font("CustomArial", "", "arial.ttf", uni=True)
+    pdf.set_font("CustomArial", size=12)
     
     def format_ar(text):
         """دالة تصحيح وعكس النصوص العربية لتظهر من اليمين لليسار بشكل سليم"""
@@ -265,10 +265,10 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
         
         # الترويسة العلوية
         pdf.set_text_color(26, 35, 126)
-        pdf.set_font("DejaVuSans", size=20)
+        pdf.set_font("CustomArial", size=20)
         pdf.cell(190, 15, format_ar("مدرسة القطيف الثانوية"), ln=True, align="C")
         
-        pdf.set_font("DejaVuSans", size=11)
+        pdf.set_font("CustomArial", size=11)
         pdf.set_text_color(100, 100, 100)
         pdf.cell(190, 8, format_ar("نظام الانضباط المدرسي الذكي (بصمة تميز)"), ln=True, align="C")
         
@@ -281,7 +281,7 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
         # عنوان التقرير الفرعي المجسم
         pdf.set_fill_color(240, 242, 246)
         pdf.set_text_color(26, 35, 126)
-        pdf.set_font("DejaVuSans", size=14)
+        pdf.set_font("CustomArial", size=14)
         status_label = f"إشعار رصد حالة طالب يومي ({row['status']})"
         pdf.cell(170, 12, format_ar(status_label), ln=True, align="C", fill=True, center=True)
         pdf.ln(15)
@@ -298,7 +298,7 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
             ("الملاحظ / المعلمون:", resolved_observer)
         ]
         
-        pdf.set_font("DejaVuSans", size=12)
+        pdf.set_font("CustomArial", size=12)
         for label, val in data_items:
             # العمود الأيمن (العنوان)
             pdf.set_fill_color(26, 35, 126)
@@ -312,8 +312,8 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
             
         pdf.ln(25)
         
-        # منطقة توقيع الإدارة والمدير بالشكل الرسمي والـ Layout المطلوب
-        pdf.set_font("DejaVuSans", size=12)
+        # منطقة توقيع الإدارة والمدير بالشكل الرسمي
+        pdf.set_font("CustomArial", size=12)
         pdf.set_text_color(0, 0, 0)
         pdf.cell(60, 6, format_ar("مدير المدرسة"), ln=True, align="L")
         pdf.cell(60, 6, format_ar("أ. فراس آل عبدالمحسن"), ln=True, align="L")
@@ -321,7 +321,7 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
         
         # تذييل الصفحة الثابت أسفل الكرت الفردي
         pdf.set_y(272)
-        pdf.set_font("DejaVuSans", size=9)
+        pdf.set_font("CustomArial", size=9)
         pdf.set_text_color(150, 150, 150)
         pdf.cell(170, 5, format_ar("تم استخراج هذا التقرير تلقائياً عبر منصة بصمة تميز الموحدة."), align="C")
 
@@ -468,7 +468,7 @@ elif st.session_state.page == "morning_late":
         df_std_classes['class_name'] = df_std_classes['class_name'].astype(str).str.strip()
         all_classes = sorted(list(df_std_classes['class_name'].unique()))
         
-        grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ثالث ثانوي": "3"}
+        grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ث ثالث ثانوي": "3"}
         selected_grade_label = st.selectbox("اختر الصف الدراسي:", ["---"] + list(grades_map.keys()))
         
         if selected_grade_label != "---":
@@ -545,187 +545,4 @@ elif st.session_state.page == "admin":
     
     try:
         res_teachers = supabase.table("teachers").select("name_tech").execute()
-        valid_teachers_set = {str(t['name_tech']).strip() for t in res_teachers.data} if res_teachers.data else set()
-    except Exception:
-        valid_teachers_set = set()
-
-    with tab1: # تقارير الانضباط
-        col_date, col_filter = st.columns(2)
-        with col_date:
-            d_rep = st.date_input("اختر تاريخ التقرير:", datetime.now())
-        with col_filter:
-            filter_status = st.selectbox("عرض تصنيف الحالات بالجدول:", ["الكل (الغياب والتأخر)", "الغياب فقط", "التأخر فقط"])
-            
-        res_att = supabase.table("attendance").select("*").eq("date", str(d_rep)).execute()
-        
-        if res_att.data:
-            df_all = pd.DataFrame(res_att.data)
-            df_all['c_sort'] = pd.to_numeric(df_all['committee'], errors='coerce').fillna(0)
-            df_all = df_all.sort_values(by='c_sort')
-            
-            with st.expander("⚠️ خيارات الحذف"):
-                if st.button(f"🗑️ حذف كافة سجلات يوم {d_rep}", use_container_width=True):
-                    supabase.table("attendance").delete().eq("date", str(d_rep)).execute()
-                    st.warning("تم حذف سجلات اليوم المختار."); st.rerun()
-            
-            res_std = supabase.table("students").select("student_name, class_name").execute()
-            s_map = dict(zip([i['student_name'] for i in res_std.data], [i['class_name'] for i in res_std.data]))
-            df_all['الشعبة'] = df_all['student_name'].map(s_map).fillna("---")
-            
-            df_stats = df_all.copy()
-            df_stats['الشعبة_str'] = df_stats['الشعبة'].astype(str)
-            
-            g1_abs = len(df_stats[(df_stats['الشعبة_str'].str.startswith('1')) & (df_stats['status'] == 'غائب')])
-            g1_lat = len(df_stats[(df_stats['الشعبة_str'].str.startswith('1')) & (df_stats['status'] == 'متأخر')])
-            g2_abs = len(df_stats[(df_stats['الشعبة_str'].str.startswith('2')) & (df_stats['status'] == 'غائب')])
-            g2_lat = len(df_stats[(df_stats['الشعبة_str'].str.startswith('2')) & (df_stats['status'] == 'متأخر')])
-            g3_abs = len(df_stats[(df_stats['الشعبة_str'].str.startswith('3')) & (df_stats['status'] == 'غائب')])
-            g3_lat = len(df_stats[(df_stats['الشعبة_str'].str.startswith('3')) & (df_stats['status'] == 'متأخر')])
-            
-            st.markdown("### 📈 إحصائيات الانضباط التفصيلية للمراحل")
-            c_g1, c_g2, c_g3 = st.columns(3)
-            with c_g1: st.markdown(f'<div class="admin-grade-box"><div class="admin-grade-title">أول ثانوي</div><div class="grade-stat-sub" style="color: #c62828;">🚫 الغائبين: {g1_abs}</div><div class="grade-stat-sub" style="color: #ef6c00;">⏳ المتأخرين: {g1_lat}</div></div>', unsafe_allow_html=True)
-            with c_g2: st.markdown(f'<div class="admin-grade-box"><div class="admin-grade-title">ثاني ثانوي</div><div class="grade-stat-sub" style="color: #c62828;">🚫 الغائبين: {g2_abs}</div><div class="grade-stat-sub" style="color: #ef6c00;">⏳ المتأخرين: {g2_lat}</div></div>', unsafe_allow_html=True)
-            with c_g3: st.markdown(f'<div class="admin-grade-box"><div class="admin-grade-title">ثالث ثانوي</div><div class="grade-stat-sub" style="color: #c62828;">🚫 الغائبين: {g3_abs}</div><div class="grade-stat-sub" style="color: #ef6c00;">⏳ المتأخرين: {g3_lat}</div></div>', unsafe_allow_html=True)
-            
-            st.write("")
-            wa_grade_link = get_wa_grade_stats_link(d_rep, g1_abs, g1_lat, g2_abs, g2_lat, g3_abs, g3_lat)
-            st.markdown(f'<a href="{wa_grade_link}" target="_blank" class="wa-link wa-stats">📊 إرسال إحصائية المراحل التفصيلية عبر الواتساب</a>', unsafe_allow_html=True)
-            
-            # --- 💾 ترحيل كشوفات الانضباط المستقلة إلى Excel و PDF الفردي ---
-            st.markdown("### 💾 ترحيل الكشوفات والتقارير الفردية")
-            col_excel_abs, col_excel_lat, col_pdf_individual = st.columns(3)
-            
-            with col_excel_abs:
-                df_absent_only = df_all[df_all['status'] == 'غائب'].copy()
-                if not df_absent_only.empty:
-                    excel_absent_data = export_attendance_to_excel(df_absent_only, d_rep, "الغياب اليومي", valid_teachers_set)
-                    st.download_button(
-                        label="🚫 ترحيل (الغياب) إلى Excel",
-                        data=excel_absent_data,
-                        file_name=f"كشف_الغياب_{d_rep}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True
-                    )
-                else:
-                    st.button("🚫 لا يوجد غياب لترحيله", disabled=True, use_container_width=True)
-                    
-            with col_excel_lat:
-                df_late_only = df_all[df_all['status'] == 'متأخر'].copy()
-                if not df_late_only.empty:
-                    excel_late_data = export_attendance_to_excel(df_late_only, d_rep, "التأخر الصباحي", valid_teachers_set)
-                    st.download_button(
-                        label="⏳ ترحيل (التأخر) إلى Excel",
-                        data=excel_late_data,
-                        file_name=f"كشف_التأخر_{d_rep}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True
-                    )
-                else:
-                    st.button("⏳ لا يوجد تأخر لترحيله", disabled=True, use_container_width=True)
-
-            # 🛠️ ترحيل تقرير PDF منفصل لكل طالب باستخدام FPDF2 (يعمل فوراً بدون مشاكل سيرفر)
-            with col_pdf_individual:
-                df_report_students = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
-                if not df_report_students.empty:
-                    with st.spinner("⏳ جاري توليد إشعارات الطلاب الفردية (PDF)..."):
-                        pdf_data = export_attendance_to_pdf_fpdf(df_report_students, d_rep, valid_teachers_set)
-                    st.download_button(
-                        label="📄 طباعة إشعارات الطلاب الفردية (PDF)",
-                        data=pdf_data,
-                        file_name=f"إشعارات_الطلاب_منفصلة_{d_rep}.pdf",
-                        mime="application/pdf",
-                        use_container_width=True
-                    )
-                else:
-                    st.button("📄 لا توجد حالات لطباعة إشعاراتها", disabled=True, use_container_width=True)
-            
-            st.markdown("---")
-            
-            report_df = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
-            if filter_status == "الغياب فقط": report_df = report_df[report_df['status'] == "غائب"].copy()
-            elif filter_status == "التأخر فقط": report_df = report_df[report_df['status'] == "متأخر"].copy()
-            
-            if not report_df.empty:
-                st.dataframe(report_df[['committee', 'student_name', 'الشعبة', 'status', 'teacher_name']].rename(columns={'committee':'اللجنة','student_name':'الطالب','status':'الحالة','teacher_name':'المعلمون'}), use_container_width=True, hide_index=True)
-                c1, c2 = st.columns(2)
-                with c1:
-                    if filter_status != "التأخر فقط":
-                        l1 = get_wa_link(report_df[report_df['status'] == "غائب"], "الغائبين", d_rep)
-                        if l1: st.markdown(f'<a href="{l1}" target="_blank" class="wa-link wa-absent">🚫 إرسال الغائبين</a>', unsafe_allow_html=True)
-                with c2:
-                    if filter_status != "الغياب فقط":
-                        l2 = get_wa_link(report_df[report_df['status'] == "متأخر"], "المتأخرين", d_rep)
-                        if l2: st.markdown(f'<a href="{l2}" target="_blank" class="wa-link wa-late">⏳ إرسال المتأخرين</a>', unsafe_allow_html=True)
-            else:
-                st.info(f"لا توجد سجلات مطابقة لـ ({filter_status}) في هذا التاريخ.")
-        else: st.info("لا توجد بيانات لهذا التاريخ.")
-
-    with tab2: # حالة اللجان
-        st.subheader("🏘️ حالة رصد اللجان اللحظية")
-        att_now = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
-        comm_status = {}
-        for r in att_now.data:
-            c_id = str(r['committee'])
-            t_names = str(r['teacher_name']).split(" | ")
-            clean_names = []
-            for name in t_names:
-                if name.strip() and name.strip() not in clean_names: clean_names.append(name.strip())
-            comm_status[c_id] = " <span class='arrow-sep'>⬅️</span> ".join([f"<span class='teacher-tag'>{n}</span>" for n in clean_names])
-
-        res_s = supabase.table('students').select("committee").execute()
-        all_c = sorted(list(set([str(i['committee']) for i in res_s.data])), key=lambda x: int(x) if x.isdigit() else 0)
-        
-        col_ok, col_no = st.columns(2)
-        with col_ok:
-            st.success("✅ لجان تم رصدها")
-            for c in all_c:
-                if c in comm_status: st.markdown(f"📍 **لجنة {c}:** {comm_status[c]}", unsafe_allow_html=True)
-        with col_no:
-            st.error("❌ لجان لم تُرصد")
-            for c in all_c:
-                if c not in comm_status: st.write(f"⚠️ لجنة {c}")
-
-    with tab3: # إدارة البيانات
-        if st.text_input("رمز الأمان لإدارة البيانات:", type="password") == "4321":
-            df_s = pd.DataFrame(supabase.table('students').select("*").execute().data)
-            if not df_s.empty:
-                buf_s = io.BytesIO()
-                with pd.ExcelWriter(buf_s) as wr: df_s.to_excel(wr, index=False)
-                st.download_button("📥 تحميل سجل الطلاب الحالي (Excel)", buf_s.getvalue(), "students_backup.xlsx", use_container_width=True)
-            st.divider()
-            df_t = pd.DataFrame(supabase.table('teachers').select("*").execute().data)
-            if not df_t.empty:
-                buf_t = io.BytesIO()
-                with pd.ExcelWriter(buf_t) as wr: df_t.to_excel(wr, index=False)
-                st.download_button("📥 تحميل سجل المعلمين الحالي (Excel)", buf_t.getvalue(), "teachers_backup.xlsx", use_container_width=True)
-            
-            st.markdown("---")
-            target_table = st.selectbox("اختر الجدول المراد تحديث بياناته:", ["---", "Students (الطلاب)", "Teachers (المعلمون)"])
-            if target_table != "---":
-                uploaded_file = st.file_uploader("اختر ملف Excel أو CSV المُراد رفعفه:", type=["xlsx", "csv"])
-                if uploaded_file is not None:
-                    try:
-                        if uploaded_file.name.endswith('.csv'):
-                            file_bytes = uploaded_file.read()
-                            sample = file_bytes[:1024].decode('utf-8', errors='ignore')
-                            uploaded_file.seek(0)
-                            delim = ';' if ';' in sample.split('\n')[0] and sample.count(';') > sample.count(',') else ','
-                            df_uploaded = pd.read_csv(uploaded_file, sep=delim)
-                        else:
-                            df_uploaded = pd.read_excel(uploaded_file)
-                        st.dataframe(df_uploaded.head(), use_container_width=True)
-                        if st.button("🚀 تأكيد مسح البيانات القديمة ورفع الجديدة", use_container_width=True, type="primary"):
-                            df_uploaded = df_uploaded.astype(str).replace('nan', None).replace('NaN', None)
-                            records_to_insert = df_uploaded.to_dict(orient='records')
-                            if target_table == "Students (الطلاب)":
-                                supabase.table("students").delete().neq("student_name", "🔴🔴🔴").execute()
-                                supabase.table("students").insert(records_to_insert).execute()
-                                st.success("⚡ تم تحديث سجل الطلاب بنجاح!")
-                            elif target_table == "Teachers (المعلمون)":
-                                supabase.table("teachers").delete().neq("name_tech", "🔴🔴🔴").execute()
-                                supabase.table("teachers").insert(records_to_insert).execute()
-                                st.success("⚡ تم تحديث سجل المعلمين بنجاح!")
-                            time.sleep(1.5); st.rerun()
-                    except Exception as e:
-                        st.error(f"حدث خطأ: {e}")
+        valid_teachers_set = {str(t['name_tech']).strip() for t in
