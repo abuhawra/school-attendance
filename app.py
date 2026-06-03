@@ -178,7 +178,7 @@ def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
         f"🏫 *الصف ثاني ثانوي:*%0A"
         f"🚫 الغائبين: {g2_a}%0A"
         f"⏳ المتأخرين: {g2_l}%0A%0A"
-        f"🏫 *الصف ثالث ثانوي:*%0A"
+        f"🏫 *الصف third ثانوي:*%0A"
         f"🚫 الغائبين: {g3_a}%0A"
         f"⏳ المتأخرين: {g3_l}%0A%0A"
         f"-----------------%0A"
@@ -233,37 +233,32 @@ def export_attendance_to_excel(df, report_date, sheet_label, valid_teachers_set)
     return output.getvalue()
 
 
-# 🎯 [الدالة المحدثة والمثبتة بنجاح]: توليد PDF باستخدام ملف الخط arial.ttf المرفوع مسبقاً
+# توليد PDF باستخدام ملف الخط arial.ttf المرفوع مسبقاً
 def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
     days_ar = {"Monday": "الإثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
     day_name_en = report_date.strftime('%A')
     day_name_ar = days_ar.get(day_name_en, day_name_en)
     date_str = report_date.strftime('%Y-%m-%d')
     
-    # تحضير كلاس الـ PDF وضبط الخصائص الأساسية لمنع المشاكل
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    # تحميل الخط العربي المرفوع بالمستودع بدالة مستقرة ومدعومة 100%
+    # تحميل الخط العربي المرفوع بالمستودع بدالة مستقرة
     pdf.add_font("CustomArial", "", "arial.ttf", uni=True)
     pdf.set_font("CustomArial", size=12)
     
     def format_ar(text):
-        """دالة تصحيح وعكس النصوص العربية لتظهر من اليمين لليسار بشكل سليم"""
         if not text: return ""
         reshaped = arabic_reshaper.reshape(str(text))
         return get_display(reshaped)
 
     for _, row in df.iterrows():
-        # بدء صفحة جديدة لكل طالب
         pdf.add_page()
         
-        # رسم إطار خارجي أنيق للصفحة
-        pdf.set_draw_color(26, 35, 126) # اللون النيلي للمدرسة
+        pdf.set_draw_color(26, 35, 126)
         pdf.set_solid_linewidth(1.5)
         pdf.rect(10, 10, 190, 277)
         
-        # الترويسة العلوية
         pdf.set_text_color(26, 35, 126)
         pdf.set_font("CustomArial", size=20)
         pdf.cell(190, 15, format_ar("مدرسة القطيف الثانوية"), ln=True, align="C")
@@ -272,13 +267,11 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
         pdf.set_text_color(100, 100, 100)
         pdf.cell(190, 8, format_ar("نظام الانضباط المدرسي الذكي (بصمة تميز)"), ln=True, align="C")
         
-        # خط فاصل برتقالي
         pdf.set_draw_color(255, 152, 0)
         pdf.set_solid_linewidth(1)
         pdf.line(15, 38, 195, 38)
         pdf.ln(12)
         
-        # عنوان التقرير الفرعي المجسم
         pdf.set_fill_color(240, 242, 246)
         pdf.set_text_color(26, 35, 126)
         pdf.set_font("CustomArial", size=14)
@@ -286,7 +279,6 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
         pdf.cell(170, 12, format_ar(status_label), ln=True, align="C", fill=True, center=True)
         pdf.ln(15)
         
-        # جدول البيانات الفردي للطالب
         resolved_observer = get_clean_observer_string(row.get('teacher_name', ''), valid_teachers_set)
         data_items = [
             ("اسم الطالب:", row['student_name']),
@@ -300,32 +292,27 @@ def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
         
         pdf.set_font("CustomArial", size=12)
         for label, val in data_items:
-            # العمود الأيمن (العنوان)
             pdf.set_fill_color(26, 35, 126)
             pdf.set_text_color(255, 255, 255)
             pdf.cell(50, 12, format_ar(label), border=1, align="R", fill=True)
             
-            # العمود الأيسر (القيمة)
             pdf.set_fill_color(250, 250, 250)
             pdf.set_text_color(0, 0, 0)
             pdf.cell(120, 12, format_ar(val), border=1, align="R", fill=True, ln=True)
             
         pdf.ln(25)
         
-        # منطقة توقيع الإدارة والمدير بالشكل الرسمي
         pdf.set_font("CustomArial", size=12)
         pdf.set_text_color(0, 0, 0)
         pdf.cell(60, 6, format_ar("مدير المدرسة"), ln=True, align="L")
         pdf.cell(60, 6, format_ar("أ. فراس آل عبدالمحسن"), ln=True, align="L")
         pdf.cell(60, 6, format_ar("التوقيع: ........................"), ln=True, align="L")
         
-        # تذييل الصفحة الثابت أسفل الكرت الفردي
         pdf.set_y(272)
         pdf.set_font("CustomArial", size=9)
         pdf.set_text_color(150, 150, 150)
         pdf.cell(170, 5, format_ar("تم استخراج هذا التقرير تلقائياً عبر منصة بصمة تميز الموحدة."), align="C")
 
-    # تحويل الملف النهائي لبايتات جاهزة للتنزيل الفوري
     return pdf.output()
 
 
@@ -466,83 +453,4 @@ elif st.session_state.page == "morning_late":
     if res_all_students.data:
         df_std_classes = pd.DataFrame(res_all_students.data)
         df_std_classes['class_name'] = df_std_classes['class_name'].astype(str).str.strip()
-        all_classes = sorted(list(df_std_classes['class_name'].unique()))
-        
-        grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ث ثالث ثانوي": "3"}
-        selected_grade_label = st.selectbox("اختر الصف الدراسي:", ["---"] + list(grades_map.keys()))
-        
-        if selected_grade_label != "---":
-            grade_prefix = grades_map[selected_grade_label]
-            filtered_classes = [c for c in all_classes if c.startswith(grade_prefix)]
-            selected_class = st.selectbox("اختر الشعبة:", ["---"] + filtered_classes)
-            
-            if selected_class != "---":
-                students_in_class = supabase.table('students').select("*").eq("class_name", selected_class).execute()
-                if students_in_class.data:
-                    all_today_attendance = supabase.table('attendance').select("*").eq("date", today).execute()
-                    att_map, comm_map, tech_map = {}, {}, {}
-                    if all_today_attendance.data:
-                        for att in all_today_attendance.data:
-                            att_map[att['student_name']] = att['status']
-                            comm_map[att['student_name']] = att['committee']
-                            tech_map[att['student_name']] = att['teacher_name']
-                    
-                    st.write("---")
-                    morning_results = []
-                    c_total, c_p, c_a, c_l = len(students_in_class.data), 0, 0, 0
-                    
-                    for s in students_in_class.data:
-                        s_name = s['student_name']
-                        current_status = att_map.get(s_name, "حاضر")
-                        student_committee = str(s.get('committee', 'بدون لجنة'))
-                        final_committee = comm_map.get(s_name, student_committee)
-                        final_teachers = tech_map.get(s_name, "لجنة التأخر الصباحي")
-                        if "لجنة التأخر الصباحي" not in final_teachers:
-                            final_teachers = f"{final_teachers} | لجنة التأخر الصباحي"
-                            
-                        choice = st.radio(f"👤 {s_name} (لجنة الطالب: {final_committee})", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(current_status), key=f"morning_{s_name}", horizontal=True)
-                        morning_results.append({"student_name": s_name, "committee": final_committee, "status": choice, "date": today, "teacher_name": final_teachers})
-                        
-                        if choice == "حاضر": c_p += 1
-                        elif choice == "غائب": c_a += 1
-                        elif choice == "متأخر": c_l += 1
-                        
-                    st.write("")
-                    col_save_m, col_back_m = st.columns(2)
-                    with col_save_m:
-                        if st.button("💾 اعتماد وتحديث رصد التأخر الصباحي", use_container_width=True, type="primary"):
-                            for record in morning_results:
-                                supabase.table('attendance').delete().eq("student_name", record['student_name']).eq("date", today).execute()
-                            supabase.table('attendance').insert(morning_results).execute()
-                            st.success("✅ تم حفظ وتزامن البيانات بنجاح!")
-                            time.sleep(1.5); st.rerun()
-                    with col_back_m:
-                        if st.button("⬅️ إلغاء والتراجع", use_container_width=True): confirm_back_dialog()
-                            
-                    st.markdown(f'''
-                        <div class="stats-footer-container">
-                            <span class="stat-badge stat-total">طلاب الشعبة ( {c_total} )</span>
-                            <span class="stat-badge stat-present">حاضر ( {c_p} )</span>
-                            <span class="stat-badge stat-absent">غائب ( {c_a} )</span>
-                            <span class="stat-badge stat-late">متأخر ( {c_l} )</span>
-                        </div>
-                    ''', unsafe_allow_html=True)
-
-# --- 5. صفحة الشكر ---
-elif st.session_state.page == "thank_you":
-    st.snow()
-    st.markdown(f'<div class="thank-you-box"><h1>✅ تم الرصد بنجاح</h1><h2>أ. {st.session_state.get("teacher", "")}</h2></div>', unsafe_allow_html=True)
-    if st.button("🏠 العودة للرئيسية", use_container_width=True): st.session_state.page = "home"; st.rerun()
-
-# --- 6. لوحة الإدارة ---
-elif st.session_state.page == "a_log":
-    if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": st.session_state.page = "admin"; st.rerun()
-
-elif st.session_state.page == "admin":
-    if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
-    tab1, tab2, tab3 = st.tabs(["📊 تقارير الانضباط", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
-    
-    try:
-        res_teachers = supabase.table("teachers").select("name_tech").execute()
-        valid_teachers_set = {str(t['name_tech']).strip() for t in
+        all_classes = sorted(list(df_std_classes['class_name'].
