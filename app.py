@@ -178,7 +178,7 @@ def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
         f"🏫 *الصف ثاني ثانوي:*%0A"
         f"🚫 الغائبين: {g2_a}%0A"
         f"⏳ المتأخرين: {g2_l}%0A%0A"
-        f"🏫 *الصف third ثانوي:*%0A"
+        f"🏫 *الصف ثالث ثانوي:*%0A"
         f"🚫 الغائبين: {g3_a}%0A"
         f"⏳ المتأخرين: {g3_l}%0A%0A"
         f"-----------------%0A"
@@ -530,7 +530,7 @@ elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
     tab1, tab2, tab3 = st.tabs(["📊 تقارير الانضباط", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
     
-    # 🛠️ [تم الإصلاح هنا]: إغلاق قوس الـ List Comprehension بشكل سليم لمنع الـ SyntaxError الموضح في الصورة
+    # جلب قائمة المعلمين بشكل سليم ومغلق
     try:
         res_teachers = supabase.table("teachers").select("name_tech").execute()
         valid_teachers_set = {str(t['name_tech']).strip() for t in res_teachers.data} if res_teachers.data else set()
@@ -689,7 +689,7 @@ elif st.session_state.page == "admin":
             st.markdown("---")
             target_table = st.selectbox("اختر الجدول المراد تحديث بياناته:", ["---", "Students (الطلاب)", "Teachers (المعلمون)"])
             if target_table != "---":
-                uploaded_file = st.file_uploader("اختر ملف Excel أو CSV المُراد رفعفه:", type=["xlsx", "csv"])
+                uploaded_file = st.file_uploader("اختر ملف Excel أو CSV المُراد رففه:", type=["xlsx", "csv"])
                 if uploaded_file is not None:
                     try:
                         if uploaded_file.name.endswith('.csv'):
