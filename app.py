@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 import time
 import io
+from weasyprint import HTML  # استيراد مكتبة توليد الـ PDF الاحترافية
 
 # 1. إعدادات الاتصال بقاعدة البيانات (Supabase)
 url = "https://lsmevvsogsqqqjyuqzbx.supabase.co"
@@ -126,7 +127,24 @@ st.markdown('''
 if 'page' not in st.session_state:
     st.session_state.page = "home"
 
-# --- 🛠️ دالات مساعدة ---
+# --- 🛠️ دالات مساعدة وجلب الأسماء النظيفة ---
+
+def get_clean_observer_string(raw_teacher_name, valid_teachers_set):
+    if not raw_teacher_name:
+        return "لجنة الانضباط"
+    current_list = []
+    for name in str(raw_teacher_name).split(" | "):
+        clean_name = name.strip()
+        if clean_name and clean_name not in current_list:
+            if clean_name in valid_teachers_set or clean_name == "لجنة التأخر الصباحي":
+                current_list.append(clean_name)
+            else:
+                matched = [real_name for real_name in valid_teachers_set if clean_name in real_name]
+                if matched:
+                    if matched[0] not in current_list: current_list.append(matched[0])
+                else:
+                    current_list.append(clean_name)
+    return " | ".join(current_list) if current_list else "لجنة الانضباط"
 
 def get_wa_link(df, status_type, d):
     if df.empty: return None
@@ -164,54 +182,25 @@ def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
     )
     return f"https://wa.me/?text={msg}"
 
-# دالة توليد ملف إكسيل المحدثة لنقل التاريخ إلى العمود B لكل سطر
-def export_attendance_to_excel(df, report_date, sheet_label):
+# دالة توليد ملف إكسيل
+def export_attendance_to_excel(df, report_date, sheet_label, valid_teachers_set):
     days_ar = {"Monday": "الإثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
     day_name_en = report_date.strftime('%A')
     day_name_ar = days_ar.get(day_name_en, day_name_en)
     
-    # جلب أسماء المعلمين الرسمية للربط والمطابقة بدقة
-    try:
-        res_teachers = supabase.table("teachers").select("name_tech").execute()
-        valid_teachers_set = {str(t['name_tech']).strip() for t in res_teachers.data} if res_teachers.data else set()
-    except Exception:
-        valid_teachers_set = set()
-
-    # دالة لتنظيف وربط الأسماء المسجلة بالجدول الرسمي لمعلمي المدرسة
-    def get_clean_observer_string(raw_teacher_name):
-        if not raw_teacher_name:
-            return "لجنة الانضباط"
-        current_list = []
-        for name in str(raw_teacher_name).split(" | "):
-            clean_name = name.strip()
-            if clean_name and clean_name not in current_list:
-                if clean_name in valid_teachers_set or clean_name == "لجنة التأخر الصباحي":
-                    current_list.append(clean_name)
-                else:
-                    matched = [real_name for real_name in valid_teachers_set if clean_name in real_name]
-                    if matched:
-                        if matched[0] not in current_list: current_list.append(matched[0])
-                    else:
-                        current_list.append(clean_name)
-        return " | ".join(current_list) if current_list else "لجنة الانضباط"
-
     output = io.BytesIO()
-    
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         workbook  = writer.book
         worksheet = workbook.add_worksheet(f'تقرير {sheet_label}')
-        
         worksheet.right_to_left()
         
         header_title_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'bold': True, 'font_color': '#1a237e', 'align': 'right'})
         table_header_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'bold': True, 'bg_color': '#1a237e', 'font_color': '#ffffff', 'align': 'center', 'border': 1})
         table_cell_format = workbook.add_format({'font_name': 'Cairo', 'font_size': 11, 'align': 'center', 'border': 1})
         
-        # الترويسة الأساسية العلوية (اليوم فقط في A1)
         worksheet.write('A1', f"اليوم: {day_name_ar}", header_title_format)
         
-        # ترويسات الجدول الأساسية متضمنة العمود B للتاريخ
-        worksheet.write('B1', 'التاريخ', table_header_format)       # [تعديل مستهدف]: ترويسة العمود B
+        worksheet.write('B1', 'التاريخ', table_header_format)
         worksheet.write('E1', 'اسم الطالب', table_header_format)
         worksheet.write('F1', 'الشعبة', table_header_format)
         worksheet.write('G1', 'اللجنة', table_header_format)
@@ -222,23 +211,208 @@ def export_attendance_to_excel(df, report_date, sheet_label):
         formatted_date_str = report_date.strftime('%Y-%m-%d')
         
         for _, row in df.iterrows():
-            resolved_observer = get_clean_observer_string(row.get('teacher_name', ''))
-            
-            worksheet.write(row_idx, 1, formatted_date_str, table_cell_format)  # [تعديل مستهدف]: كتابة التاريخ في العمود B
-            worksheet.write(row_idx, 4, row['student_name'], table_cell_format) # العمود E
-            worksheet.write(row_idx, 5, row.get('الشعبة', '---'), table_cell_format) # العمود F
-            worksheet.write(row_idx, 6, row['committee'], table_cell_format)    # العمود G
-            worksheet.write(row_idx, 7, row['status'], table_cell_format)       # العمود H
-            worksheet.write(row_idx, 8, resolved_observer, table_cell_format)   # العمود I
+            resolved_observer = get_clean_observer_string(row.get('teacher_name', ''), valid_teachers_set)
+            worksheet.write(row_idx, 1, formatted_date_str, table_cell_format)
+            worksheet.write(row_idx, 4, row['student_name'], table_cell_format)
+            worksheet.write(row_idx, 5, row.get('الشعبة', '---'), table_cell_format)
+            worksheet.write(row_idx, 6, row['committee'], table_cell_format)
+            worksheet.write(row_idx, 7, row['status'], table_cell_format)
+            worksheet.write(row_idx, 8, resolved_observer, table_cell_format)
             row_idx += 1
             
         worksheet.set_column('A:A', 20)
-        worksheet.set_column('B:B', 18) # ضبط اتساع عمود التاريخ B ليظهر بوضوح وبدون تشويه
+        worksheet.set_column('B:B', 18)
         worksheet.set_column('E:E', 35)
         worksheet.set_column('F:H', 15)
         worksheet.set_column('I:I', 50) 
         
     return output.getvalue()
+
+
+# 🎯 [دالة مضافة جديدة]: لتوليد ملف الـ PDF بحيث يظهر كل طالب في صفحة منفصلة تماماً
+def export_attendance_to_pdf(df, report_date, valid_teachers_set):
+    days_ar = {"Monday": "الإثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
+    day_name_en = report_date.strftime('%A')
+    day_name_ar = days_ar.get(day_name_en, day_name_en)
+    date_str = report_date.strftime('%Y-%m-%d')
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            @page {{
+                size: A4 portrait;
+                margin: 20mm 15mm;
+            }}
+            body {{
+                font-family: 'Cairo', 'Times New Roman', serif;
+                margin: 0;
+                padding: 0;
+                color: #333;
+                background-color: #ffffff;
+            }}
+            .student-card {{
+                page-break-after: always;
+                border: 3px double #1a237e;
+                padding: 30px;
+                border-radius: 15px;
+                height: 85%;
+                position: relative;
+            }}
+            /* منع إضافة صفحة فارغة في نهاية الملف */
+            .student-card:last-child {{
+                page-break-after: avoid;
+            }}
+            .pdf-header {{
+                text-align: center;
+                border-bottom: 3px solid #ff9800;
+                padding-bottom: 15px;
+                margin-bottom: 40px;
+            }}
+            .pdf-header h2 {{
+                margin: 5px 0;
+                color: #1a237e;
+                font-size: 24px;
+                font-weight: bold;
+            }}
+            .pdf-header h4 {{
+                margin: 5px 0;
+                color: #555;
+                font-size: 16px;
+            }}
+            .report-title {{
+                text-align: center;
+                font-size: 22px;
+                font-weight: bold;
+                background-color: #f0f2f6;
+                padding: 10px;
+                border-radius: 8px;
+                margin-bottom: 40px;
+                color: #1a237e;
+                border: 1px solid #d1d9e6;
+            }}
+            .info-table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 5px;
+            }}
+            .info-table th, .info-table td {{
+                border: 1px solid #b0bec5;
+                padding: 15px;
+                font-size: 16px;
+                text-align: right;
+            }}
+            .info-table th {{
+                background-color: #1a237e;
+                color: white;
+                width: 25%;
+                font-weight: bold;
+            }}
+            .info-table td {{
+                background-color: #fafafa;
+                font-weight: bold;
+            }}
+            .pdf-footer {{
+                position: absolute;
+                bottom: 30px;
+                left: 30px;
+                right: 30px;
+                text-align: left;
+                border-top: 1px dashed #b0bec5;
+                padding-top: 15px;
+                font-size: 14px;
+                color: #777;
+            }}
+            .signature-section {{
+                margin-top: 60px;
+                width: 100%;
+                display: block;
+            }}
+            .signature-box {{
+                float: left;
+                width: 200px;
+                text-align: center;
+                font-size: 16px;
+                font-weight: bold;
+                line-height: 1.8;
+            }}
+            .clearfix {{
+                clear: both;
+            }}
+        </style>
+    </head>
+    <body>
+    """
+    
+    for _, row in df.iterrows():
+        resolved_observer = get_clean_observer_string(row.get('teacher_name', ''), valid_teachers_set)
+        
+        html_content += f"""
+        <div class="student-card">
+            <div class="pdf-header">
+                <h2>مدرسة القطيف الثانوية</h2>
+                <h4>نظام الانضباط المدرسي الذكي (بصمة تميز)</h4>
+            </div>
+            
+            <div class="report-title">إشعار رصد حالة طالب يومي ({row['status']})</div>
+            
+            <table class="info-table">
+                <tr>
+                    <th>اسم الطالب</th>
+                    <td>{row['student_name']}</td>
+                </tr>
+                <tr>
+                    <th>الشعبة الدراسية</th>
+                    <td>{row.get('الشعبة', '---')}</td>
+                </tr>
+                <tr>
+                    <th>رقم اللجنة</th>
+                    <td>{row['committee']}</td>
+                </tr>
+                <tr>
+                    <th>حالة الرصد</th>
+                    <td>{row['status']}</td>
+                </tr>
+                <tr>
+                    <th>اليوم</th>
+                    <td>{day_name_ar}</td>
+                </tr>
+                <tr>
+                    <th>التاريخ</th>
+                    <td>{date_str}</td>
+                </tr>
+                <tr>
+                    <th>الملاحظ / المعلمون</th>
+                    <td>{resolved_observer}</td>
+                </tr>
+            </table>
+            
+            <div class="signature-section">
+                <div class="signature-box">
+                    مدير المدرسة<br>
+                    أ. فراس آل عبدالمحسن<br>
+                    التوقيع: ........................
+                </div>
+                <div class="clearfix"></div>
+            </div>
+            
+            <div class="pdf-footer">
+                تم استخراج هذا التقرير تلقائياً عبر منصة بصمة تميز الموحدة.
+            </div>
+        </div>
+        """
+        
+    html_content += """
+    </body>
+    </html>
+    """
+    
+    # تحويل كود الـ HTML إلى ملف PDF باحترافية تامة عبر WeasyPrint
+    pdf_bytes = HTML(string=html_content).write_pdf()
+    return pdf_bytes
+
 
 @st.dialog("⚠️ تأكيد التراجع")
 def confirm_back_dialog():
@@ -454,6 +628,13 @@ elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
     tab1, tab2, tab3 = st.tabs(["📊 تقارير الانضباط", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
     
+    # جلب أسماء المعلمين الرسمية للربط والمطابقة بدقة داخل لوحة الإدارة مرة واحدة كاش
+    try:
+        res_teachers = supabase.table("teachers").select("name_tech").execute()
+        valid_teachers_set = {str(t['name_tech']).strip() for t in res_teachers.data} if res_teachers.data else set()
+    except Exception:
+        valid_teachers_set = set()
+
     with tab1: # تقارير الانضباط
         col_date, col_filter = st.columns(2)
         with col_date:
@@ -497,16 +678,16 @@ elif st.session_state.page == "admin":
             wa_grade_link = get_wa_grade_stats_link(d_rep, g1_abs, g1_lat, g2_abs, g2_lat, g3_abs, g3_lat)
             st.markdown(f'<a href="{wa_grade_link}" target="_blank" class="wa-link wa-stats">📊 إرسال إحصائية المراحل التفصيلية عبر الواتساب</a>', unsafe_allow_html=True)
             
-            # --- 💾 أزرار ترحيل كشوفات الانضباط المستقلة إلى Excel ---
-            st.markdown("### 💾 ترحيل كشوفات الانضباط إلى Excel")
-            col_excel_abs, col_excel_lat = st.columns(2)
+            # --- 💾 أزرار ترحيل كشوفات الانضباط المستقلة إلى Excel و PDF الفردي ---
+            st.markdown("### 💾 ترحيل الكشوفات والتقارير الفردية")
+            col_excel_abs, col_excel_lat, col_pdf_individual = st.columns(3)
             
             with col_excel_abs:
                 df_absent_only = df_all[df_all['status'] == 'غائب'].copy()
                 if not df_absent_only.empty:
-                    excel_absent_data = export_attendance_to_excel(df_absent_only, d_rep, "الغياب اليومي")
+                    excel_absent_data = export_attendance_to_excel(df_absent_only, d_rep, "الغياب اليومي", valid_teachers_set)
                     st.download_button(
-                        label="🚫 ترحيل كشف (الغياب فقط) إلى Excel مُنسق",
+                        label="🚫 ترحيل (الغياب) إلى Excel",
                         data=excel_absent_data,
                         file_name=f"كشف_الغياب_{d_rep}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -518,9 +699,9 @@ elif st.session_state.page == "admin":
             with col_excel_lat:
                 df_late_only = df_all[df_all['status'] == 'متأخر'].copy()
                 if not df_late_only.empty:
-                    excel_late_data = export_attendance_to_excel(df_late_only, d_rep, "التأخر الصباحي")
+                    excel_late_data = export_attendance_to_excel(df_late_only, d_rep, "التأخر الصباحي", valid_teachers_set)
                     st.download_button(
-                        label="⏳ ترحيل كشف (التأخر فقط) إلى Excel مُنسق",
+                        label="⏳ ترحيل (التأخر) إلى Excel",
                         data=excel_late_data,
                         file_name=f"كشف_التأخر_{d_rep}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -528,6 +709,22 @@ elif st.session_state.page == "admin":
                     )
                 else:
                     st.button("⏳ لا يوجد تأخر لترحيله", disabled=True, use_container_width=True)
+
+            # 🛠️ [الزر المستهدف الجديد]: ترحيل تقرير PDF منفصل لكل طالب جاهز للطباعة المباشرة
+            with col_pdf_individual:
+                df_report_students = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
+                if not df_report_students.empty:
+                    with st.spinner("⏳ جاري توليد إشعارات الطلاب الفردية (PDF)..."):
+                        pdf_data = export_attendance_to_pdf(df_report_students, d_rep, valid_teachers_set)
+                    st.download_button(
+                        label="📄 طباعة إشعارات الطلاب الفردية (PDF)",
+                        data=pdf_data,
+                        file_name=f"إشعارات_الطلاب_منفصلة_{d_rep}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                else:
+                    st.button("📄 لا توجد حالات لطباعة إشعاراتها", disabled=True, use_container_width=True)
             
             st.markdown("---")
             
