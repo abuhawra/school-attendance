@@ -101,7 +101,7 @@ st.markdown('''
     .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; }
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
-    .wa-stats { background-color: #1a237e; border: 1px solid #ff9800; } /* لون كحلي مميز لزر الإحصائيات */
+    .wa-stats { background-color: #1a237e; border: 1px solid #ff9800; }
     .thank-you-box { text-align: center; padding: 40px; background: #f8fdf9; border-radius: 20px; border: 2px solid #22c55e; margin-top: 20px; }
     
     /* تنسيق صندوق الإحصائيات أسفل صفحة الرصد */
@@ -129,6 +129,8 @@ if 'page' not in st.session_state:
     st.session_state.page = "home"
 
 # --- 🛠️ دالات مساعدة ---
+
+# دالة صياغة رسائل اللجان الفردية (كل بيان في سطر مستقل)
 def get_wa_link(df, status_type, d):
     if df.empty: return None
     df_sorted = df.copy()
@@ -137,21 +139,30 @@ def get_wa_link(df, status_type, d):
     header_emoji = "🚫" if "غائب" in status_type else "⏳"
     msg = f"{header_emoji} *قائمة {status_type}*%0A📅 *التاريخ:* {d}%0A-----------------%0A"
     for _, r in df_sorted.iterrows():
-        msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']}%0A🏫 *الشعبة:* {r.get('الشعبة','--')}%0A⚠️ *الحالة:* {r['status']}%0A-----------------%0A"
+        msg += (
+            f"📦 *اللجنة:* {r['committee']}%0A"
+            f"👤 *الاسم:* {r['student_name']}%0A"
+            f"🏫 *الشعبة:* {r.get('الشعبة','--')}%0A"
+            f"⚠️ *الحالة:* {r['status']}%0A"
+            f"-----------------%0A"
+        )
     return f"https://wa.me/?text={msg}"
 
-# دالة ذكية لإنشاء رابط واتساب لإحصائيات المراحل التفصيلية
+# 🛠️ [تعديل التنسيق المطلوب بدقة]: دالة صياغة إحصائية المراحل بالتنسيق والأسطر الجديدة المطلوبة
 def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
     msg = (
         f"📊 *إحصائيات الانضباط التفصيلية للمراحل*%0A"
         f"📅 *التاريخ:* {d}%0A"
-        f"-----------------%0A%0A"
+        f"-----------------%0A"
         f"🏫 *الصف أول ثانوي:*%0A"
-        f"🚫 الغائبين: {g1_a} | ⏳ المتأخرين: {g1_l}%0A%0A"
+        f"🚫 الغائبين: {g1_a}%0A"
+        f"⏳ المتأخرين: {g1_l}%0A%0A"
         f"🏫 *الصف ثاني ثانوي:*%0A"
-        f"🚫 الغائبين: {g2_a} | ⏳ المتأخرين: {g2_l}%0A%0A"
+        f"🚫 الغائبين: {g2_a}%0A"
+        f"⏳ المتأخرين: {g2_l}%0A%0A"
         f"🏫 *الصف ثالث ثانوي:*%0A"
-        f"🚫 الغائبين: {g3_a} | ⏳ المتأخرين: {g3_l}%0A%0A"
+        f"🚫 الغائبين: {g3_a}%0A"
+        f"⏳ المتأخرين: {g3_l}%0A%0A"
         f"-----------------%0A"
         f"🎯 *تم الإرسال عبر نظام بصمة تميز*"
     )
@@ -358,7 +369,6 @@ elif st.session_state.page == "admin":
                     </div>
                 ''', unsafe_allow_html=True)
             
-            # 🛠️ [التعديل المطلوب]: إضافة زر إرسال إحصائية المراحل التفصيلية عبر الواتساب
             st.write("")
             wa_grade_link = get_wa_grade_stats_link(d_rep, g1_abs, g1_lat, g2_abs, g2_lat, g3_abs, g3_lat)
             st.markdown(f'<a href="{wa_grade_link}" target="_blank" class="wa-link wa-stats">📊 إرسال إحصائية المراحل التفصيلية عبر الواتساب</a>', unsafe_allow_html=True)
