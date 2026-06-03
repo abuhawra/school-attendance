@@ -115,15 +115,16 @@ st.markdown('''
     .stat-badge {
         display: inline-block;
         padding: 8px 20px;
-        margin: 5px 15px;
+        margin: 5px 10px;
         font-size: 18px;
         font-weight: bold;
         border-radius: 8px;
         color: white;
     }
-    .stat-present { background-color: #2e7d32; }  /* أخضر */
-    .stat-absent { background-color: #c62828; }   /* أحمر */
-    .stat-late { background-color: #ef6c00; }     /* برتقالي */
+    .stat-total { background-color: #1a237e; }    /* كحلي للمجموع الكلي */
+    .stat-present { background-color: #2e7d32; }  /* أخضر للمستحقين حضور */
+    .stat-absent { background-color: #c62828; }   /* أحمر للغياب */
+    .stat-late { background-color: #ef6c00; }     /* برتقالي للتأخر */
     </style>
 ''', unsafe_allow_html=True)
 
@@ -225,6 +226,7 @@ elif st.session_state.page == "mark":
             count_present = 0
             count_absent = 0
             count_late = 0
+            count_total = len(students.data) # المجموع الكلي للطلاب في هذه اللجنة
             
             for s in students.data:
                 prev = old_map.get(s['student_name'], "حاضر")
@@ -255,9 +257,10 @@ elif st.session_state.page == "mark":
                 if st.button("⬅️ عودة بدون حفظ", use_container_width=True):
                     confirm_back_dialog()
             
-            # 🛠️ [التعديل المضاف]: صندوق الإحصائيات التلقائي في أدنى الصفحة
+            # صندوق الإحصائيات التلقائي متضمناً (مجموع الطلاب الكلي) في أدنى الصفحة
             st.markdown(f'''
                 <div class="stats-footer-container">
+                    <span class="stat-badge stat-total">المجموع الكلي ( {count_total} )</span>
                     <span class="stat-badge stat-present">حاضر ( {count_present} )</span>
                     <span class="stat-badge stat-absent">غائب ( {count_absent} )</span>
                     <span class="stat-badge stat-late">متأخر ( {count_late} )</span>
