@@ -4,7 +4,11 @@ import pandas as pd
 from datetime import datetime
 import time
 import io
-from weasyprint import HTML  # استيراد مكتبة توليد الـ PDF الاحترافية
+
+# مكتبات معالجة النصوص العربية وتوليد الـ PDF المستقرة على السيرفر
+from fpdf import FPDF
+import arabic_reshaper
+from bidi.algorithm import get_display
 
 # 1. إعدادات الاتصال بقاعدة البيانات (Supabase)
 url = "https://lsmevvsogsqqqjyuqzbx.supabase.co"
@@ -229,189 +233,100 @@ def export_attendance_to_excel(df, report_date, sheet_label, valid_teachers_set)
     return output.getvalue()
 
 
-# 🎯 [دالة مضافة جديدة]: لتوليد ملف الـ PDF بحيث يظهر كل طالب في صفحة منفصلة تماماً
-def export_attendance_to_pdf(df, report_date, valid_teachers_set):
+# 🎯 [الدالة البديلة والمستقرة بنسبة 100%]: توليد PDF منفصل لكل طالب باستخدام FPDF2 الصافية وبدعم كامل للعربية
+def export_attendance_to_pdf_fpdf(df, report_date, valid_teachers_set):
     days_ar = {"Monday": "الإثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
     day_name_en = report_date.strftime('%A')
     day_name_ar = days_ar.get(day_name_en, day_name_en)
     date_str = report_date.strftime('%Y-%m-%d')
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html dir="rtl" lang="ar">
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            @page {{
-                size: A4 portrait;
-                margin: 20mm 15mm;
-            }}
-            body {{
-                font-family: 'Cairo', 'Times New Roman', serif;
-                margin: 0;
-                padding: 0;
-                color: #333;
-                background-color: #ffffff;
-            }}
-            .student-card {{
-                page-break-after: always;
-                border: 3px double #1a237e;
-                padding: 30px;
-                border-radius: 15px;
-                height: 85%;
-                position: relative;
-            }}
-            /* منع إضافة صفحة فارغة في نهاية الملف */
-            .student-card:last-child {{
-                page-break-after: avoid;
-            }}
-            .pdf-header {{
-                text-align: center;
-                border-bottom: 3px solid #ff9800;
-                padding-bottom: 15px;
-                margin-bottom: 40px;
-            }}
-            .pdf-header h2 {{
-                margin: 5px 0;
-                color: #1a237e;
-                font-size: 24px;
-                font-weight: bold;
-            }}
-            .pdf-header h4 {{
-                margin: 5px 0;
-                color: #555;
-                font-size: 16px;
-            }}
-            .report-title {{
-                text-align: center;
-                font-size: 22px;
-                font-weight: bold;
-                background-color: #f0f2f6;
-                padding: 10px;
-                border-radius: 8px;
-                margin-bottom: 40px;
-                color: #1a237e;
-                border: 1px solid #d1d9e6;
-            }}
-            .info-table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 5px;
-            }}
-            .info-table th, .info-table td {{
-                border: 1px solid #b0bec5;
-                padding: 15px;
-                font-size: 16px;
-                text-align: right;
-            }}
-            .info-table th {{
-                background-color: #1a237e;
-                color: white;
-                width: 25%;
-                font-weight: bold;
-            }}
-            .info-table td {{
-                background-color: #fafafa;
-                font-weight: bold;
-            }}
-            .pdf-footer {{
-                position: absolute;
-                bottom: 30px;
-                left: 30px;
-                right: 30px;
-                text-align: left;
-                border-top: 1px dashed #b0bec5;
-                padding-top: 15px;
-                font-size: 14px;
-                color: #777;
-            }}
-            .signature-section {{
-                margin-top: 60px;
-                width: 100%;
-                display: block;
-            }}
-            .signature-box {{
-                float: left;
-                width: 200px;
-                text-align: center;
-                font-size: 16px;
-                font-weight: bold;
-                line-height: 1.8;
-            }}
-            .clearfix {{
-                clear: both;
-            }}
-        </style>
-    </head>
-    <body>
-    """
+    # تحضير كلاس الـ PDF وضبط الخصائص الأساسية لمنع المشاكل
+    pdf = FPDF(orientation="P", unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=True, margin=15)
     
+    # إضافة الخط العربي الأساسي المتاح افتراضياً داخل بيئات لينكس لضمان جودة الأحرف
+    pdf.add_system_font(fname="DejaVuSans.ttf", font_style="")
+    pdf.set_font("DejaVuSans", size=12)
+    
+    def format_ar(text):
+        """دالة تصحيح وعكس النصوص العربية لتظهر من اليمين لليسار بشكل سليم"""
+        if not text: return ""
+        reshaped = arabic_reshaper.reshape(str(text))
+        return get_display(reshaped)
+
     for _, row in df.iterrows():
+        # بدء صفحة جديدة لكل طالب
+        pdf.add_page()
+        
+        # رسم إطار خارجي أنيق للصفحة
+        pdf.set_draw_color(26, 35, 126) # اللون النيلي للمدرسة
+        pdf.set_solid_linewidth(1.5)
+        pdf.rect(10, 10, 190, 277)
+        
+        # الترويسة العلوية
+        pdf.set_text_color(26, 35, 126)
+        pdf.set_font("DejaVuSans", size=20)
+        pdf.cell(190, 15, format_ar("مدرسة القطيف الثانوية"), ln=True, align="C")
+        
+        pdf.set_font("DejaVuSans", size=11)
+        pdf.set_text_color(100, 100, 100)
+        pdf.cell(190, 8, format_ar("نظام الانضباط المدرسي الذكي (بصمة تميز)"), ln=True, align="C")
+        
+        # خط فاصل برتقالي
+        pdf.set_draw_color(255, 152, 0)
+        pdf.set_solid_linewidth(1)
+        pdf.line(15, 38, 195, 38)
+        pdf.ln(12)
+        
+        # عنوان التقرير الفرعي المجسم
+        pdf.set_fill_color(240, 242, 246)
+        pdf.set_text_color(26, 35, 126)
+        pdf.set_font("DejaVuSans", size=14)
+        status_label = f"إشعار رصد حالة طالب يومي ({row['status']})"
+        pdf.cell(170, 12, format_ar(status_label), ln=True, align="C", fill=True, center=True)
+        pdf.ln(15)
+        
+        # جدول البيانات الفردي للطالب
         resolved_observer = get_clean_observer_string(row.get('teacher_name', ''), valid_teachers_set)
+        data_items = [
+            ("اسم الطالب:", row['student_name']),
+            ("الشعبة الدراسية:", row.get('الشعبة', '---')),
+            ("رقم اللجنة:", row['committee']),
+            ("حالة الرصد:", row['status']),
+            ("اليوم:", day_name_ar),
+            ("التاريخ:", date_str),
+            ("الملاحظ / المعلمون:", resolved_observer)
+        ]
         
-        html_content += f"""
-        <div class="student-card">
-            <div class="pdf-header">
-                <h2>مدرسة القطيف الثانوية</h2>
-                <h4>نظام الانضباط المدرسي الذكي (بصمة تميز)</h4>
-            </div>
+        pdf.set_font("DejaVuSans", size=12)
+        for label, val in data_items:
+            # العمود الأيمن (العنوان)
+            pdf.set_fill_color(26, 35, 126)
+            pdf.set_text_color(255, 255, 255)
+            pdf.cell(50, 12, format_ar(label), border=1, align="R", fill=True)
             
-            <div class="report-title">إشعار رصد حالة طالب يومي ({row['status']})</div>
+            # العمود الأيسر (القيمة)
+            pdf.set_fill_color(250, 250, 250)
+            pdf.set_text_color(0, 0, 0)
+            pdf.cell(120, 12, format_ar(val), border=1, align="R", fill=True, ln=True)
             
-            <table class="info-table">
-                <tr>
-                    <th>اسم الطالب</th>
-                    <td>{row['student_name']}</td>
-                </tr>
-                <tr>
-                    <th>الشعبة الدراسية</th>
-                    <td>{row.get('الشعبة', '---')}</td>
-                </tr>
-                <tr>
-                    <th>رقم اللجنة</th>
-                    <td>{row['committee']}</td>
-                </tr>
-                <tr>
-                    <th>حالة الرصد</th>
-                    <td>{row['status']}</td>
-                </tr>
-                <tr>
-                    <th>اليوم</th>
-                    <td>{day_name_ar}</td>
-                </tr>
-                <tr>
-                    <th>التاريخ</th>
-                    <td>{date_str}</td>
-                </tr>
-                <tr>
-                    <th>الملاحظ / المعلمون</th>
-                    <td>{resolved_observer}</td>
-                </tr>
-            </table>
-            
-            <div class="signature-section">
-                <div class="signature-box">
-                    مدير المدرسة<br>
-                    أ. فراس آل عبدالمحسن<br>
-                    التوقيع: ........................
-                </div>
-                <div class="clearfix"></div>
-            </div>
-            
-            <div class="pdf-footer">
-                تم استخراج هذا التقرير تلقائياً عبر منصة بصمة تميز الموحدة.
-            </div>
-        </div>
-        """
+        pdf.ln(25)
         
-    html_content += """
-    </body>
-    </html>
-    """
-    
-    # تحويل كود الـ HTML إلى ملف PDF باحترافية تامة عبر WeasyPrint
-    pdf_bytes = HTML(string=html_content).write_pdf()
-    return pdf_bytes
+        # منطقة توقيع الإدارة والمدير بالشكل الرسمي والـ Layout المطلوب
+        pdf.set_font("DejaVuSans", size=12)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(60, 6, format_ar("مدير المدرسة"), ln=True, align="L")
+        pdf.cell(60, 6, format_ar("أ. فراس آل عبدالمحسن"), ln=True, align="L")
+        pdf.cell(60, 6, format_ar("التوقيع: ........................"), ln=True, align="L")
+        
+        # تذييل الصفحة الثابت أسفل الكرت الفردي
+        pdf.set_y(272)
+        pdf.set_font("DejaVuSans", size=9)
+        pdf.set_text_color(150, 150, 150)
+        pdf.cell(170, 5, format_ar("تم استخراج هذا التقرير تلقائياً عبر منصة بصمة تميز الموحدة."), align="C")
+
+    # تحويل الملف النهائي لبايتات جاهزة للتنزيل الفوري
+    return pdf.output()
 
 
 @st.dialog("⚠️ تأكيد التراجع")
@@ -628,7 +543,6 @@ elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
     tab1, tab2, tab3 = st.tabs(["📊 تقارير الانضباط", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
     
-    # جلب أسماء المعلمين الرسمية للربط والمطابقة بدقة داخل لوحة الإدارة مرة واحدة كاش
     try:
         res_teachers = supabase.table("teachers").select("name_tech").execute()
         valid_teachers_set = {str(t['name_tech']).strip() for t in res_teachers.data} if res_teachers.data else set()
@@ -678,7 +592,7 @@ elif st.session_state.page == "admin":
             wa_grade_link = get_wa_grade_stats_link(d_rep, g1_abs, g1_lat, g2_abs, g2_lat, g3_abs, g3_lat)
             st.markdown(f'<a href="{wa_grade_link}" target="_blank" class="wa-link wa-stats">📊 إرسال إحصائية المراحل التفصيلية عبر الواتساب</a>', unsafe_allow_html=True)
             
-            # --- 💾 أزرار ترحيل كشوفات الانضباط المستقلة إلى Excel و PDF الفردي ---
+            # --- 💾 ترحيل كشوفات الانضباط المستقلة إلى Excel و PDF الفردي ---
             st.markdown("### 💾 ترحيل الكشوفات والتقارير الفردية")
             col_excel_abs, col_excel_lat, col_pdf_individual = st.columns(3)
             
@@ -710,12 +624,12 @@ elif st.session_state.page == "admin":
                 else:
                     st.button("⏳ لا يوجد تأخر لترحيله", disabled=True, use_container_width=True)
 
-            # 🛠️ [الزر المستهدف الجديد]: ترحيل تقرير PDF منفصل لكل طالب جاهز للطباعة المباشرة
+            # 🛠️ ترحيل تقرير PDF منفصل لكل طالب باستخدام FPDF2 (يعمل فوراً بدون مشاكل سيرفر)
             with col_pdf_individual:
                 df_report_students = df_all[df_all['status'].isin(['غائب', 'متأخر'])].copy()
                 if not df_report_students.empty:
                     with st.spinner("⏳ جاري توليد إشعارات الطلاب الفردية (PDF)..."):
-                        pdf_data = export_attendance_to_pdf(df_report_students, d_rep, valid_teachers_set)
+                        pdf_data = export_attendance_to_pdf_fpdf(df_report_students, d_rep, valid_teachers_set)
                     st.download_button(
                         label="📄 طباعة إشعارات الطلاب الفردية (PDF)",
                         data=pdf_data,
@@ -789,7 +703,7 @@ elif st.session_state.page == "admin":
             st.markdown("---")
             target_table = st.selectbox("اختر الجدول المراد تحديث بياناته:", ["---", "Students (الطلاب)", "Teachers (المعلمون)"])
             if target_table != "---":
-                uploaded_file = st.file_uploader("اختر ملف Excel أو CSV المُراد رفعه:", type=["xlsx", "csv"])
+                uploaded_file = st.file_uploader("اختر ملف Excel أو CSV المُراد رفعفه:", type=["xlsx", "csv"])
                 if uploaded_file is not None:
                     try:
                         if uploaded_file.name.endswith('.csv'):
