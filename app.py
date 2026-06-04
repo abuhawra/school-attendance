@@ -29,7 +29,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 🎨 التنسيق المرئي والـ CSS الشامل لمنع ظهور الأكواد وتنسيق الألوان ---
+# --- 🎨 التنسيق المرئي والـ CSS الشامل وتثبيت الهوية الرسمية ---
 st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
@@ -37,7 +37,7 @@ st.markdown('''
     html, body, [class*="css"], p, span, li, a { 
         font-family: 'Cairo', sans-serif !important; 
         direction: rtl; 
-        text-align: center !important; 
+        text-align: right; 
         font-size: 20px !important; 
     }
     
@@ -45,65 +45,70 @@ st.markdown('''
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* هيدر الشاشة الرئيسية الموحد الأزرق */
+    /* هيدر الشاشة الرئيسية الموحد - الهوية الرسمية الزرقاء */
     .main-header { 
-        background-color: #1a237e; 
-        padding: 40px 20px; 
+        background-color: #1a237e !important; 
+        padding: 40px !important; 
         text-align: center !important; 
-        color: white; 
-        border-radius: 20px; 
-        margin-bottom: 25px; 
-        border-bottom: 8px solid #ff9800; 
+        color: white !important; 
+        border-radius: 20px !important; 
+        margin-bottom: 25px !important; 
+        border-bottom: 8px solid #ff9800 !important; 
+    }
+    
+    .main-header h1, .main-header h2, .main-header p, .main-header div {
+        text-align: center !important; 
+        margin: 10px 0 !important;
     }
 
     .school-name {
         color: #ffffff !important;
         font-size: 40px !important; 
         font-weight: 700 !important;
-        margin-top: 10px !important;
-        margin-bottom: 25px !important;
+        line-height: 1.2 !important;
     }
     
-    /* 🌟 تعديل لون "بصمة تميز" إلى البرتقالي مع تكبير الخط 2X المتوافق 🌟 */
+    /* لون "بصمة تميز" البرتقالي الكبير والمتوهج */
     .system-title {
         color: #ff9800 !important; 
-        font-size: 85px !important; 
+        font-size: 96px !important; 
         font-weight: 900 !important; 
-        margin-top: 15px !important;
         margin-bottom: 15px !important;
-        text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        text-shadow: 2px 2px 5px rgba(0,0,0,0.4) !important;
     }
 
     .header-subtext {
         color: #ffffff !important; 
-        font-size: 28px !important; 
+        font-size: 30px !important; 
         font-weight: 400 !important;
-        margin-bottom: 10px !important;
     }
 
-    /* صندوق الإدارة المحدث بالكامل كخلفية مسطحة نقية دون تداخل وسوم */
-    .management-container {
-        background-color: #f8f9fa !important;
+    /* الصندوق الأبيض الداخلي للإدارة - مصحح ومحمي بالكامل */
+    .management-box {
+        background-color: #ffffff !important;
         border-radius: 15px !important;
         padding: 25px !important;
-        margin: 25px auto 5px auto !important;
-        border: 1px solid #e2e8f0 !important;
-        max-width: 750px !important;
+        margin: 30px auto 10px auto !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
+        width: 85% !important;
+        max-width: 700px !important;
     }
 
-    .role-text {
+    .role-title {
         color: #1a237e !important; 
-        font-size: 24px !important; 
+        font-size: 26px !important; 
         font-weight: 800 !important; 
-        margin-top: 8px !important;
+        margin-top: 5px !important;
         margin-bottom: 2px !important;
+        text-align: center !important;
     }
 
-    .name-text {
+    .person-name {
         color: #ff9800 !important; 
-        font-size: 26px !important; 
+        font-size: 28px !important; 
         font-weight: 700 !important; 
         margin-bottom: 15px !important;
+        text-align: center !important;
     }
     
     .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 6px 12px; border-radius: 15px; font-weight: bold; font-size: 16px !important; border: 1px solid #d1d9e6; display: inline-block; }
@@ -158,7 +163,7 @@ def export_attendance_to_pdf_fpdf(df_row, report_date):
     pdf.cell(0, 10, "مدير المدرسة: أ. فراس آل عبدالمحسن", ln=True, align='L')
     return pdf.output(dest='S').encode('latin1', errors='ignore')
 
-# --- دالات تصدير وإرسال الـ Excel والـ WhatsApp ---
+# --- دالة تصدير ملف الـ Excel ---
 def export_attendance_to_excel(df, report_date, sheet_label):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -196,29 +201,29 @@ def confirm_back_dialog():
         if st.button("تراجع والبقاء", use_container_width=True): st.rerun()
 
 # ==============================================================================
-# 3. معالجة وعرض شاشات التطبيق الرئيسية واجهة مستقرة تماماً
+# 3. معالجة وعرض شاشات التطبيق الرئيسية 
 # ==============================================================================
 
 if st.session_state.page == "home":
-    # 🌟 الحاوية الرئيسية الزرقاء الكبرى للهيدر 🌟
-    st.markdown('<div class="main-header">', unsafe_allow_html=True)
+    # 🌟 بناء التمبيليت الكامل للهوية الزرقاء والصندوق الأبيض بكتلة نصية نظيفة وخالية من الأخطاء 🌟
+    home_html = '''
+    <div class="main-header">
+        <div class="header-subtext">أول خطوة للنجاح...التحضير</div>
+        <div class="system-title">بَصمَة تَميُز</div>
+        <div class="school-name">مدرسة القطيف الثانوية</div>
+        
+        <div class="management-box">
+            <div class="role-title">مدير المدرسة</div>
+            <div class="person-name">أ. فراس آل عبدالمحسن</div>
+            <div class="role-title">فكرة وبرمجة</div>
+            <div class="person-name">أ. عارف أحمد الحداد</div>
+        </div>
+    </div>
+    '''
+    # عرض الهوية الموحدة كاملة وبشكل مستقر تماماً
+    st.markdown(home_html, unsafe_allow_html=True)
     
-    # طباعة النصوص العلوية بواسطة دوال ستريمليت المستقلة لمنع ظهور كود الـ HTML نهائياً
-    st.markdown('<div class="header-subtext">أول خطوة للنجاح...التحضير</div>', unsafe_allow_html=True)
-    st.markdown('<div class="system-title">بَصمَة تَميُز</div>', unsafe_allow_html=True)
-    st.markdown('<div class="school-name">مدرسة القطيف الثانوية</div>', unsafe_allow_html=True)
-    
-    # 🌟 بناء صندوق الإدارة الأبيض الداخلي بفصل الوسوم كلياً 🌟
-    st.markdown('<div class="management-container">', unsafe_allow_html=True)
-    st.markdown('<div class="role-text">مدير المدرسة</div>', unsafe_allow_html=True)
-    st.markdown('<div class="name-text">أ. فراس آل عبدالمحسن</div>', unsafe_allow_html=True)
-    st.markdown('<div class="role-text">فكرة وبرمجة</div>', unsafe_allow_html=True)
-    st.markdown('<div class="name-text">أ. عارف أحمد الحداد</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True) # إغلاق صندوق الإدارة الأبيض
-    
-    st.markdown('</div>', unsafe_allow_html=True) # إغلاق الهيدر الأزرق الكبير
-    
-    # أزرار شاشة الانتقال الرئيسية
+    # أزرار الانتقال والتحكم للشاشة الرئيسية
     st.write("")
     col_b = st.columns([1, 2, 1])[1]
     with col_b:
@@ -304,7 +309,7 @@ elif st.session_state.page == "morning_late":
     if res_all_students.data:
         df_std_classes = pd.DataFrame(res_all_students.data)
         all_classes = sorted(list(df_std_classes['class_name'].unique()))
-        grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ثالث ثانوي": "3"}
+        grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ثالملك ثانوي": "3"}
         selected_grade_label = st.selectbox("اختر الصف الدراسي:", ["---"] + list(grades_map.keys()))
         
         if selected_grade_label != "---":
