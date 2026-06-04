@@ -236,7 +236,6 @@ def confirm_back_dialog():
         if st.button("تراجع والبقاء", use_container_width=True):
             st.rerun()
 
-# 🎯 نافذة الحوار المضافة لتأكيد الحذف النهائي للسجلات 🎯
 @st.dialog("🚨 تحذير: تأكيد حذف السجلات")
 def confirm_delete_dialog(date_str):
     st.markdown(f"هل أنت متأكد تماماً من **حذف كافة سجلات الانضباط** الخاصة بيوم **{date_str}**؟")
@@ -254,6 +253,28 @@ def confirm_delete_dialog(date_str):
                 st.error(f"حدث خطأ أثناء محاولة الحذف: {e}")
     with c2:
         if st.button("❌ إلغاء التراجع", use_container_width=True):
+            st.rerun()
+
+# 🎯 نافذة الحوار المضافة حديثاً لتأكيد حفظ رصد التأخر الصباحي الموضح في image_5cd7fd.png 🎯
+@st.dialog("💾 تأكيد اعتماد رصد التأخر الصباحي")
+def confirm_save_morning_dialog(results_data, date_str):
+    st.markdown(f"هل أنت متأكد من اعتماد وتحديث السجلات الحالية ليوم **{date_str}** ومزامنتها مباشرة مع قاعدة البيانات؟")
+    st.write("")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("✅ نعم، اعتمد الرصد الآن", use_container_width=True, type="primary"):
+            try:
+                for record in results_data:
+                    supabase.table('attendance').delete().eq("student_name", record['student_name']).eq("date", date_str).execute()
+                supabase.table('attendance').insert(results_data).execute()
+                st.success("✅ تم حفظ وتزامن البيانات بنجاح!")
+                time.sleep(1.2)
+                st.session_state.page = "home"
+                st.rerun()
+            except Exception as e:
+                st.error(f"حدث خطأ أثناء حفظ البيانات: {e}")
+    with c2:
+        if st.button("❌ إلغاء", use_container_width=True):
             st.rerun()
 
 # ==============================================================================
@@ -376,7 +397,7 @@ elif st.session_state.page == "m_log":
             st.session_state.page = "morning_late"; st.rerun()
         else: st.error("كلمة المرور غير صحيحة.")
 
-# --- 5. واجهة رصد لجنة التأخر الصباحي ---
+# --- 5. واجهة رصد لجنة التأخر الصباحي المخصصة ---
 elif st.session_state.page == "morning_late":
     if st.button("⬅️ تسجيل خروج من اللجنة"): st.session_state.page = "home"; st.rerun()
     st.markdown("## ⏰ لجنة رصد التأخر الصباحي الموحد")
@@ -430,15 +451,16 @@ elif st.session_state.page == "morning_late":
                         
                     st.write("")
                     col_save_m, col_back_m = st.columns(2)
+                    
+                    # التطبيق المتوافق مع الأزرار الموجودة في الصورة image_5cd7fd.png
                     with col_save_m:
                         if st.button("💾 اعتماد وتحديث رصد التأخر الصباحي", use_container_width=True, type="primary"):
-                            for record in morning_results:
-                                supabase.table('attendance').delete().eq("student_name", record['student_name']).eq("date", today).execute()
-                            supabase.table('attendance').insert(morning_results).execute()
-                            st.success("✅ تم حفظ وتزامن البيانات بنجاح!")
-                            time.sleep(1.5); st.rerun()
+                            # استدعاء نافذة الحوار للتأكيد بدلاً من الحفظ المباشر
+                            confirm_save_morning_dialog(morning_results, today)
+                            
                     with col_back_m:
-                        if st.button("⬅️ إلغاء والتراجع", use_container_width=True): confirm_back_dialog()
+                        if st.button("⬅️ إلغاء والتراجع", use_container_width=True): 
+                            confirm_back_dialog()
                             
                     st.markdown(f'''
                         <div class="stats-footer-container">
