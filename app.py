@@ -113,7 +113,7 @@ st.markdown('''
     </style>''', unsafe_allow_html=True)
 
 # ==============================================================================
-# 3. الدالات المساعدة للروابط وتصدير البيانات ونوافذ التأكيد
+# 3. الدالات المساعدة للروابط وتصدير البيانات ونوافذ التأكيد الحوارية
 # ==============================================================================
 
 def get_wa_link(df, status_type, d):
@@ -255,10 +255,10 @@ def confirm_delete_dialog(date_str):
         if st.button("❌ إلغاء التراجع", use_container_width=True):
             st.rerun()
 
-# 🎯 نافذة الحوار المضافة حديثاً لتأكيد حفظ رصد التأخر الصباحي الموضح في image_5cd7fd.png 🎯
+# 🎯 التعديل الأساسي: نافذة تأكيد حفظ رصد التأخر الصباحي 🎯
 @st.dialog("💾 تأكيد اعتماد رصد التأخر الصباحي")
 def confirm_save_morning_dialog(results_data, date_str):
-    st.markdown(f"هل أنت متأكد من اعتماد وتحديث السجلات الحالية ليوم **{date_str}** ومزامنتها مباشرة مع قاعدة البيانات؟")
+    st.markdown(f"هل أنت متأكد من اعتماد وتحديث السجلات الحالية ليوم **{date_str}** ومزالنتها مع قاعدة البيانات؟")
     st.write("")
     c1, c2 = st.columns(2)
     with c1:
@@ -269,13 +269,13 @@ def confirm_save_morning_dialog(results_data, date_str):
                 supabase.table('attendance').insert(results_data).execute()
                 st.success("✅ تم حفظ وتزامن البيانات بنجاح!")
                 time.sleep(1.2)
-                st.session_state.page = "home"
+                st.session_state.page = "home"  # العودة للشاشة الرئيسية بعد التأكيد بنجاح
                 st.rerun()
             except Exception as e:
                 st.error(f"حدث خطأ أثناء حفظ البيانات: {e}")
     with c2:
-        if st.button("❌ إلغاء", use_container_width=True):
-            st.rerun()
+        if st.button("❌ إلغاء (البقاء على نفس النافذة)", use_container_width=True):
+            st.rerun()  # يغلق الـ dialog فقط ويحتفظ ببيانات الاختيارات الحالية للرصد
 
 # ==============================================================================
 # 4. إدارة معالجة وعرض الشاشات والواجهات
@@ -397,7 +397,7 @@ elif st.session_state.page == "m_log":
             st.session_state.page = "morning_late"; st.rerun()
         else: st.error("كلمة المرور غير صحيحة.")
 
-# --- 5. واجهة رصد لجنة التأخر الصباحي المخصصة ---
+# --- 5. واجهة رصد لجنة التأخر الصباحي ---
 elif st.session_state.page == "morning_late":
     if st.button("⬅️ تسجيل خروج من اللجنة"): st.session_state.page = "home"; st.rerun()
     st.markdown("## ⏰ لجنة رصد التأخر الصباحي الموحد")
@@ -452,15 +452,17 @@ elif st.session_state.page == "morning_late":
                     st.write("")
                     col_save_m, col_back_m = st.columns(2)
                     
-                    # التطبيق المتوافق مع الأزرار الموجودة في الصورة image_5cd7fd.png
+                    # 🏁 تطبيق المنطق المطلوب للأزرار الموضحة بالصورة 🏁
                     with col_save_m:
                         if st.button("💾 اعتماد وتحديث رصد التأخر الصباحي", use_container_width=True, type="primary"):
-                            # استدعاء نافذة الحوار للتأكيد بدلاً من الحفظ المباشر
+                            # استدعاء النافذة الحوارية التي تتيح إما التأكيد (والذهاب للرئيسية) أو الإلغاء (والبقاء على الصفحة)
                             confirm_save_morning_dialog(morning_results, today)
                             
                     with col_back_m:
                         if st.button("⬅️ إلغاء والتراجع", use_container_width=True): 
-                            confirm_back_dialog()
+                            # توجيه مباشر وفوري للشاشة الرئيسية حسب رغبتك
+                            st.session_state.page = "home"
+                            st.rerun()
                             
                     st.markdown(f'''
                         <div class="stats-footer-container">
@@ -612,7 +614,6 @@ elif st.session_state.page == "admin":
             with col_del_date:
                 d_to_delete = st.date_input("اختر تاريخ اليوم المراد مسح سجلاته نهائياً:", datetime.now(), key="del_date_input")
             
-            # استدعاء دالة الحوار عند الضغط لتأكيد العملية والحد من المسح الخاطئ
             if st.button(f"🗑️ حذف كافة سجلات يوم {d_to_delete}", use_container_width=True, type="primary"):
                 confirm_delete_dialog(str(d_to_delete))
             
