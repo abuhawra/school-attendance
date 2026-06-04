@@ -28,21 +28,24 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 🎨 التنسيق المرئي والـ CSS ---
+# --- 🎨 التنسيق المرئي والـ CSS الشامل لتكبير الخطوط ---
 st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
     
-    html, body, [class*="css"] { 
-        font-family: 'Cairo', sans-serif; 
+    /* تكبير خطوط الهيكل العام للنظام بالكامل */
+    html, body, [class*="css"], p, span, li, a { 
+        font-family: 'Cairo', sans-serif !important; 
         direction: rtl; 
         text-align: right; 
+        font-size: 20px !important; /* حجم الخط العام للمقروئية العالية */
     }
     
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
+    /* هيدر الشاشة الرئيسية */
     .main-header { 
         background-color: #1a237e; padding: 30px; text-align: center; color: white; 
         border-radius: 20px; margin-bottom: 25px; border-bottom: 8px solid #ff9800; 
@@ -51,33 +54,83 @@ st.markdown('''
     .school-name {
         margin: 0 !important; padding: 0 !important;
         line-height: 0.8 !important; color: #ff9800;
-        font-size: 45px; font-weight: 800;
+        font-size: 48px !important; font-weight: 800;
     }
     
-    .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 6px 12px; border-radius: 15px; font-weight: bold; font-size: 14px; border: 1px solid #d1d9e6; display: inline-block; }
+    .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 6px 12px; border-radius: 15px; font-weight: bold; font-size: 16px !important; border: 1px solid #d1d9e6; display: inline-block; }
     .arrow-sep { color: #ff9800; font-weight: bold; margin: 0 5px; }
-    .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; }
+    
+    /* روابط الواتساب الملونة */
+    .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 14px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 20px !important; }
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
     .wa-stats { background-color: #1a237e; border: 1px solid #ff9800; }
     .thank-you-box { text-align: center; padding: 40px; background: #f8fdf9; border-radius: 20px; border: 2px solid #22c55e; margin-top: 20px; }
+    .thank-you-box h1 { font-size: 36px !important; font-weight: 800; }
+    .thank-you-box h2 { font-size: 28px !important; }
+
+    /* أزرار النظام بالكامل (تحسين الحجم والخط) */
+    div.stButton > button {
+        font-size: 22px !important;
+        font-weight: 700 !important;
+        padding: 10px 20px !important;
+        border-radius: 12px !important;
+        font-family: 'Cairo', sans-serif !important;
+    }
     
+    /* مدخلات النصوص وكلمات المرور وقوائم الاختيار */
+    div[data-testid="stTextInput"] label p, div[data-testid="stSelectbox"] label p, div[data-testid="stDateInput"] label p {
+        font-size: 22px !important;
+        font-weight: 700 !important;
+        color: #1a237e !important;
+    }
+    div[data-testid="stTextInput"] input, div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+        font-size: 20px !important;
+    }
+
+    /* التبويبات Tabs في لوحة الإدارة */
+    div[data-testid="stTabs"] button p {
+        font-size: 22px !important;
+        font-weight: 700 !important;
+    }
+
+    /* عناوين الجداول والإحصائيات */
+    div[data-testid="stMarkdownContainer"] h1 { font-size: 34px !important; font-weight: 800; }
+    div[data-testid="stMarkdownContainer"] h2 { font-size: 28px !important; font-weight: 700; }
+    div[data-testid="stMarkdownContainer"] h3 { font-size: 24px !important; font-weight: 700; color: #1a237e; }
+
+    /* شريط الإحصائيات السفلي */
     .stats-footer-container {
         margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 12px; border: 1px solid #e9ecef; text-align: center;
     }
     .stat-badge {
-        display: inline-block; padding: 8px 20px; margin: 5px 10px; font-size: 18px; font-weight: bold; border-radius: 8px; color: white;
+        display: inline-block; padding: 8px 20px; margin: 5px 10px; font-size: 20px !important; font-weight: bold; border-radius: 8px; color: white;
     }
     .stat-total { background-color: #1a237e; }
     .stat-present { background-color: #2e7d32; }
     .stat-absent { background-color: #c62828; }
     .stat-late { background-color: #ef6c00; }
     
+    /* صناديق مراحل الإحصائيات في الإدارة */
     .admin-grade-box {
         background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
-    .admin-grade-title { font-size: 18px; font-weight: bold; color: #1a237e; margin-bottom: 10px; border-bottom: 2px solid #ff9800; padding-bottom: 5px; }
-    .grade-stat-sub { font-size: 15px; font-weight: 700; margin: 4px 0; }
+    .admin-grade-title { font-size: 22px !important; font-weight: bold; color: #1a237e; margin-bottom: 10px; border-bottom: 2px solid #ff9800; padding-bottom: 5px; }
+    .grade-stat-sub { font-size: 18px !important; font-weight: 700; margin: 4px 0; }
+    
+    /* تسميات واختيارات رصد الطلاب المخصصة (غائب/حاضر/متأخر) */
+    .student-label {
+        font-size: 24px !important;
+        font-weight: 700 !important;
+        color: #1a237e !important;
+        margin-top: 15px;
+        margin-bottom: 5px;
+        display: block;
+    }
+    div[data-testid="stRadio"] label p {
+        font-size: 20px !important;
+        font-weight: bold !important;
+    }
     </style>''', unsafe_allow_html=True)
 
 # ==============================================================================
@@ -113,7 +166,7 @@ def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
         f"🚫 الغائبين: {g2_a}%0A"
         f"⏳ المتأخرين: {g2_l}%0A%0A"
         f"🏫 *الصف ثالث ثانوي:*%0A"
-        f"🚫 الغائبين: {g3_abs}%0A"
+        f"🚫 الغائبين: {g3_a}%0A"
         f"⏳ المتأخرين: {g3_l}%0A%0A"
         f"-----------------%0A"
         f"🎯 *تم الإرسال عبر نظام بصمة تميز*"
@@ -191,7 +244,6 @@ def export_attendance_to_excel(df, report_date, sheet_label):
         
     return output.getvalue()
 
-@st.dialog("⚠️ تأكيد التراجع")
 def confirm_back_dialog():
     st.write("هل أنت متأكد من العودة وإلغاء التغييرات الحالية دون حفظ الرصد؟")
     st.write("")
@@ -212,18 +264,18 @@ def confirm_back_dialog():
 if st.session_state.page == "home":
     st.markdown('''
         <div class="main-header">
-            <h2 style="color:#ffffff; font-size: 22px; font-weight: 400; margin-top: 0; line-height: 0;">أول خطوة للنجاح...التحضير</h2>
+            <h2 style="color:#ffffff; font-size: 24px !important; font-weight: 400; margin-top: 0; line-height: 0;">أول خطوة للنجاح...التحضير</h2>
             <h2 class="school-name">   </h2>
-            <h2 style="color:#ff9800; font-size: 55px; font-weight: 800; margin-bottom: 0;">بَصمَة تَميُز</h2>
+            <h2 style="color:#ff9800; font-size: 58px !important; font-weight: 800; margin-bottom: 0;">بَصمَة تَميُز</h2>
                  <h2 class="school-name">مدرسة</h2>
                  <h2 class="school-name">   </h2>
                 <h2 class="school-name">القطيف الثانوية</h2>
                  <h2 class="school-name">   </h2>                
-            <div style="font-size: 20px; margin-top: 15px; border-top: 2px solid rgba(255,255,255,0.2); padding-top: 15px;">
-                <p style="color:#ff9800; font-size: 24px; font-weight: 500; margin: 0;">مدير المدرسة</p>
-                <p style="color:#ffffff; font-size: 24px; font-weight: 500; margin: 0;">أ. فراس آل عبدالمحسن</p>
-                <p style="color:#ff9800; font-size: 22px; margin: 5px 0;">فكرة وبرمجة</p>
-                <p style="color:#ffffff; font-size: 22px; margin: 5px 0;"> أ. عارف أحمد الحداد</p>
+            <div style="font-size: 22px; margin-top: 15px; border-top: 2px solid rgba(255,255,255,0.2); padding-top: 15px;">
+                <p style="color:#ff9800; font-size: 26px !important; font-weight: 500; margin: 0;">مدير المدرسة</p>
+                <p style="color:#ffffff; font-size: 26px !important; font-weight: 500; margin: 0;">أ. فراس آل عبدالمحسن</p>
+                <p style="color:#ff9800; font-size: 24px !important; margin: 5px 0;">فكرة وبرمجة</p>
+                <p style="color:#ffffff; font-size: 24px !important; margin: 5px 0;"> أ. عارف أحمد الحداد</p>
             </div>
         </div>
     ''', unsafe_allow_html=True)
@@ -281,9 +333,9 @@ elif st.session_state.page == "mark":
             for s in students.data:
                 prev = old_map.get(s['student_name'], "حاضر")
                 class_info = s.get('class_name', '---')
-                label_text = f"👤 {s['student_name']} ({class_info})"
                 
-                choice = st.radio(label_text, ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True)
+                st.markdown(f'<span class="student-label">👤 {s["student_name"]} ({class_info})</span>', unsafe_allow_html=True)
+                choice = st.radio("", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(prev), key=s['student_name'], horizontal=True, label_visibility="collapsed")
                 results.append({"student_name": s['student_name'], "committee": str(sel_c), "status": choice, "date": today, "teacher_name": all_t})
                 
                 if choice == "حاضر": count_present += 1
@@ -366,7 +418,9 @@ elif st.session_state.page == "morning_late":
                         if "لجنة التأخر الصباحي" not in final_teachers:
                             final_teachers = f"{final_teachers} | لجنة التأخر الصباحي"
                             
-                        choice = st.radio(f"👤 {s_name} (لجنة الطالب: {final_committee})", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(current_status), key=f"morning_{s_name}", horizontal=True)
+                        st.markdown(f'<span class="student-label">👤 {s_name} <small style="font-size:16px; color:#555;">(لجنة الطالب: {final_committee})</small></span>', unsafe_allow_html=True)
+                        
+                        choice = st.radio("", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(current_status), key=f"morning_{s_name}", horizontal=True, label_visibility="collapsed")
                         morning_results.append({"student_name": s_name, "committee": final_committee, "status": choice, "date": today, "teacher_name": final_teachers})
                         
                         if choice == "حاضر": c_p += 1
@@ -525,10 +579,9 @@ elif st.session_state.page == "admin":
             for c in all_c:
                 if c not in comm_status: st.write(f"⚠️ لجنة {c}")
 
-    with tab3: # لوحة إدارة قواعد البيانات (هنا تظهر خيارات الحذف حصرياً بعد الأمان)
+    with tab3: # لوحة إدارة قواعد البيانات 
         if st.text_input("رمز الأمان لإدارة البيانات:", type="password") == "4321":
             
-            # تم النقل الفعلي والنهائي لخيارات الحذف لتكون هنا فقط:
             st.markdown("### ⚠️ إدارة وحذف السجلات اليومية")
             col_del_date = st.columns([1, 2])[0]
             with col_del_date:
