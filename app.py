@@ -55,31 +55,32 @@ st.markdown('''
         font-size: 45px; font-weight: 800;
     }
     
-    /* تكبير خطوط الأزرار بشكل عام في التطبيق */
+    /* 🔥 تكبير خطوط الأزرار بشكل بارز في كافة النوافذ 🔥 */
     .stButton>button {
-        font-size: 20px !important;
-        font-weight: bold !important;
-        padding: 10px 20px !important;
+        font-size: 24px !important;
+        font-weight: 800 !important;
+        padding: 12px 24px !important;
         font-family: 'Cairo', sans-serif !important;
+        border-radius: 12px !important;
     }
     
     /* تكبير خطوط القوائم المنسدلة وحقول الإدخال والراديو */
     .stSelectbox label, .stTextInput label, .stRadio label {
-        font-size: 18px !important;
+        font-size: 20px !important;
         font-weight: bold !important;
         color: #1a237e !important;
     }
     
     /* تكبير نصوص الاختيارات داخل الراديو وحقول النص */
     div[data-testid="stMarkdownContainer"] p {
-        font-size: 18px;
+        font-size: 20px;
     }
     
     /* الحفاظ على أحجام الخطوط المناسبة لأسماء الطلاب داخل الراديو */
     div[data-testid="stRadio"] > label {
-        font-size: 19px !important;
+        font-size: 21px !important;
         background-color: #f8f9fa;
-        padding: 5px 10px;
+        padding: 6px 12px;
         border-radius: 8px;
         display: block;
         margin-bottom: 5px;
@@ -87,7 +88,7 @@ st.markdown('''
     
     .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 6px 12px; border-radius: 15px; font-weight: bold; font-size: 14px; border: 1px solid #d1d9e6; display: inline-block; }
     .arrow-sep { color: #ff9800; font-weight: bold; margin: 0 5px; }
-    .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 18px; }
+    .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 20px; }
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
     .wa-stats { background-color: #1a237e; border: 1px solid #ff9800; }
@@ -400,7 +401,7 @@ elif st.session_state.page == "morning_late":
                         if "لجنة التأخر الصباحي" not in final_teachers:
                             final_teachers = f"{final_teachers} | لجنة التأخر الصباحي"
                             
-                        choice = st.radio(f"👤 {s_name} (لجنة الطالب: {final_committee})", ["حاضر", "غائب", "متأخر"], index=["حاضr", "غائب", "متأخر"].index(current_status), key=f"morning_{s_name}", horizontal=True)
+                        choice = st.radio(f"👤 {s_name} (لجنة الطالب: {final_committee})", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(current_status), key=f"morning_{s_name}", horizontal=True)
                         morning_results.append({"student_name": s_name, "committee": final_committee, "status": choice, "date": today, "teacher_name": final_teachers})
                         
                         if choice == "حاضر": c_p += 1
