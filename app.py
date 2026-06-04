@@ -29,15 +29,15 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 🎨 التنسيق المرئي والـ CSS الشامل وتثبيت الهوية الرسمية ---
+# --- 🎨 التنسيق المرئي والـ CSS الشامل وتثبيت الهوية الرسمية الموحدة ---
 st.markdown('''
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght=400;700;800&display=swap');
     
     html, body, [class*="css"], p, span, li, a { 
         font-family: 'Cairo', sans-serif !important; 
         direction: rtl; 
-        text-align: right; 
+        text-align: center !important; 
         font-size: 20px !important; 
     }
     
@@ -45,70 +45,61 @@ st.markdown('''
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* هيدر الشاشة الرئيسية الموحد - الهوية الرسمية الزرقاء */
+    /* هيدر الشاشة الرئيسية الموحد - الهوية الرسمية الزرقاء الكبرى */
     .main-header { 
         background-color: #1a237e !important; 
-        padding: 40px !important; 
+        padding: 50px 20px !important; 
         text-align: center !important; 
         color: white !important; 
         border-radius: 20px !important; 
-        margin-bottom: 25px !important; 
+        margin-bottom: 35px !important; 
         border-bottom: 8px solid #ff9800 !important; 
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     
-    .main-header h1, .main-header h2, .main-header p, .main-header div {
-        text-align: center !important; 
+    /* تنسيق النصوص العلوية وأسماء الإدارة الموحدة بالتناوب البصري الفخم */
+    .header-subtext {
+        color: #ffffff !important; 
+        font-size: 32px !important; 
+        font-weight: 400 !important;
         margin: 10px 0 !important;
     }
-
-    .school-name {
-        color: #ffffff !important;
-        font-size: 40px !important; 
-        font-weight: 700 !important;
-        line-height: 1.2 !important;
-    }
     
-    /* لون "بصمة تميز" البرتقالي الكبير والمتوهج */
     .system-title {
         color: #ff9800 !important; 
         font-size: 96px !important; 
         font-weight: 900 !important; 
-        margin-bottom: 15px !important;
-        text-shadow: 2px 2px 5px rgba(0,0,0,0.4) !important;
+        margin: 15px 0 !important;
+        text-shadow: 2px 2px 6px rgba(0,0,0,0.4) !important;
     }
 
-    .header-subtext {
-        color: #ffffff !important; 
-        font-size: 30px !important; 
-        font-weight: 400 !important;
+    .school-name {
+        color: #ffffff !important;
+        font-size: 42px !important; 
+        font-weight: 700 !important;
+        margin: 10px 0 35px 0 !important;
     }
 
-    /* الصندوق الأبيض الداخلي للإدارة - مصحح ومحمي بالكامل */
-    .management-box {
-        background-color: #ffffff !important;
-        border-radius: 15px !important;
-        padding: 25px !important;
-        margin: 30px auto 10px auto !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
-        width: 85% !important;
-        max-width: 700px !important;
-    }
-
+    /* تنسيق مسميات الأدوار متناسق مع شعار التحضير */
     .role-title {
-        color: #1a237e !important; 
-        font-size: 26px !important; 
-        font-weight: 800 !important; 
-        margin-top: 5px !important;
-        margin-bottom: 2px !important;
-        text-align: center !important;
+        color: #ffffff !important;
+        font-size: 32px !important;
+        font-weight: 400 !important;
+        margin-top: 25px !important;
+        margin-bottom: 5px !important;
     }
 
+    /* تنسيق أسماء الأشخاص متناسق مع توهج بصمة تميز */
     .person-name {
-        color: #ff9800 !important; 
-        font-size: 28px !important; 
-        font-weight: 700 !important; 
-        margin-bottom: 15px !important;
-        text-align: center !important;
+        color: #ff9800 !important;
+        font-size: 46px !important;
+        font-weight: 800 !important;
+        margin-top: 5px !important;
+        margin-bottom: 25px !important;
+        text-shadow: 1px 1px 4px rgba(0,0,0,0.3) !important;
     }
     
     .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 6px 12px; border-radius: 15px; font-weight: bold; font-size: 16px !important; border: 1px solid #d1d9e6; display: inline-block; }
@@ -205,22 +196,21 @@ def confirm_back_dialog():
 # ==============================================================================
 
 if st.session_state.page == "home":
-    # 🌟 بناء التمبيليت الكامل للهوية الزرقاء والصندوق الأبيض بكتلة نصية نظيفة وخالية من الأخطاء 🌟
+    # 🌟 التمبيليت الموحد بالكامل للهوية البصرية (توسيط مطلق وتناوب ممتد للأسماء بدون صناديق فرعية) 🌟
     home_html = '''
     <div class="main-header">
         <div class="header-subtext">أول خطوة للنجاح...التحضير</div>
         <div class="system-title">بَصمَة تَميُز</div>
         <div class="school-name">مدرسة القطيف الثانوية</div>
         
-        <div class="management-box">
-            <div class="role-title">مدير المدرسة</div>
-            <div class="person-name">أ. فراس آل عبدالمحسن</div>
-            <div class="role-title">فكرة وبرمجة</div>
-            <div class="person-name">أ. عارف أحمد الحداد</div>
-        </div>
+        <div class="role-title">مدير المدرسة</div>
+        <div class="person-name">أ. فراس آل عبدالمحسن</div>
+        
+        <div class="role-title">فكرة وبرمجة</div>
+        <div class="person-name">أ. عارف أحمد الحداد</div>
     </div>
     '''
-    # عرض الهوية الموحدة كاملة وبشكل مستقر تماماً
+    # عرض الهوية الموحدة والشاشات الموسطة مباشرة
     st.markdown(home_html, unsafe_allow_html=True)
     
     # أزرار الانتقال والتحكم للشاشة الرئيسية
@@ -309,7 +299,7 @@ elif st.session_state.page == "morning_late":
     if res_all_students.data:
         df_std_classes = pd.DataFrame(res_all_students.data)
         all_classes = sorted(list(df_std_classes['class_name'].unique()))
-        grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ثالملك ثانوي": "3"}
+        grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ثالث ثانوي": "3"}
         selected_grade_label = st.selectbox("اختر الصف الدراسي:", ["---"] + list(grades_map.keys()))
         
         if selected_grade_label != "---":
