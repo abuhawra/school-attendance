@@ -29,7 +29,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 🎨 التنسيق المرئي والـ CSS الشامل وتغيير لون العنوان إلى البرتقالي ---
+# --- 🎨 التنسيق المرئي والـ CSS الشامل وتصحيح ظهور الـ HTML ---
 st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
@@ -45,7 +45,7 @@ st.markdown('''
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* هيدر الشاشة الرئيسية */
+    /* هيدر الشاشة الرئيسية الموحد */
     .main-header { 
         background-color: #1a237e; 
         padding: 40px; 
@@ -56,52 +56,57 @@ st.markdown('''
         border-bottom: 8px solid #ff9800; 
     }
     
-    .main-header h1, .main-header h2, .main-header p {
+    .main-header h1, .main-header h2, .main-header p, .main-header div {
         text-align: center !important; 
         margin: 10px 0 !important;
     }
 
     .school-name {
         color: #ffffff;
-        font-size: 60px !important; 
-        font-weight: 800;
+        font-size: 40px !important; 
+        font-weight: 700;
         line-height: 1.2 !important;
     }
     
-    /* 🌟 تعديل لون "بصمة تميز" إلى اللون البرتقالي بناءً على طلبك 🌟 */
+    /* 🌟 تعديل لون "بصمة تميز" إلى البرتقالي مع تكبير الخط 2X 🌟 */
     .system-title {
         color: #ff9800 !important; 
-        font-size: 95px !important; 
+        font-size: 96px !important; /* حجم مضاعف 2X */
         font-weight: 900; 
         margin-bottom: 15px !important;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        text-shadow: 2px 2px 5px rgba(0,0,0,0.4);
     }
 
     .header-subtext {
         color: #ffffff; 
-        font-size: 35px !important; 
+        font-size: 30px !important; 
         font-weight: 400;
     }
 
-    .management-section {
-        font-size: 24px; 
-        margin-top: 25px; 
-        border-top: 2px solid rgba(255,255,255,0.2); 
-        padding-top: 20px;
+    /* صندوق الإدارة والتصميم السفلي المصحح بالكامل */
+    .management-box {
+        background-color: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
+        padding: 25px;
+        margin-top: 30px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        display: inline-block;
+        width: 85%;
     }
 
     .role-title {
-        color: #ff9800; 
-        font-size: 36px !important; 
-        font-weight: 700; 
-        margin: 5px 0 !important;
+        color: #1a237e !important; 
+        font-size: 26px !important; 
+        font-weight: 800 !important; 
+        margin-top: 15px !important;
+        margin-bottom: 2px !important;
     }
 
     .person-name {
-        color: #ffffff; 
-        font-size: 36px !important; 
-        font-weight: 500; 
-        margin-bottom: 20px !important;
+        color: #ff9800 !important; 
+        font-size: 28px !important; 
+        font-weight: 700 !important; 
+        margin-bottom: 15px !important;
     }
     
     .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 6px 12px; border-radius: 15px; font-weight: bold; font-size: 16px !important; border: 1px solid #d1d9e6; display: inline-block; }
@@ -123,7 +128,7 @@ st.markdown('''
     </style>''', unsafe_allow_html=True)
 
 # ==============================================================================
-# 2. دالة توليد ومحاكاة محضر تأخر / غياب طالب PDF (مستقرة وبديلة لـ FPDF المنهارة)
+# 2. إدارة ملفات وتقارير الـ PDF الورقية الفردية للطلاب
 # ==============================================================================
 class ArabicPDF(FPDF):
     def header(self):
@@ -132,18 +137,12 @@ class ArabicPDF(FPDF):
         pass
 
 def export_attendance_to_pdf_fpdf(df_row, report_date):
-    """
-    توليد محضر فردي للطالب متوافق مع شكل "محضر تأخر الطالب" الرسمي للمدرسة.
-    """
     pdf = ArabicPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
-    
-    # رسم الإطار الخارجي للمحضر بطريقة مستقرة بديلة للدالة المنهارة
     pdf.set_line_width(1.0)
-    pdf.set_draw_color(26, 35, 126) # لون كحلي رسمي
+    pdf.set_draw_color(26, 35, 126)
     pdf.rect(5, 5, 200, 287)
     
-    # إضافة محتوى نصي قياسي ومنظم للمحضر
     pdf.set_font("Helvetica", 'B', 16)
     pdf.cell(0, 10, "المملكة العربية السعودية - وزارة التعليم", ln=True, align='C')
     pdf.cell(0, 10, "الإدارة العامة للتعليم بالمنطقة الشرقية - مكتب القطيف", ln=True, align='C')
@@ -154,7 +153,6 @@ def export_attendance_to_pdf_fpdf(df_row, report_date):
     pdf.cell(0, 12, "محضر ضبط انضباط طالب اليومي", ln=True, align='C')
     pdf.ln(5)
     
-    # تفاصيل المحضر
     pdf.set_font("Helvetica", '', 12)
     pdf.cell(0, 10, f"التاريخ: {report_date}", ln=True, align='R')
     pdf.cell(0, 10, f"اسم الطالب رباعي: {df_row.get('student_name', '---')}", ln=True, align='R')
@@ -166,11 +164,9 @@ def export_attendance_to_pdf_fpdf(df_row, report_date):
     pdf.ln(20)
     pdf.cell(0, 10, "الإجراءات والملاحظات المدرسية:", ln=True, align='R')
     pdf.cell(0, 8, "...........................................................................................................................", ln=True, align='R')
-    pdf.cell(0, 8, "...........................................................................................................................", ln=True, align='R')
     
     pdf.ln(20)
     pdf.cell(0, 10, "مدير المدرسة: أ. فراس آل عبدالمحسن", ln=True, align='L')
-    
     return pdf.output(dest='S').encode('latin1', errors='ignore')
 
 # --- دالات تصدير وإرسال الـ Excel والـ WhatsApp ---
@@ -230,20 +226,23 @@ def confirm_back_dialog():
         if st.button("تراجع والبقاء", use_container_width=True): st.rerun()
 
 # ==============================================================================
-# 3. إدارة وعرض الشاشات والواجهات الرئيسية
+# 3. معالجة وعرض شاشات التطبيق الرئيسية واجهة مستقرة تماماً
 # ==============================================================================
 
 if st.session_state.page == "home":
+    # تم إصلاح الـ HTML ليعمل كـ Render حقيقي ويمنع ظهور الأكواد النصية نهائياً
     st.markdown('''
         <div class="main-header">
-            <h2 class="header-subtext">أول خطوة للنجاح...التحضير</h2>
-            <h1 class="system-title">بَصمَة تَميُز</h1>
-            <h2 class="school-name">مدرسة القطيف الثانوية</h2>
-            <div class="management-section">
-                <p class="role-title">مدير المدرسة</p>
-                <p class="person-name">أ. فراس آل عبدالمحسن</p>
-                <p class="role-title">فكرة وبرمجة</p>
-                <p class="person-name">أ. عارف أحمد الحداد</p>
+            <div class="header-subtext">أول خطوة للنجاح...التحضير</div>
+            <div class="system-title">بَصمَة تَميُز</div>
+            <div class="school-name">مدرسة القطيف الثانوية</div>
+            
+            <div class="management-box">
+                <div class="role-title">مدير المدرسة</div>
+                <div class="person-name">أ. فراس آل عبدالمحسن</div>
+                
+                <div class="role-title">فكرة وبرمجة</div>
+                <div class="person-name">أ. عارف أحمد الحداد</div>
             </div>
         </div>
     ''', unsafe_allow_html=True)
@@ -333,7 +332,7 @@ elif st.session_state.page == "morning_late":
         df_std_classes = pd.DataFrame(res_all_students.data)
         all_classes = sorted(list(df_std_classes['class_name'].unique()))
         grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ثالث ثانوي": "3"}
-        selected_grade_label = st.selectbox("اختر الصف الدراسي:", ["---"] + list(grades_map.keys()))
+        selected_grade_label = st.selectbox("اخ立 الصف الدراسي:", ["---"] + list(grades_map.keys()))
         
         if selected_grade_label != "---":
             grade_prefix = grades_map[selected_grade_label]
@@ -402,7 +401,6 @@ elif st.session_state.page == "admin":
                 if not df_lat.empty:
                     st.download_button("⏳ ترحيل كشف التأخر إلى Excel", export_attendance_to_excel(df_lat, d_rep, "التأخر"), f"Late_{d_rep}.xlsx", use_container_width=True)
             
-            # 🌟 واجهة طباعة الإشعارات والمحاضر الفردية المستقرة والخالية من الأخطاء 🌟
             st.markdown("### 🖨️ طباعة محاضر وإشعارات الطلاب الفردية (PDF)")
             selected_student_report = st.selectbox("اختر الطالب المراد إصدار محضر رسمي له:", ["---"] + list(df_all['student_name'].unique()))
             if selected_student_report != "---":
