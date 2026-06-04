@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from supabase import create_client
 import pandas as pd
 from datetime import datetime
@@ -44,63 +45,6 @@ st.markdown('''
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    
-    /* هيدر الشاشة الرئيسية الموحد - الهوية الرسمية الزرقاء الكبرى */
-    .main-header { 
-        background-color: #1a237e !important; 
-        padding: 50px 20px !important; 
-        text-align: center !important; 
-        color: white !important; 
-        border-radius: 20px !important; 
-        margin-bottom: 35px !important; 
-        border-bottom: 8px solid #ff9800 !important; 
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-    
-    /* تنسيق النصوص العلوية وأسماء الإدارة الموحدة بالتناوب البصري الفخم */
-    .header-subtext {
-        color: #ffffff !important; 
-        font-size: 32px !important; 
-        font-weight: 400 !important;
-        margin: 10px 0 !important;
-    }
-    
-    .system-title {
-        color: #ff9800 !important; 
-        font-size: 96px !important; 
-        font-weight: 900 !important; 
-        margin: 15px 0 !important;
-        text-shadow: 2px 2px 6px rgba(0,0,0,0.4) !important;
-    }
-
-    .school-name {
-        color: #ffffff !important;
-        font-size: 42px !important; 
-        font-weight: 700 !important;
-        margin: 10px 0 35px 0 !important;
-    }
-
-    /* تنسيق مسميات الأدوار متناسق مع شعار التحضير */
-    .role-title {
-        color: #ffffff !important;
-        font-size: 32px !important;
-        font-weight: 400 !important;
-        margin-top: 25px !important;
-        margin-bottom: 5px !important;
-    }
-
-    /* تنسيق أسماء الأشخاص متناسق مع توهج بصمة تميز */
-    .person-name {
-        color: #ff9800 !important;
-        font-size: 46px !important;
-        font-weight: 800 !important;
-        margin-top: 5px !important;
-        margin-bottom: 25px !important;
-        text-shadow: 1px 1px 4px rgba(0,0,0,0.3) !important;
-    }
     
     .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 6px 12px; border-radius: 15px; font-weight: bold; font-size: 16px !important; border: 1px solid #d1d9e6; display: inline-block; }
     .thank-you-box { text-align: center; padding: 40px; background: #f8fdf9; border-radius: 20px; border: 2px solid #22c55e; margin-top: 20px; }
@@ -196,22 +140,93 @@ def confirm_back_dialog():
 # ==============================================================================
 
 if st.session_state.page == "home":
-    # 🌟 بناء التمبيليت البرمجي الموحد بنظام التوسيط المطلق والأكواد النظيفة الحية 🌟
-    home_html = '''
-    <div class="main-header">
-        <div class="header-subtext">أول خطوة للنجاح...التحضير</div>
-        <div class="system-title">بَصمَة تَميُز</div>
-        <div class="school-name">مدرسة القطيف الثانوية</div>
-        
-        <div class="role-title">مدير المدرسة</div>
-        <div class="person-name">أ. فراس آل عبدالمحسن</div>
-        
-        <div class="role-title">فكرة وبرمجة</div>
-        <div class="person-name">أ. عارف أحمد الحداد</div>
-    </div>
-    '''
-    # التفعيل الحاسم والمستقر لتنفيذ أكواد الـ HTML ومنع ظهورها كنصوص
-    st.markdown(home_html, unsafe_allow_html=True)
+    # 🌟 كود الـ HTML والـ CSS الكامل المدمج لضمان المعالجة الصحيحة دون أي ظهور للأكواد 🌟
+    html_content = """
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Cairo:wght=400;700;900&display=swap');
+            
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: transparent;
+                font-family: 'Cairo', sans-serif;
+            }
+            
+            .main-header { 
+                background-color: #1a237e; 
+                padding: 45px 20px; 
+                text-align: center; 
+                color: white; 
+                border-radius: 20px; 
+                margin-bottom: 20px; 
+                border-bottom: 8px solid #ff9800; 
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            }
+            
+            .header-subtext {
+                color: #ffffff; 
+                font-size: 26px; 
+                font-weight: 400;
+                margin: 5px 0;
+                opacity: 0.9;
+            }
+            
+            .system-title {
+                color: #ff9800; 
+                font-size: 72px; 
+                font-weight: 900; 
+                margin: 10px 0;
+                text-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+            }
+
+            .school-name {
+                color: #ffffff;
+                font-size: 34px; 
+                font-weight: 700;
+                margin: 5px 0 25px 0;
+            }
+
+            .role-title {
+                color: #ffffff;
+                font-size: 24px;
+                font-weight: 400;
+                margin-top: 20px;
+                margin-bottom: 2px;
+                opacity: 0.85;
+            }
+
+            .person-name {
+                color: #ff9800;
+                font-size: 38px;
+                font-weight: 800;
+                margin-top: 2px;
+                margin-bottom: 15px;
+                text-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="main-header">
+            <div class="header-subtext">أول خطوة للنجاح...التحضير</div>
+            <div class="system-title">بَصمَة تَميُز</div>
+            <div class="school-name">مدرسة القطيف الثانوية</div>
+            
+            <div class="role-title">مدير المدرسة</div>
+            <div class="person-name">أ. فراس آل عبدالمحسن</div>
+            
+            <div class="role-title">فكرة وبرمجة</div>
+            <div class="person-name">أ. عارف أحمد الحداد</div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    # استدعاء دالة المكونات الحية المضمونة لمعالجة الـ HTML وعرض الهوية الرسمية بدقة واحترافية
+    components.html(html_content, height=620, scrolling=False)
     
     # أزرار الانتقال والتحكم للشاشة الرئيسية
     st.write("")
