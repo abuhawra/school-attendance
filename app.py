@@ -255,14 +255,14 @@ def confirm_delete_dialog(date_str):
         if st.button("❌ إلغاء التراجع", use_container_width=True):
             st.rerun()
 
-# 🎯 نافذة حوار الاعتماد والتأكيد أو الإلغاء (للبقاء على شاشة الرصد) 🎯
+# 🎯 التعديل النهائي والجوهري بناءً على لقطة الشاشة image_5c76a0.png 🎯
 @st.dialog("💾 تأكيد اعتماد رصد التأخر الصباحي")
 def confirm_save_morning_dialog(results_data, date_str):
     st.markdown(f"هل أنت متأكد من اعتماد وتحديث السجلات الحالية ليوم **{date_str}** ومزامنتها مباشرة مع قاعدة البيانات؟")
     st.write("")
     c1, c2 = st.columns(2)
     with c1:
-        # الاعتماد والتأكيد: يتم حفظ البيانات والمزامنة فوراً ثم العودة للشاشة الرئيسية
+        # عند الضغط على "نعم، اعتمد الرصد الآن": التنفيذ والمزامنة والبقاء في نفس النافذة الحالية دون الخروج للرئيسية
         if st.button("✅ نعم، اعتمد الرصد الآن", use_container_width=True, type="primary"):
             try:
                 for record in results_data:
@@ -270,12 +270,11 @@ def confirm_save_morning_dialog(results_data, date_str):
                 supabase.table('attendance').insert(results_data).execute()
                 st.success("✅ تم حفظ وتزامن البيانات بنجاح!")
                 time.sleep(1.2)
-                st.session_state.page = "home"  # العودة الفورية للشاشة الرئيسية
-                st.rerun()
+                st.rerun()  # يغلق الـ dialog فقط ويقوم بعمل تحديث للبقاء في نفس واجهة الرصد
             except Exception as e:
                 st.error(f"حدث خطأ أثناء حفظ البيانات: {e}")
     with c2:
-        # الإلغاء: يغلق الـ dialog فقط ويبقي المستخدم على شاشة الرصد الحالية دون ضياع مدخلاته
+        # عند الضغط على "إلغاء والتراجع": إغلاق النافذة الحوارية والبقاء في نفس واجهة الرصد
         if st.button("❌ إلغاء والتراجع", use_container_width=True):
             st.rerun()
 
@@ -454,13 +453,11 @@ elif st.session_state.page == "morning_late":
                     st.write("")
                     col_save_m, col_back_m = st.columns(2)
                     
-                    # 🏁 تطبيق المنطق المرتبط بالصورة image_5cd0d9.png 🏁
                     with col_save_m:
                         if st.button("💾 اعتماد وتحديث رصد التأخر الصباحي", use_container_width=True, type="primary"):
                             confirm_save_morning_dialog(morning_results, today)
                             
                     with col_back_m:
-                        # إلغاء والتراجع: العودة الفورية والمباشرة للشاشة الرئيسية
                         if st.button("⬅️ إلغاء والتراجع", use_container_width=True): 
                             st.session_state.page = "home"
                             st.rerun()
