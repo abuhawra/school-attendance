@@ -71,7 +71,7 @@ st.markdown('''
     /* 🌟 تعديل لون "بصمة تميز" إلى البرتقالي مع تكبير الخط 2X 🌟 */
     .system-title {
         color: #ff9800 !important; 
-        font-size: 96px !important; /* حجم مضاعف 2X */
+        font-size: 96px !important; 
         font-weight: 900; 
         margin-bottom: 15px !important;
         text-shadow: 2px 2px 5px rgba(0,0,0,0.4);
@@ -83,30 +83,33 @@ st.markdown('''
         font-weight: 400;
     }
 
-    /* صندوق الإدارة والتصميم السفلي المصحح بالكامل */
+    /* صندوق الإدارة المصمم خصيصاً كخلفية بيضاء نقية مفسرة بالكامل */
     .management-box {
-        background-color: rgba(255, 255, 255, 0.95);
-        border-radius: 15px;
-        padding: 25px;
-        margin-top: 30px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        display: inline-block;
-        width: 85%;
+        background-color: #ffffff !important;
+        border-radius: 15px !important;
+        padding: 30px !important;
+        margin: 30px auto 10px auto !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
+        width: 85% !important;
+        max-width: 800px !important;
+        display: block !important;
     }
 
     .role-title {
         color: #1a237e !important; 
         font-size: 26px !important; 
         font-weight: 800 !important; 
-        margin-top: 15px !important;
+        margin-top: 10px !important;
         margin-bottom: 2px !important;
+        text-align: center !important;
     }
 
     .person-name {
         color: #ff9800 !important; 
         font-size: 28px !important; 
         font-weight: 700 !important; 
-        margin-bottom: 15px !important;
+        margin-bottom: 20px !important;
+        text-align: center !important;
     }
     
     .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 6px 12px; border-radius: 15px; font-weight: bold; font-size: 16px !important; border: 1px solid #d1d9e6; display: inline-block; }
@@ -230,7 +233,7 @@ def confirm_back_dialog():
 # ==============================================================================
 
 if st.session_state.page == "home":
-    # تم إصلاح الـ HTML ليعمل كـ Render حقيقي ويمنع ظهور الأكواد النصية نهائياً
+    # تم فصل وسوم الـ HTML وضبطها بشكل مستقل لضمان معالجتها من قبل المتصفح كـ ترويسة حية
     st.markdown('''
         <div class="main-header">
             <div class="header-subtext">أول خطوة للنجاح...التحضير</div>
@@ -332,7 +335,7 @@ elif st.session_state.page == "morning_late":
         df_std_classes = pd.DataFrame(res_all_students.data)
         all_classes = sorted(list(df_std_classes['class_name'].unique()))
         grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ثالث ثانوي": "3"}
-        selected_grade_label = st.selectbox("اخ立 الصف الدراسي:", ["---"] + list(grades_map.keys()))
+        selected_grade_label = st.selectbox("اختر الصف الدراسي:", ["---"] + list(grades_map.keys()))
         
         if selected_grade_label != "---":
             grade_prefix = grades_map[selected_grade_label]
@@ -374,7 +377,7 @@ elif st.session_state.page == "thank_you":
 
 elif st.session_state.page == "a_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": st.session_state.page = "admin"; st.rerun()
+    if st.text_input("أدخل كلمة مرور الإدارة:", type="password") == "1234": st.session_state.page = "admin"; st.rerun()
 
 elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
