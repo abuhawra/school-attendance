@@ -29,7 +29,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 🎨 التنسيق المرئي والـ CSS الشامل وتصحيح ظهور الـ HTML ---
+# --- 🎨 التنسيق المرئي والـ CSS الشامل لمنع ظهور الأكواد وتنسيق الألوان ---
 st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
@@ -37,7 +37,7 @@ st.markdown('''
     html, body, [class*="css"], p, span, li, a { 
         font-family: 'Cairo', sans-serif !important; 
         direction: rtl; 
-        text-align: right; 
+        text-align: center !important; 
         font-size: 20px !important; 
     }
     
@@ -45,89 +45,75 @@ st.markdown('''
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* هيدر الشاشة الرئيسية الموحد */
+    /* هيدر الشاشة الرئيسية الموحد الأزرق */
     .main-header { 
         background-color: #1a237e; 
-        padding: 40px; 
+        padding: 40px 20px; 
         text-align: center !important; 
         color: white; 
         border-radius: 20px; 
         margin-bottom: 25px; 
         border-bottom: 8px solid #ff9800; 
     }
-    
-    .main-header h1, .main-header h2, .main-header p, .main-header div {
-        text-align: center !important; 
-        margin: 10px 0 !important;
-    }
 
     .school-name {
-        color: #ffffff;
+        color: #ffffff !important;
         font-size: 40px !important; 
-        font-weight: 700;
-        line-height: 1.2 !important;
+        font-weight: 700 !important;
+        margin-top: 10px !important;
+        margin-bottom: 25px !important;
     }
     
-    /* 🌟 تعديل لون "بصمة تميز" إلى البرتقالي مع تكبير الخط 2X 🌟 */
+    /* 🌟 تعديل لون "بصمة تميز" إلى البرتقالي مع تكبير الخط 2X المتوافق 🌟 */
     .system-title {
         color: #ff9800 !important; 
-        font-size: 96px !important; 
-        font-weight: 900; 
+        font-size: 85px !important; 
+        font-weight: 900 !important; 
+        margin-top: 15px !important;
         margin-bottom: 15px !important;
-        text-shadow: 2px 2px 5px rgba(0,0,0,0.4);
+        text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
     }
 
     .header-subtext {
-        color: #ffffff; 
-        font-size: 30px !important; 
-        font-weight: 400;
-    }
-
-    /* صندوق الإدارة المصمم خصيصاً كخلفية بيضاء نقية مفسرة بالكامل */
-    .management-box {
-        background-color: #ffffff !important;
-        border-radius: 15px !important;
-        padding: 30px !important;
-        margin: 30px auto 10px auto !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
-        width: 85% !important;
-        max-width: 800px !important;
-        display: block !important;
-    }
-
-    .role-title {
-        color: #1a237e !important; 
-        font-size: 26px !important; 
-        font-weight: 800 !important; 
-        margin-top: 10px !important;
-        margin-bottom: 2px !important;
-        text-align: center !important;
-    }
-
-    .person-name {
-        color: #ff9800 !important; 
+        color: #ffffff !important; 
         font-size: 28px !important; 
+        font-weight: 400 !important;
+        margin-bottom: 10px !important;
+    }
+
+    /* صندوق الإدارة المحدث بالكامل كخلفية مسطحة نقية دون تداخل وسوم */
+    .management-container {
+        background-color: #f8f9fa !important;
+        border-radius: 15px !important;
+        padding: 25px !important;
+        margin: 25px auto 5px auto !important;
+        border: 1px solid #e2e8f0 !important;
+        max-width: 750px !important;
+    }
+
+    .role-text {
+        color: #1a237e !important; 
+        font-size: 24px !important; 
+        font-weight: 800 !important; 
+        margin-top: 8px !important;
+        margin-bottom: 2px !important;
+    }
+
+    .name-text {
+        color: #ff9800 !important; 
+        font-size: 26px !important; 
         font-weight: 700 !important; 
-        margin-bottom: 20px !important;
-        text-align: center !important;
+        margin-bottom: 15px !important;
     }
     
     .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 6px 12px; border-radius: 15px; font-weight: bold; font-size: 16px !important; border: 1px solid #d1d9e6; display: inline-block; }
-    .arrow-sep { color: #ff9800; font-weight: bold; margin: 0 5px; }
-    
-    .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 14px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 20px !important; }
-    .wa-absent { background-color: #dc3545; }
-    .wa-late { background-color: #fd7e14; }
-    .wa-stats { background-color: #1a237e; border: 1px solid #ff9800; }
     .thank-you-box { text-align: center; padding: 40px; background: #f8fdf9; border-radius: 20px; border: 2px solid #22c55e; margin-top: 20px; }
     
     div.stButton > button { font-size: 22px !important; font-weight: 700 !important; padding: 10px 20px !important; border-radius: 12px !important; }
     .stats-footer-container { margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 12px; border: 1px solid #e9ecef; text-align: center; }
     .stat-badge { display: inline-block; padding: 8px 20px; margin: 5px 10px; font-size: 20px !important; font-weight: bold; border-radius: 8px; color: white; }
     .stat-total { background-color: #1a237e; } .stat-present { background-color: #2e7d32; } .stat-absent { background-color: #c62828; } .stat-late { background-color: #ef6c00; }
-    .admin-grade-box { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; text-align: center; }
-    .admin-grade-title { font-size: 22px !important; font-weight: bold; color: #1a237e; border-bottom: 2px solid #ff9800; }
-    .student-label { font-size: 24px !important; font-weight: 700 !important; color: #1a237e !important; margin-top: 15px; display: block; }
+    .student-label { font-size: 24px !important; font-weight: 700 !important; color: #1a237e !important; margin-top: 15px; display: block; text-align: right !important; }
     </style>''', unsafe_allow_html=True)
 
 # ==============================================================================
@@ -173,25 +159,6 @@ def export_attendance_to_pdf_fpdf(df_row, report_date):
     return pdf.output(dest='S').encode('latin1', errors='ignore')
 
 # --- دالات تصدير وإرسال الـ Excel والـ WhatsApp ---
-def get_wa_link(df, status_type, d):
-    if df.empty: return None
-    df_sorted = df.copy()
-    df_sorted['c_sort'] = pd.to_numeric(df_sorted['committee'], errors='coerce').fillna(0)
-    df_sorted = df_sorted.sort_values(by='c_sort')
-    header_emoji = "🚫" if "غائب" in status_type else "⏳"
-    msg = f"{header_emoji} *قائمة {status_type}*%0A📅 *التاريخ:* {d}%0A-----------------%0A"
-    for _, r in df_sorted.iterrows():
-        msg += f"📦 *اللجنة:* {r['committee']}%0A👤 *الاسم:* {r['student_name']}%0A🏫 *الشعبة:* {r.get('الشعبة','--')}%0A⚠️ *الحالة:* {r['status']}%0A-----------------%0A"
-    return f"https://wa.me/?text={msg}"
-
-def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
-    msg = (f"📊 *إحصائيات الانضباط التفصيلية للمراحل*%0A📅 *التاريخ:* {d}%0A-----------------%0A"
-           f"🏫 *الصف أول ثانوي:*%0A🚫 الغائبين: {g1_a}%0A⏳ المتأخرين: {g1_l}%0A%0A"
-           f"🏫 *الصف ثاني ثانوي:*%0A🚫 الغائبين: {g2_a}%0A⏳ المتأخرين: {g2_l}%0A%0A"
-           f"🏫 *الصف ثالث ثانوي:*%0A🚫 الغائبين: {g3_a}%0A⏳ المتأخرين: {g3_l}%0A%0A"
-           f"🎯 *تم الإرسال عبر نظام بصمة تميز*")
-    return f"https://wa.me/?text={msg}"
-
 def export_attendance_to_excel(df, report_date, sheet_label):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -233,23 +200,26 @@ def confirm_back_dialog():
 # ==============================================================================
 
 if st.session_state.page == "home":
-    # تم فصل وسوم الـ HTML وضبطها بشكل مستقل لضمان معالجتها من قبل المتصفح كـ ترويسة حية
-    st.markdown('''
-        <div class="main-header">
-            <div class="header-subtext">أول خطوة للنجاح...التحضير</div>
-            <div class="system-title">بَصمَة تَميُز</div>
-            <div class="school-name">مدرسة القطيف الثانوية</div>
-            
-            <div class="management-box">
-                <div class="role-title">مدير المدرسة</div>
-                <div class="person-name">أ. فراس آل عبدالمحسن</div>
-                
-                <div class="role-title">فكرة وبرمجة</div>
-                <div class="person-name">أ. عارف أحمد الحداد</div>
-            </div>
-        </div>
-    ''', unsafe_allow_html=True)
+    # 🌟 الحاوية الرئيسية الزرقاء الكبرى للهيدر 🌟
+    st.markdown('<div class="main-header">', unsafe_allow_html=True)
     
+    # طباعة النصوص العلوية بواسطة دوال ستريمليت المستقلة لمنع ظهور كود الـ HTML نهائياً
+    st.markdown('<div class="header-subtext">أول خطوة للنجاح...التحضير</div>', unsafe_allow_html=True)
+    st.markdown('<div class="system-title">بَصمَة تَميُز</div>', unsafe_allow_html=True)
+    st.markdown('<div class="school-name">مدرسة القطيف الثانوية</div>', unsafe_allow_html=True)
+    
+    # 🌟 بناء صندوق الإدارة الأبيض الداخلي بفصل الوسوم كلياً 🌟
+    st.markdown('<div class="management-container">', unsafe_allow_html=True)
+    st.markdown('<div class="role-text">مدير المدرسة</div>', unsafe_allow_html=True)
+    st.markdown('<div class="name-text">أ. فراس آل عبدالمحسن</div>', unsafe_allow_html=True)
+    st.markdown('<div class="role-text">فكرة وبرمجة</div>', unsafe_allow_html=True)
+    st.markdown('<div class="name-text">أ. عارف أحمد الحداد</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True) # إغلاق صندوق الإدارة الأبيض
+    
+    st.markdown('</div>', unsafe_allow_html=True) # إغلاق الهيدر الأزرق الكبير
+    
+    # أزرار شاشة الانتقال الرئيسية
+    st.write("")
     col_b = st.columns([1, 2, 1])[1]
     with col_b:
         if st.button("📝 رصد غياب الطلاب اليومي", use_container_width=True, type="primary"):
@@ -346,10 +316,9 @@ elif st.session_state.page == "morning_late":
                 students_in_class = supabase.table('students').select("*").eq("class_name", selected_class).execute()
                 if students_in_class.data:
                     all_today_attendance = supabase.table('attendance').select("*").eq("date", today).execute()
-                    att_map, comm_map, tech_map = {}, {}, {}
+                    att_map, tech_map = {}, {}
                     for att in all_today_attendance.data:
                         att_map[att['student_name']] = att['status']
-                        comm_map[att['student_name']] = att['committee']
                         tech_map[att['student_name']] = att['teacher_name']
                     
                     morning_results = []
