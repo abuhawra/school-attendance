@@ -255,13 +255,14 @@ def confirm_delete_dialog(date_str):
         if st.button("❌ إلغاء التراجع", use_container_width=True):
             st.rerun()
 
-# 🎯 التعديل الأساسي: نافذة تأكيد حفظ رصد التأخر الصباحي 🎯
+# 🎯 نافذة حوار الاعتماد والتأكيد أو الإلغاء (للبقاء على شاشة الرصد) 🎯
 @st.dialog("💾 تأكيد اعتماد رصد التأخر الصباحي")
 def confirm_save_morning_dialog(results_data, date_str):
-    st.markdown(f"هل أنت متأكد من اعتماد وتحديث السجلات الحالية ليوم **{date_str}** ومزالنتها مع قاعدة البيانات؟")
+    st.markdown(f"هل أنت متأكد من اعتماد وتحديث السجلات الحالية ليوم **{date_str}** ومزامنتها مباشرة مع قاعدة البيانات؟")
     st.write("")
     c1, c2 = st.columns(2)
     with c1:
+        # الاعتماد والتأكيد: يتم حفظ البيانات والمزامنة فوراً ثم العودة للشاشة الرئيسية
         if st.button("✅ نعم، اعتمد الرصد الآن", use_container_width=True, type="primary"):
             try:
                 for record in results_data:
@@ -269,13 +270,14 @@ def confirm_save_morning_dialog(results_data, date_str):
                 supabase.table('attendance').insert(results_data).execute()
                 st.success("✅ تم حفظ وتزامن البيانات بنجاح!")
                 time.sleep(1.2)
-                st.session_state.page = "home"  # العودة للشاشة الرئيسية بعد التأكيد بنجاح
+                st.session_state.page = "home"  # العودة الفورية للشاشة الرئيسية
                 st.rerun()
             except Exception as e:
                 st.error(f"حدث خطأ أثناء حفظ البيانات: {e}")
     with c2:
-        if st.button("❌ إلغاء (البقاء على نفس النافذة)", use_container_width=True):
-            st.rerun()  # يغلق الـ dialog فقط ويحتفظ ببيانات الاختيارات الحالية للرصد
+        # الإلغاء: يغلق الـ dialog فقط ويبقي المستخدم على شاشة الرصد الحالية دون ضياع مدخلاته
+        if st.button("❌ إلغاء والتراجع", use_container_width=True):
+            st.rerun()
 
 # ==============================================================================
 # 4. إدارة معالجة وعرض الشاشات والواجهات
@@ -397,7 +399,7 @@ elif st.session_state.page == "m_log":
             st.session_state.page = "morning_late"; st.rerun()
         else: st.error("كلمة المرور غير صحيحة.")
 
-# --- 5. واجهة رصد لجنة التأخر الصباحي ---
+# --- 5. واجهة رصد لجنة التأخر الصباحي الموحد ---
 elif st.session_state.page == "morning_late":
     if st.button("⬅️ تسجيل خروج من اللجنة"): st.session_state.page = "home"; st.rerun()
     st.markdown("## ⏰ لجنة رصد التأخر الصباحي الموحد")
@@ -452,15 +454,14 @@ elif st.session_state.page == "morning_late":
                     st.write("")
                     col_save_m, col_back_m = st.columns(2)
                     
-                    # 🏁 تطبيق المنطق المطلوب للأزرار الموضحة بالصورة 🏁
+                    # 🏁 تطبيق المنطق المرتبط بالصورة image_5cd0d9.png 🏁
                     with col_save_m:
                         if st.button("💾 اعتماد وتحديث رصد التأخر الصباحي", use_container_width=True, type="primary"):
-                            # استدعاء النافذة الحوارية التي تتيح إما التأكيد (والذهاب للرئيسية) أو الإلغاء (والبقاء على الصفحة)
                             confirm_save_morning_dialog(morning_results, today)
                             
                     with col_back_m:
+                        # إلغاء والتراجع: العودة الفورية والمباشرة للشاشة الرئيسية
                         if st.button("⬅️ إلغاء والتراجع", use_container_width=True): 
-                            # توجيه مباشر وفوري للشاشة الرئيسية حسب رغبتك
                             st.session_state.page = "home"
                             st.rerun()
                             
