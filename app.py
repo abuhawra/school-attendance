@@ -30,7 +30,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 🎨 التنسيق المرئي والـ CSS الشامل وتثبيت الهوية الرسمية الموحدة ---
+# --- 🎨 التنسيق المرئي والـ CSS الشامل وتثبيت الهوية الرسمية الموحدة لصفحات الاستمارات ---
 st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght=400;700;800&display=swap');
@@ -57,7 +57,7 @@ st.markdown('''
     </style>''', unsafe_allow_html=True)
 
 # ==============================================================================
-# 2. إدارة ملفات وتقارير الـ PDF الورقية الفردية للطلاب
+# 2. إدارة ملفات وتقارير الـ PDF والـ Excel
 # ==============================================================================
 class ArabicPDF(FPDF):
     def header(self):
@@ -98,7 +98,6 @@ def export_attendance_to_pdf_fpdf(df_row, report_date):
     pdf.cell(0, 10, "مدير المدرسة: أ. فراس آل عبدالمحسن", ln=True, align='L')
     return pdf.output(dest='S').encode('latin1', errors='ignore')
 
-# --- دالة تصدير ملف الـ Excel ---
 def export_attendance_to_excel(df, report_date, sheet_label):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
@@ -140,7 +139,7 @@ def confirm_back_dialog():
 # ==============================================================================
 
 if st.session_state.page == "home":
-    # 🌟 كود الـ HTML والـ CSS الكامل المدمج لضمان المعالجة الصحيحة دون أي ظهور للأكواد 🌟
+    # بناء واجهة العرض كصفحة HTML مستقلة متكاملة تُعرض بشكل صحيح ومباشر
     html_content = """
     <!DOCTYPE html>
     <html dir="rtl" lang="ar">
@@ -158,18 +157,18 @@ if st.session_state.page == "home":
             
             .main-header { 
                 background-color: #1a237e; 
-                padding: 45px 20px; 
+                padding: 40px 20px; 
                 text-align: center; 
                 color: white; 
                 border-radius: 20px; 
                 margin-bottom: 20px; 
                 border-bottom: 8px solid #ff9800; 
-                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.15);
             }
             
             .header-subtext {
                 color: #ffffff; 
-                font-size: 26px; 
+                font-size: 24px; 
                 font-weight: 400;
                 margin: 5px 0;
                 opacity: 0.9;
@@ -177,35 +176,43 @@ if st.session_state.page == "home":
             
             .system-title {
                 color: #ff9800; 
-                font-size: 72px; 
+                font-size: 68px; 
                 font-weight: 900; 
                 margin: 10px 0;
-                text-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+                text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
             }
 
             .school-name {
                 color: #ffffff;
-                font-size: 34px; 
+                font-size: 32px; 
                 font-weight: 700;
-                margin: 5px 0 25px 0;
+                margin: 5px 0 20px 0;
+            }
+
+            .management-box {
+                background-color: #f8f9fa;
+                border-radius: 15px;
+                padding: 20px;
+                margin: 20px auto 0 auto;
+                max-width: 600px;
+                border: 1px solid #e2e8f0;
+                box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
             }
 
             .role-title {
-                color: #ffffff;
-                font-size: 24px;
-                font-weight: 400;
-                margin-top: 20px;
+                color: #1a237e;
+                font-size: 20px;
+                font-weight: 700;
+                margin-top: 10px;
                 margin-bottom: 2px;
-                opacity: 0.85;
             }
 
             .person-name {
                 color: #ff9800;
-                font-size: 38px;
+                font-size: 30px;
                 font-weight: 800;
                 margin-top: 2px;
                 margin-bottom: 15px;
-                text-shadow: 1px 1px 4px rgba(0,0,0,0.3);
             }
         </style>
     </head>
@@ -215,20 +222,22 @@ if st.session_state.page == "home":
             <div class="system-title">بَصمَة تَميُز</div>
             <div class="school-name">مدرسة القطيف الثانوية</div>
             
-            <div class="role-title">مدير المدرسة</div>
-            <div class="person-name">أ. فراس آل عبدالمحسن</div>
-            
-            <div class="role-title">فكرة وبرمجة</div>
-            <div class="person-name">أ. عارف أحمد الحداد</div>
+            <div class="management-box">
+                <div class="role-title">مدير المدرسة</div>
+                <div class="person-name">أ. فراس آل عبدالمحسن</div>
+                
+                <div class="role-title">فكرة وبرمجة</div>
+                <div class="person-name">أ. عارف أحمد الحداد</div>
+            </div>
         </div>
     </body>
     </html>
     """
     
-    # استدعاء دالة المكونات الحية المضمونة لمعالجة الـ HTML وعرض الهوية الرسمية بدقة واحترافية
-    components.html(html_content, height=620, scrolling=False)
+    # تنفيذ وعرض كود الواجهة الرسومية عبر المكونات لضمان معالجة الأكواد البرمجية بشكل مطلق
+    components.html(html_content, height=540, scrolling=False)
     
-    # أزرار الانتقال والتحكم للشاشة الرئيسية
+    # أزرار التنقل للشاشة الرئيسية
     st.write("")
     col_b = st.columns([1, 2, 1])[1]
     with col_b:
@@ -402,6 +411,6 @@ elif st.session_state.page == "admin":
             st.info("لا توجد بيانات مسجلة لهذا التاريخ.")
             
     with tab2:
-        st.write("واجهة متابعة اللجان اللحظية تعمل ومستقرة.")
+        st.info("واجهة متابعة اللجان اللحظية تعمل ومستقرة تماماً.")
     with tab3:
-        st.write("لوحة البيانات وتحديث ملفات الرفع تعمل ومستقرة.")
+        st.info("لوحة البيانات وتحديث ملفات الرفع تعمل ومستقرة تماماً.")
