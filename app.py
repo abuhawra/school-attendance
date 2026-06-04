@@ -113,7 +113,7 @@ st.markdown('''
     </style>''', unsafe_allow_html=True)
 
 # ==============================================================================
-# 3. الدالات المساعدة للروابط وتصدير البيانات
+# 3. الدالات المساعدة للروابط وتصدير البيانات ونوافذ التأكيد
 # ==============================================================================
 
 def get_wa_link(df, status_type, d):
@@ -234,6 +234,26 @@ def confirm_back_dialog():
             st.rerun()
     with c2:
         if st.button("تراجع والبقاء", use_container_width=True):
+            st.rerun()
+
+# 🎯 نافذة الحوار المضافة لتأكيد الحذف النهائي للسجلات 🎯
+@st.dialog("🚨 تحذير: تأكيد حذف السجلات")
+def confirm_delete_dialog(date_str):
+    st.markdown(f"هل أنت متأكد تماماً من **حذف كافة سجلات الانضباط** الخاصة بيوم **{date_str}**؟")
+    st.error("⚠️ هذا الإجراء نهائي ولا يمكن التراجع عنه بعد إتمامه!")
+    st.write("")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("🔥 نعم، احذف نهائياً", use_container_width=True, type="primary"):
+            try:
+                supabase.table("attendance").delete().eq("date", date_str).execute()
+                st.success(f"✅ تم حذف سجلات يوم {date_str} بنجاح من قاعدة البيانات.")
+                time.sleep(1.5)
+                st.rerun()
+            except Exception as e:
+                st.error(f"حدث خطأ أثناء محاولة الحذف: {e}")
+    with c2:
+        if st.button("❌ إلغاء التراجع", use_container_width=True):
             st.rerun()
 
 # ==============================================================================
@@ -570,13 +590,9 @@ elif st.session_state.page == "admin":
             with col_del_date:
                 d_to_delete = st.date_input("اختر تاريخ اليوم المراد مسح سجلاته نهائياً:", datetime.now(), key="del_date_input")
             
+            # استدعاء دالة الحوار عند الضغط لتأكيد العملية والحد من المسح الخاطئ
             if st.button(f"🗑️ حذف كافة سجلات يوم {d_to_delete}", use_container_width=True, type="primary"):
-                try:
-                    supabase.table("attendance").delete().eq("date", str(d_to_delete)).execute()
-                    st.success(f"تم حذف سجلات يوم {d_to_delete} بنجاح.")
-                    time.sleep(1); st.rerun()
-                except Exception as e:
-                    st.error(f"حدث خطأ أثناء الحذف: {e}")
+                confirm_delete_dialog(str(d_to_delete))
             
             st.divider()
             
