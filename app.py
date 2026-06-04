@@ -43,6 +43,7 @@ st.markdown('''
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
+    /* تنسيق الشاشة الرئيسية */
     .main-header { 
         background-color: #1a237e; padding: 30px; text-align: center; color: white; 
         border-radius: 20px; margin-bottom: 25px; border-bottom: 8px solid #ff9800; 
@@ -54,9 +55,39 @@ st.markdown('''
         font-size: 45px; font-weight: 800;
     }
     
+    /* تكبير خطوط الأزرار بشكل عام في التطبيق */
+    .stButton>button {
+        font-size: 20px !important;
+        font-weight: bold !important;
+        padding: 10px 20px !important;
+        font-family: 'Cairo', sans-serif !important;
+    }
+    
+    /* تكبير خطوط القوائم المنسدلة وحقول الإدخال والراديو */
+    .stSelectbox label, .stTextInput label, .stRadio label {
+        font-size: 18px !important;
+        font-weight: bold !important;
+        color: #1a237e !important;
+    }
+    
+    /* تكبير نصوص الاختيارات داخل الراديو وحقول النص */
+    div[data-testid="stMarkdownContainer"] p {
+        font-size: 18px;
+    }
+    
+    /* الحفاظ على أحجام الخطوط المناسبة لأسماء الطلاب داخل الراديو */
+    div[data-testid="stRadio"] > label {
+        font-size: 19px !important;
+        background-color: #f8f9fa;
+        padding: 5px 10px;
+        border-radius: 8px;
+        display: block;
+        margin-bottom: 5px;
+    }
+    
     .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 6px 12px; border-radius: 15px; font-weight: bold; font-size: 14px; border: 1px solid #d1d9e6; display: inline-block; }
     .arrow-sep { color: #ff9800; font-weight: bold; margin: 0 5px; }
-    .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; }
+    .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 18px; }
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
     .wa-stats { background-color: #1a237e; border: 1px solid #ff9800; }
@@ -113,7 +144,7 @@ def get_wa_grade_stats_link(d, g1_a, g1_l, g2_a, g2_l, g3_a, g3_l):
         f"🚫 الغائبين: {g2_a}%0A"
         f"⏳ المتأخرين: {g2_l}%0A%0A"
         f"🏫 *الصف ثالث ثانوي:*%0A"
-        f"🚫 الغائبين: {g3_abs}%0A"
+        f"🚫 الغائبين: {g3_a}%0A"
         f"⏳ المتأخرين: {g3_l}%0A%0A"
         f"-----------------%0A"
         f"🎯 *تم الإرسال عبر نظام بصمة تميز*"
@@ -242,8 +273,9 @@ if st.session_state.page == "home":
 # --- 2. صفحة تسجيل دخول المعلم ---
 elif st.session_state.page == "t_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
+    st.write("")
     tid = st.text_input("أدخل السجل المدني للمعلم:", type="password")
-    if st.button("دخول للنظام"):
+    if st.button("دخول للنظام", use_container_width=True, type="primary"):
         res = supabase.table("teachers").select("*").eq("national_id", tid.strip()).execute()
         if res.data:
             st.session_state.teacher = res.data[0]['name_tech']
@@ -278,6 +310,7 @@ elif st.session_state.page == "mark":
             count_present, count_absent, count_late = 0, 0, 0
             count_total = len(students.data)
             
+            st.write("---")
             for s in students.data:
                 prev = old_map.get(s['student_name'], "حاضر")
                 class_info = s.get('class_name', '---')
@@ -315,8 +348,9 @@ elif st.session_state.page == "mark":
 # --- 4. نافذة التحقق من باسوورد لجنة التأخر الصباحي ---
 elif st.session_state.page == "m_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
+    st.write("")
     m_pass = st.text_input("أدخل كلمة مرور لجنة التأخر الصباحي:", type="password")
-    if st.button("دخول للجنة"):
+    if st.button("دخول للجنة", use_container_width=True, type="primary"):
         if m_pass.strip() == "112233":
             st.session_state.page = "morning_late"; st.rerun()
         else: st.error("كلمة المرور غير صحيحة.")
@@ -366,7 +400,7 @@ elif st.session_state.page == "morning_late":
                         if "لجنة التأخر الصباحي" not in final_teachers:
                             final_teachers = f"{final_teachers} | لجنة التأخر الصباحي"
                             
-                        choice = st.radio(f"👤 {s_name} (لجنة الطالب: {final_committee})", ["حاضر", "غائب", "متأخر"], index=["حاضر", "غائب", "متأخر"].index(current_status), key=f"morning_{s_name}", horizontal=True)
+                        choice = st.radio(f"👤 {s_name} (لجنة الطالب: {final_committee})", ["حاضر", "غائب", "متأخر"], index=["حاضr", "غائب", "متأخر"].index(current_status), key=f"morning_{s_name}", horizontal=True)
                         morning_results.append({"student_name": s_name, "committee": final_committee, "status": choice, "date": today, "teacher_name": final_teachers})
                         
                         if choice == "حاضر": c_p += 1
@@ -403,7 +437,9 @@ elif st.session_state.page == "thank_you":
 # --- 7. صفحة تسجيل دخول الإدارة المدرسية ---
 elif st.session_state.page == "a_log":
     if st.button("⬅️ عودة"): st.session_state.page = "home"; st.rerun()
-    if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": st.session_state.page = "admin"; st.rerun()
+    st.write("")
+    if st.text_input("كلمة مرور الإدارة:", type="password") == "1234": 
+        st.session_state.page = "admin"; st.rerun()
 
 # --- 8. لوحة الإدارة الكبرى والتحكم الفوري ومشاركة التقارير ---
 elif st.session_state.page == "admin":
@@ -525,10 +561,9 @@ elif st.session_state.page == "admin":
             for c in all_c:
                 if c not in comm_status: st.write(f"⚠️ لجنة {c}")
 
-    with tab3: # لوحة إدارة قواعد البيانات (هنا تظهر خيارات الحذف حصرياً بعد الأمان)
+    with tab3: # لوحة إدارة قواعد البيانات
         if st.text_input("رمز الأمان لإدارة البيانات:", type="password") == "4321":
             
-            # تم النقل الفعلي والنهائي لخيارات الحذف لتكون هنا فقط:
             st.markdown("### ⚠️ إدارة وحذف السجلات اليومية")
             col_del_date = st.columns([1, 2])[0]
             with col_del_date:
@@ -544,7 +579,6 @@ elif st.session_state.page == "admin":
             
             st.divider()
             
-            # بقية أدوات تبويب إدارة البيانات الافتراضية
             df_s = pd.DataFrame(supabase.table('students').select("*").execute().data)
             if not df_s.empty:
                 buf_s = io.BytesIO()
