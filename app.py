@@ -28,7 +28,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 🎨 التنسيق المرئي والـ CSS الشامل لتكبير الخطوط ---
+# --- 🎨 التنسيق المرئي والـ CSS الشامل لتكبير الخطوط والتوسيط ---
 st.markdown('''
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap');
@@ -38,29 +38,74 @@ st.markdown('''
         font-family: 'Cairo', sans-serif !important; 
         direction: rtl; 
         text-align: right; 
-        font-size: 20px !important; /* حجم الخط العام للمقروئية العالية */
+        font-size: 20px !important; 
     }
     
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* هيدر الشاشة الرئيسية */
+    /* 🌟 هيدر الشاشة الرئيسية (توسيط وتكبير الخطوط X2) 🌟 */
     .main-header { 
-        background-color: #1a237e; padding: 30px; text-align: center; color: white; 
-        border-radius: 20px; margin-bottom: 25px; border-bottom: 8px solid #ff9800; 
+        background-color: #1a237e; 
+        padding: 40px; 
+        text-align: center !important; /* توسيط المحتوى */
+        color: white; 
+        border-radius: 20px; 
+        margin-bottom: 25px; 
+        border-bottom: 8px solid #ff9800; 
     }
     
+    .main-header h2, .main-header p {
+        text-align: center !important; /* إجبار جميع النصوص داخل الهيدر على التوسيط */
+        margin: 10px 0 !important;
+    }
+
     .school-name {
-        margin: 0 !important; padding: 0 !important;
-        line-height: 0.8 !important; color: #ff9800;
-        font-size: 48px !important; font-weight: 800;
+        color: #ff9800;
+        font-size: 80px !important; /* تكبير خط مدرسة القطيف الثانوية X2 */
+        font-weight: 800;
+        line-height: 1.2 !important;
     }
     
+    .system-title {
+        color: #ffffff; 
+        font-size: 90px !important; /* تكبير خط بصمة تميز X2 */
+        font-weight: 800; 
+        margin-bottom: 15px !important;
+    }
+
+    .header-subtext {
+        color: #ffffff; 
+        font-size: 40px !important; /* تكبير خط العبارة الترحيبية X2 */
+        font-weight: 400;
+    }
+
+    .management-section {
+        font-size: 24px; 
+        margin-top: 25px; 
+        border-top: 2px solid rgba(255,255,255,0.2); 
+        padding-top: 20px;
+    }
+
+    .role-title {
+        color: #ff9800; 
+        font-size: 44px !important; /* تكبير مسمى مدير المدرسة / فكرة وبرمجة X2 */
+        font-weight: 700; 
+        margin: 5px 0 !important;
+    }
+
+    .person-name {
+        color: #ffffff; 
+        font-size: 44px !important; /* تكبير أسماء الطاقم X2 */
+        font-weight: 500; 
+        margin-bottom: 20px !important;
+    }
+    
+    /* بقية التنسيقات المستقرة للنظام */
     .teacher-tag { background-color: #f0f2f6; color: #1a237e; padding: 6px 12px; border-radius: 15px; font-weight: bold; font-size: 16px !important; border: 1px solid #d1d9e6; display: inline-block; }
     .arrow-sep { color: #ff9800; font-weight: bold; margin: 0 5px; }
     
-    /* روابط الواتساب الملونة */
     .wa-link { text-decoration: none; color: white !important; display: block; text-align: center; padding: 14px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; font-size: 20px !important; }
     .wa-absent { background-color: #dc3545; }
     .wa-late { background-color: #fd7e14; }
@@ -69,7 +114,6 @@ st.markdown('''
     .thank-you-box h1 { font-size: 36px !important; font-weight: 800; }
     .thank-you-box h2 { font-size: 28px !important; }
 
-    /* أزرار النظام بالكامل (تحسين الحجم والخط) */
     div.stButton > button {
         font-size: 22px !important;
         font-weight: 700 !important;
@@ -78,7 +122,6 @@ st.markdown('''
         font-family: 'Cairo', sans-serif !important;
     }
     
-    /* مدخلات النصوص وكلمات المرور وقوائم الاختيار */
     div[data-testid="stTextInput"] label p, div[data-testid="stSelectbox"] label p, div[data-testid="stDateInput"] label p {
         font-size: 22px !important;
         font-weight: 700 !important;
@@ -88,18 +131,15 @@ st.markdown('''
         font-size: 20px !important;
     }
 
-    /* التبويبات Tabs في لوحة الإدارة */
     div[data-testid="stTabs"] button p {
         font-size: 22px !important;
         font-weight: 700 !important;
     }
 
-    /* عناوين الجداول والإحصائيات */
     div[data-testid="stMarkdownContainer"] h1 { font-size: 34px !important; font-weight: 800; }
     div[data-testid="stMarkdownContainer"] h2 { font-size: 28px !important; font-weight: 700; }
     div[data-testid="stMarkdownContainer"] h3 { font-size: 24px !important; font-weight: 700; color: #1a237e; }
 
-    /* شريط الإحصائيات السفلي */
     .stats-footer-container {
         margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 12px; border: 1px solid #e9ecef; text-align: center;
     }
@@ -111,14 +151,12 @@ st.markdown('''
     .stat-absent { background-color: #c62828; }
     .stat-late { background-color: #ef6c00; }
     
-    /* صناديق مراحل الإحصائيات في الإدارة */
     .admin-grade-box {
         background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
     .admin-grade-title { font-size: 22px !important; font-weight: bold; color: #1a237e; margin-bottom: 10px; border-bottom: 2px solid #ff9800; padding-bottom: 5px; }
     .grade-stat-sub { font-size: 18px !important; font-weight: 700; margin: 4px 0; }
     
-    /* تسميات واختيارات رصد الطلاب المخصصة (غائب/حاضر/متأخر) */
     .student-label {
         font-size: 24px !important;
         font-weight: 700 !important;
@@ -264,18 +302,16 @@ def confirm_back_dialog():
 if st.session_state.page == "home":
     st.markdown('''
         <div class="main-header">
-            <h2 style="color:#ffffff; font-size: 24px !important; font-weight: 400; margin-top: 0; line-height: 0;">أول خطوة للنجاح...التحضير</h2>
-            <h2 class="school-name">   </h2>
-            <h2 style="color:#ff9800; font-size: 58px !important; font-weight: 800; margin-bottom: 0;">بَصمَة تَميُز</h2>
-                 <h2 class="school-name">مدرسة</h2>
-                 <h2 class="school-name">   </h2>
-                <h2 class="school-name">القطيف الثانوية</h2>
-                 <h2 class="school-name">   </h2>                
-            <div style="font-size: 22px; margin-top: 15px; border-top: 2px solid rgba(255,255,255,0.2); padding-top: 15px;">
-                <p style="color:#ff9800; font-size: 26px !important; font-weight: 500; margin: 0;">مدير المدرسة</p>
-                <p style="color:#ffffff; font-size: 26px !important; font-weight: 500; margin: 0;">أ. فراس آل عبدالمحسن</p>
-                <p style="color:#ff9800; font-size: 24px !important; margin: 5px 0;">فكرة وبرمجة</p>
-                <p style="color:#ffffff; font-size: 24px !important; margin: 5px 0;"> أ. عارف أحمد الحداد</p>
+            <h2 class="header-subtext">أول خطوة للنجاح...التحضير</h2>
+            <h1 class="system-title">بَصمَة تَميُز</h1>
+            <h2 class="school-name">مدرسة القطيف الثانوية</h2>
+            
+            <div class="management-section">
+                <p class="role-title">مدير المدرسة</p>
+                <p class="person-name">أ. فراس آل عبدالمحسن</p>
+                
+                <p class="role-title">فكرة وبرمجة</p>
+                <p class="person-name">أ. عارف أحمد الحداد</p>
             </div>
         </div>
     ''', unsafe_allow_html=True)
@@ -464,7 +500,7 @@ elif st.session_state.page == "admin":
     if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
     tab1, tab2, tab3 = st.tabs(["📊 تقارير الانضباط", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
     
-    with tab1: # تقارير الانضباط والغياب والتأخر
+    with tab1: 
         col_date, col_filter = st.columns(2)
         with col_date:
             d_rep = st.date_input("اختر تاريخ التقرير:", datetime.now())
@@ -554,7 +590,7 @@ elif st.session_state.page == "admin":
                 st.info(f"لا توجد سجلات مطابقة لـ ({filter_status}) في هذا التاريخ.")
         else: st.info("لا توجد بيانات حضور مسجلة لهذا التاريخ.")
 
-    with tab2: # شاشة المتابعة الفورية لحالة اللجان
+    with tab2: 
         st.subheader("🏘️ حالة رصد اللجان اللحظية")
         att_now = supabase.table('attendance').select("committee, teacher_name").eq("date", str(datetime.now().date())).execute()
         comm_status = {}
@@ -579,7 +615,7 @@ elif st.session_state.page == "admin":
             for c in all_c:
                 if c not in comm_status: st.write(f"⚠️ لجنة {c}")
 
-    with tab3: # لوحة إدارة قواعد البيانات 
+    with tab3: 
         if st.text_input("رمز الأمان لإدارة البيانات:", type="password") == "4321":
             
             st.markdown("### ⚠️ إدارة وحذف السجلات اليومية")
@@ -597,7 +633,6 @@ elif st.session_state.page == "admin":
             
             st.divider()
             
-            # بقية أدوات تبويب إدارة البيانات الافتراضية
             df_s = pd.DataFrame(supabase.table('students').select("*").execute().data)
             if not df_s.empty:
                 buf_s = io.BytesIO()
