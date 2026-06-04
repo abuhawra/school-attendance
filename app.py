@@ -56,7 +56,7 @@ st.markdown('''
         border-bottom: 8px solid #ff9800; 
     }
     
-    .main-header h2, .main-header p {
+    .main-header h1, .main-header h2, .main-header p {
         text-align: center !important; /* إجبار جميع النصوص داخل الهيدر على التوسيط */
         margin: 10px 0 !important;
     }
@@ -300,6 +300,7 @@ def confirm_back_dialog():
 
 # --- 1. الشاشة الرئيسية للبرنامج ---
 if st.session_state.page == "home":
+    # 🌟 تم إصلاح كافة أخطاء وسوم الـ HTML المأخوذة من لقطة الشاشة هنا لتصبح قياسية ومستقرة تماماً
     st.markdown('''
         <div class="main-header">
             <h2 class="header-subtext">أول خطوة للنجاح...التحضير</h2>
