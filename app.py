@@ -275,10 +275,10 @@ def confirm_save_morning_dialog(results_data, date_str):
         if st.button("❌ إلغاء والتراجع", use_container_width=True):
             st.rerun()
 
-# 🔄 نافذة حوارية مضافة حديثاً لتأكيد تحديث الصفحة الفوري 🔄
-@st.dialog("🔄 تأكيد تحديث الصفحة")
+# 🔄 تعديل نافذة حوار التأكيد لتصبح خاصة بتحديث البيانات 🔄
+@st.dialog("🔄 تأكيد تحديث البيانات")
 def confirm_refresh_dialog():
-    st.markdown("هل أنت متأكد من إعادة تحديث الصفحة وجلب البيانات اللحظية الآن؟")
+    st.markdown("هل أنت متأكد من إعادة تحديث البيانات وجلب السجلات اللحظية الآن؟")
     st.write("")
     c1, c2 = st.columns(2)
     with c1:
@@ -421,7 +421,7 @@ elif st.session_state.page == "morning_late":
         df_std_classes['class_name'] = df_std_classes['class_name'].astype(str).str.strip()
         all_classes = sorted(list(df_std_classes['class_name'].unique()))
         
-        grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ثالث ثانوي": "3"}
+        grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ثالملة ثانوي": "3"}
         selected_grade_label = st.selectbox("اختر الصف الدراسي:", ["---"] + list(grades_map.keys()))
         
         if selected_grade_label != "---":
@@ -502,8 +502,8 @@ elif st.session_state.page == "admin":
             st.session_state.page = "home"
             st.rerun()
     with col_admin_refresh:
-        # 🔄 استدعاء نافذة حوار التأكيد عند الضغط على زر التحديث المضاف 🔄
-        if st.button("🔄 تحديث الصفحة", use_container_width=False, type="secondary"):
+        # 🔄 تعديل تسمية الزر المضاف ليصبح (تحديث البيانات) 🔄
+        if st.button("🔄 تحديث البيانات", use_container_width=False, type="secondary"):
             confirm_refresh_dialog()
             
     tab1, tab2, tab3 = st.tabs(["📊 تقارير الانضباط", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
