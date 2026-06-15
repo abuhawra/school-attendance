@@ -255,14 +255,12 @@ def confirm_delete_dialog(date_str):
         if st.button("❌ إلغاء التراجع", use_container_width=True):
             st.rerun()
 
-# 🎯 التعديل النهائي والجوهري بناءً على لقطة الشاشة image_5c76a0.png 🎯
 @st.dialog("💾 تأكيد اعتماد رصد التأخر الصباحي")
 def confirm_save_morning_dialog(results_data, date_str):
     st.markdown(f"هل أنت متأكد من اعتماد وتحديث السجلات الحالية ليوم **{date_str}** ومزامنتها مباشرة مع قاعدة البيانات؟")
     st.write("")
     c1, c2 = st.columns(2)
     with c1:
-        # عند الضغط على "نعم، اعتمد الرصد الآن": التنفيذ والمزامنة والبقاء في نفس النافذة الحالية دون الخروج للرئيسية
         if st.button("✅ نعم، اعتمد الرصد الآن", use_container_width=True, type="primary"):
             try:
                 for record in results_data:
@@ -270,11 +268,10 @@ def confirm_save_morning_dialog(results_data, date_str):
                 supabase.table('attendance').insert(results_data).execute()
                 st.success("✅ تم حفظ وتزامن البيانات بنجاح!")
                 time.sleep(1.2)
-                st.rerun()  # يغلق الـ dialog فقط ويقوم بعمل تحديث للبقاء في نفس واجهة الرصد
+                st.rerun()  
             except Exception as e:
                 st.error(f"حدث خطأ أثناء حفظ البيانات: {e}")
     with c2:
-        # عند الضغط على "إلغاء والتراجع": إغلاق النافذة الحوارية والبقاء في نفس واجهة الرصد
         if st.button("❌ إلغاء والتراجع", use_container_width=True):
             st.rerun()
 
@@ -486,7 +483,17 @@ elif st.session_state.page == "a_log":
 
 # --- 8. لوحة الإدارة الكبرى والتحكم الفوري ومشاركة التقارير ---
 elif st.session_state.page == "admin":
-    if st.button("⬅️ تسجيل خروج"): st.session_state.page = "home"; st.rerun()
+    # 🔄 إضافة صف علوي يحتوي على زر تسجيل الخروج وزر التحديث المضاف بجانبه 🔄
+    col_admin_exit, col_admin_refresh = st.columns([1, 1])
+    with col_admin_exit:
+        if st.button("⬅️ تسجيل خروج", use_container_width=False): 
+            st.session_state.page = "home"
+            st.rerun()
+    with col_admin_refresh:
+        # زر تحديث الصفحة المضاف بناءً على طلبك دون مغادرة الواجهة
+        if st.button("🔄 تحديث الصفحة", use_container_width=False, type="secondary"):
+            st.rerun()
+            
     tab1, tab2, tab3 = st.tabs(["📊 تقارير الانضباط", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
     
     with tab1: # تقارير الانضباط والغياب والتأخر
