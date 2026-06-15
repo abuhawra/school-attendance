@@ -71,6 +71,24 @@ st.markdown('''
         color: #1a237e !important;
     }
     
+    /* ✨ تمييز خانات الإدخال (القوائم المنسدلة، حقول النصوص، السجل، الباسوورد) بلون مختلف مريح للعين ✨ */
+    div[data-testid="stSelectbox"] > div[data-baseweb="select"] > div,
+    div[data-testid="stTextInput"] input {
+        background-color: #f0f4f8 !important; /* لون خلفية مميز وخاص بخانات الإدخال */
+        border: 2px solid #b0bec5 !important;
+        border-radius: 10px !important;
+        font-size: 18px !important;
+        font-weight: bold !important;
+        color: #1a237e !important;
+    }
+    
+    /* تغيير حواف الخانات المتميزة عند الضغط عليها والكتابة بداخلها */
+    div[data-testid="stSelectbox"] > div[data-baseweb="select"] > div:focus-within,
+    div[data-testid="stTextInput"] input:focus {
+        border-color: #1a237e !important;
+        box-shadow: 0 0 0 1px #1a237e !important;
+    }
+    
     /* تكبير نصوص الاختيارات داخل الراديو وحقول النص */
     div[data-testid="stMarkdownContainer"] p {
         font-size: 20px;
@@ -275,7 +293,6 @@ def confirm_save_morning_dialog(results_data, date_str):
         if st.button("❌ إلغاء والتراجع", use_container_width=True):
             st.rerun()
 
-# 🔄 تعديل نافذة حوار التأكيد لتصبح خاصة بتحديث البيانات 🔄
 @st.dialog("🔄 تأكيد تحديث البيانات")
 def confirm_refresh_dialog():
     st.markdown("هل أنت متأكد من إعادة تحديث البيانات وجلب السجلات اللحظية الآن؟")
@@ -421,7 +438,7 @@ elif st.session_state.page == "morning_late":
         df_std_classes['class_name'] = df_std_classes['class_name'].astype(str).str.strip()
         all_classes = sorted(list(df_std_classes['class_name'].unique()))
         
-        grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ثالملة ثانوي": "3"}
+        grades_map = {"أول ثانوي": "1", "ثاني ثانوي": "2", "ثالث ثانوي": "3"}
         selected_grade_label = st.selectbox("اختر الصف الدراسي:", ["---"] + list(grades_map.keys()))
         
         if selected_grade_label != "---":
@@ -502,7 +519,6 @@ elif st.session_state.page == "admin":
             st.session_state.page = "home"
             st.rerun()
     with col_admin_refresh:
-        # 🔄 تعديل تسمية الزر المضاف ليصبح (تحديث البيانات) 🔄
         if st.button("🔄 تحديث البيانات", use_container_width=False, type="secondary"):
             confirm_refresh_dialog()
             
