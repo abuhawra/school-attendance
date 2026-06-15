@@ -275,6 +275,19 @@ def confirm_save_morning_dialog(results_data, date_str):
         if st.button("❌ إلغاء والتراجع", use_container_width=True):
             st.rerun()
 
+# 🔄 نافذة حوارية مضافة حديثاً لتأكيد تحديث الصفحة الفوري 🔄
+@st.dialog("🔄 تأكيد تحديث الصفحة")
+def confirm_refresh_dialog():
+    st.markdown("هل أنت متأكد من إعادة تحديث الصفحة وجلب البيانات اللحظية الآن؟")
+    st.write("")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("نعم، حدّث الآن", use_container_width=True, type="primary"):
+            st.rerun()
+    with c2:
+        if st.button("إلغاء", use_container_width=True):
+            st.rerun()
+
 # ==============================================================================
 # 4. إدارة معالجة وعرض الشاشات والواجهات
 # ==============================================================================
@@ -483,16 +496,15 @@ elif st.session_state.page == "a_log":
 
 # --- 8. لوحة الإدارة الكبرى والتحكم الفوري ومشاركة التقارير ---
 elif st.session_state.page == "admin":
-    # 🔄 إضافة صف علوي يحتوي على زر تسجيل الخروج وزر التحديث المضاف بجانبه 🔄
     col_admin_exit, col_admin_refresh = st.columns([1, 1])
     with col_admin_exit:
         if st.button("⬅️ تسجيل خروج", use_container_width=False): 
             st.session_state.page = "home"
             st.rerun()
     with col_admin_refresh:
-        # زر تحديث الصفحة المضاف بناءً على طلبك دون مغادرة الواجهة
+        # 🔄 استدعاء نافذة حوار التأكيد عند الضغط على زر التحديث المضاف 🔄
         if st.button("🔄 تحديث الصفحة", use_container_width=False, type="secondary"):
-            st.rerun()
+            confirm_refresh_dialog()
             
     tab1, tab2, tab3 = st.tabs(["📊 تقارير الانضباط", "🏘️ حالة اللجان", "💾 إدارة البيانات"])
     
