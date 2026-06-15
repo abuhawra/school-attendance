@@ -71,22 +71,32 @@ st.markdown('''
         color: #1a237e !important;
     }
     
-    /* ✨ تمييز خانات الإدخال (القوائم المنسدلة، حقول النصوص، السجل، الباسوورد) بلون مختلف مريح للعين ✨ */
+    /* ✨ تمييز خانات الإدخال بلون أزرق واضح ومختلف تماماً عن الخلفية البيضاء مع نص أبيض واضح ✨ */
     div[data-testid="stSelectbox"] > div[data-baseweb="select"] > div,
     div[data-testid="stTextInput"] input {
-        background-color: #f0f4f8 !important; /* لون خلفية مميز وخاص بخانات الإدخال */
-        border: 2px solid #b0bec5 !important;
+        background-color: #1a237e !important; /* لون أزرق ملكي واضح */
+        border: 2px solid #ff9800 !important;   /* إطار برتقالي متباين وجذاب */
         border-radius: 10px !important;
-        font-size: 18px !important;
+        font-size: 19px !important;
         font-weight: bold !important;
-        color: #1a237e !important;
+        color: #ffffff !important;             /* لون الخط أبيض لسهولة القراءة بداخل الأزرق */
     }
     
-    /* تغيير حواف الخانات المتميزة عند الضغط عليها والكتابة بداخلها */
+    /* ضمان ظهور مؤشر الكتابة (Cursor) والنصوص المدخلة باللون الأبيض */
+    div[data-testid="stTextInput"] input {
+        caret-color: #ffffff !important;
+    }
+    
+    /* تنسيق أيقونة السهم الصغير داخل القائمة المنسدلة المتميزة */
+    div[data-testid="stSelectbox"] svg {
+        fill: #ffffff !important;
+    }
+    
+    /* تغيير حواف الخانات المتميزة عند الضغط عليها والكتابة بداخلها لزيادة التفاعل */
     div[data-testid="stSelectbox"] > div[data-baseweb="select"] > div:focus-within,
     div[data-testid="stTextInput"] input:focus {
-        border-color: #1a237e !important;
-        box-shadow: 0 0 0 1px #1a237e !important;
+        border-color: #ff9800 !important;
+        box-shadow: 0 0 8px rgba(255, 152, 0, 0.6) !important;
     }
     
     /* تكبير نصوص الاختيارات داخل الراديو وحقول النص */
